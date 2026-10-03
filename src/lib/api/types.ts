@@ -25,6 +25,13 @@ export type Service = {
   image: Photo;
 };
 
+/** A photo with an optional line under it. */
+export type CaptionedPhoto = Photo & { caption?: string };
+
+/**
+ * A job, told as a case study (Mindsparkle's order): brief, idea, colours, applications,
+ * behind the scenes, before and after (rebrands only), result.
+ */
 export type Project = {
   slug: string;
   title: string;
@@ -33,10 +40,24 @@ export type Project = {
   year: number;
   location: string;
   services: ServiceSlug[];
+  /** One or two sentences for cards and the case-study intro. */
   summary: string;
   cover: Photo;
   /** The job's colours as hex values, shown as swatch chips. */
   palette: string[];
+  brief: string;
+  idea: string;
+  result: string;
+  /** Short numbers worth bragging about: `{ label: 'Vans wrapped', value: '12' }`. */
+  facts: { label: string; value: string }[];
+  /** Materials and finishes, the details a print buyer cares about. */
+  materials: string[];
+  /** The work in use: signage up, vans on the road, gifts on desks. */
+  applications: CaptionedPhoto[];
+  /** Production: machines, proofs, installation. */
+  behindTheScenes: CaptionedPhoto[];
+  /** Only for rebrands. */
+  beforeAfter: { before: Photo; after: Photo } | null;
   featured: boolean;
   /** True for placeholder projects that must be replaced with real work before launch. */
   sample: boolean;
@@ -63,7 +84,9 @@ export type ListOptions = { featured?: boolean; limit?: number };
 
 export interface SiteApi {
   listServices(): Promise<Service[]>;
+  /** Newest first. */
   listProjects(options?: ListOptions): Promise<Project[]>;
+  getProject(slug: string): Promise<Project | null>;
   listProducts(options?: ListOptions): Promise<Product[]>;
   listClients(): Promise<Client[]>;
 }

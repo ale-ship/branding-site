@@ -6,6 +6,7 @@ import { QuoteCta } from '@/components/home/QuoteCta';
 import { ServicesIndex } from '@/components/home/ServicesIndex';
 import { ServiceTicker } from '@/components/home/ServiceTicker';
 import { ShopTeaser } from '@/components/home/ShopTeaser';
+import { WorkshopBand } from '@/components/home/WorkshopBand';
 import { api } from '@/lib/api';
 
 export default async function HomePage() {
@@ -20,6 +21,7 @@ export default async function HomePage() {
     <>
       <Hero projects={projects} />
       <ServiceTicker services={services} />
+      <WorkshopBand />
       <ServicesIndex services={services} />
       <InHouse />
       <Process />

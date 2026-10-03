@@ -1,11 +1,26 @@
-import type { Client, Project } from '../types';
+import type { CaptionedPhoto, Client, Project } from '../types';
 
-const img = (name: string, alt: string) => ({ src: `/images/placeholder/${name}.jpg`, alt });
+const img = (name: string, alt: string, caption?: string): CaptionedPhoto => ({
+  src: `/images/placeholder/${name}.jpg`,
+  alt,
+  ...(caption ? { caption } : {}),
+});
+
+/** Production photos shared by the samples. Real case studies get their own. */
+const shop = {
+  wide: img('print-wide-format', 'A wide-format printer feeding out a printed banner', 'Printed in-house on our wide-format machine.'),
+  latex: img('print-latex', 'A latex printer in the print room', 'Latex inks: dry on exit, safe indoors.'),
+  head: img('print-wide-detail', 'Close-up of a wide-format print head over printed vinyl', 'Colour checked against the approved proof.'),
+  offset: img('press-offset', 'An offset press with its ink rollers', 'Long runs go on the offset press.'),
+  web: img('press-web', 'Printed sheets running through a press', 'Sheets coming off the press.'),
+  inks: img('screen-inks', 'Tubs of screen-printing ink', 'Inks mixed to the brand colours.'),
+  apparel: img('apparel-press', 'A yellow t-shirt laid on the press', 'Each garment pressed and checked by hand.'),
+};
 
 /**
  * SAMPLE projects so the layouts can be reviewed. None of these are real Noorcom jobs:
- * every one has `sample: true` and shows a "Sample" tag. Replace them with real case studies
- * (RUNBOOK.md section 8) before launch.
+ * every one has `sample: true` and shows a "Sample" tag, and the wording is invented. Replace
+ * them with real case studies (RUNBOOK.md section 8) before launch. Newest first.
  */
 export const projects: Project[] = [
   {
@@ -16,9 +31,27 @@ export const projects: Project[] = [
     year: 2026,
     location: 'Nairobi',
     services: ['vehicle-branding'],
-    summary: 'Full wraps for a fleet of delivery vans, designed to read at speed.',
+    summary: 'Full wraps for a fleet of delivery vans, designed to read at speed and survive the rainy season.',
     cover: img('van-wrap', 'A white van covered in a full graphic wrap'),
     palette: ['#f2f2f0', '#e85a8a', '#1b1b1b'],
+    brief:
+      'Twelve plain white vans, a new route network across Nairobi, and no budget for billboards. The vans had to become the advertising.',
+    idea:
+      'One bold illustration that flows from bonnet to back doors, with the name big enough to read from a matatu window and the phone number on every side.',
+    result: 'The whole fleet was wrapped in nine working days, two vans at a time, so deliveries never stopped.',
+    facts: [
+      { label: 'Vans wrapped', value: '12' },
+      { label: 'Working days', value: '9' },
+      { label: 'Vinyl warranty', value: '5 yrs' },
+    ],
+    materials: ['Cast vinyl with air-release adhesive', 'Gloss laminate', 'Reflective vinyl for the rear doors'],
+    applications: [
+      img('van-wrap', 'Side view of the wrapped van', 'The side panels carry the name at full height.'),
+      img('banner-outdoor', 'A vertical banner on a wall', 'The same artwork on the depot banners.'),
+      img('sign-wall', 'A directory sign on a brick wall', 'Depot wayfinding to match.'),
+    ],
+    behindTheScenes: [shop.wide, shop.head],
+    beforeAfter: null,
     featured: true,
     sample: true,
   },
@@ -33,6 +66,21 @@ export const projects: Project[] = [
     summary: 'A lounge mural, wayfinding and frosted glass for a new head office.',
     cover: img('wall-mural', 'An office lounge with a large illustrated wall mural'),
     palette: ['#f6c945', '#7fb7c9', '#2f6b3a'],
+    brief: 'A new head office with white walls everywhere. Staff couldn’t find meeting rooms and visitors couldn’t tell whose office it was.',
+    idea: 'Tell the company’s story on the biggest wall, then carry the same colours into room names, glass and signs so the whole floor feels like one place.',
+    result: 'Fitted over two weekends, so the office never closed.',
+    facts: [
+      { label: 'Square metres printed', value: '64' },
+      { label: 'Room signs', value: '18' },
+      { label: 'Weekends to install', value: '2' },
+    ],
+    materials: ['Textured wallpaper, latex printed', 'Frosted window film, cut', 'Acrylic signs with stand-offs'],
+    applications: [
+      img('wall-mural', 'The mural in the staff lounge', 'The lounge mural tells the company’s story.'),
+      img('sign-wall', 'A room directory sign', 'Room signs in the mural’s colours.'),
+    ],
+    behindTheScenes: [shop.latex, shop.head],
+    beforeAfter: null,
     featured: true,
     sample: true,
   },
@@ -46,7 +94,23 @@ export const projects: Project[] = [
     services: ['apparel'],
     summary: 'Crew and fan t-shirts printed and packed in three days.',
     cover: img('tshirt-print', 'Close-up of a bold multicolour print on a white t-shirt'),
-    palette: ['#ffffff', '#2e9e4f', '#111111'],
+    palette: ['#ffffff', '#e5433b', '#1f4fa3'],
+    brief: 'A festival needed crew and fan t-shirts in six sizes and two colours, and the artwork arrived on Thursday.',
+    idea: 'Screen print the crew shirts for durability and heat-transfer the fan shirts, so both runs could go through the workshop at once.',
+    result: 'All 500 shirts were printed, folded, bagged by size and delivered on Sunday morning.',
+    facts: [
+      { label: 'Shirts', value: '500' },
+      { label: 'Sizes', value: '6' },
+      { label: 'Days', value: '3' },
+    ],
+    materials: ['180 gsm combed cotton', 'Plastisol screen inks', 'Heat-transfer vinyl'],
+    applications: [
+      img('tshirt-print', 'The festival print up close', 'Six colours, registered by hand.'),
+      img('tshirts-folded', 'Folded t-shirts ready to pack', 'Folded and bagged by size.'),
+      img('tshirts-rack', 'T-shirts on a rack', 'Fan shirts in every colour.'),
+    ],
+    behindTheScenes: [shop.inks, shop.apparel],
+    beforeAfter: null,
     featured: true,
     sample: true,
   },
@@ -61,6 +125,22 @@ export const projects: Project[] = [
     summary: 'Billboards and banners printed in-house and installed in two cities.',
     cover: img('billboard-city', 'A billboard on a city terrace between buildings'),
     palette: ['#ffffff', '#16244a', '#f07f22'],
+    brief: 'A new store opening in two cities on the same day, with three weeks to get the word out.',
+    idea: 'One line, very large: the store’s name and the opening date, nothing else. It had to work at 80 km/h.',
+    result: 'Six billboards and forty banners up a week before opening.',
+    facts: [
+      { label: 'Billboards', value: '6' },
+      { label: 'Banners', value: '40' },
+      { label: 'Cities', value: '2' },
+    ],
+    materials: ['Frontlit flex banner, 510 gsm', 'UV-resistant inks', 'Eyelets every 50 cm'],
+    applications: [
+      img('billboard-city', 'The billboard in the city', 'On a terrace above the main road.'),
+      img('billboard', 'A roadside billboard', 'The highway board.'),
+      img('banner-outdoor', 'A vertical banner on a wall', 'Street banners outside the store.'),
+    ],
+    behindTheScenes: [shop.wide, shop.latex],
+    beforeAfter: null,
     featured: true,
     sample: true,
   },
@@ -75,6 +155,22 @@ export const projects: Project[] = [
     summary: 'Year-end gift sets: bottles, notebooks and bags in the client’s colours.',
     cover: img('water-bottles', 'Three pastel metal water bottles'),
     palette: ['#f4a259', '#7fd1c7', '#c9a0dc'],
+    brief: 'Two hundred year-end gifts for clients, useful enough that people actually keep them.',
+    idea: 'Three everyday things in three soft colours, packed in a kraft box with a printed card.',
+    result: 'Delivered to 200 desks in the last week of November.',
+    facts: [
+      { label: 'Gift sets', value: '200' },
+      { label: 'Items per set', value: '3' },
+    ],
+    materials: ['Powder-coated steel bottles, laser engraved', 'Spiral notebooks, printed covers', 'Kraft gift boxes'],
+    applications: [
+      img('water-bottles', 'Engraved water bottles', 'Bottles in three colours.'),
+      img('notebook', 'A spiral notebook', 'A notebook with a printed cover.'),
+      img('kraft-bag', 'A kraft gift bag', 'Packed in kraft.'),
+      img('packaging', 'A kraft gift box, opened', 'The gift box.'),
+    ],
+    behindTheScenes: [shop.web],
+    beforeAfter: null,
     featured: true,
     sample: true,
   },
@@ -87,9 +183,78 @@ export const projects: Project[] = [
     location: 'Kilimani',
     services: ['stationery'],
     summary: 'Business cards, letterheads and a company profile booklet.',
-    cover: img('business-cards', 'Two stacks of blank business cards'),
+    cover: img('business-cards', 'Two stacks of business cards'),
     palette: ['#ffffff', '#d9d6d0', '#0f1a2e'],
+    brief: 'A law practice with three partners and five different business card designs.',
+    idea: 'One quiet system: a single typeface, generous white space and heavy card that feels expensive in the hand.',
+    result: 'Cards, letterheads, envelopes and a 24-page profile, all printed in one run.',
+    facts: [
+      { label: 'Card stock', value: '400 gsm' },
+      { label: 'Profile pages', value: '24' },
+    ],
+    materials: ['400 gsm uncoated board', 'Soft-touch laminate', 'Saddle-stitched booklet'],
+    applications: [
+      img('business-cards-stack', 'Stacks of business cards', 'Cards for every partner.'),
+      img('brochure', 'A folded brochure', 'A folded services leaflet.'),
+      img('booklet', 'A hardcover booklet', 'The company profile.'),
+    ],
+    behindTheScenes: [shop.offset, shop.web],
+    beforeAfter: null,
     featured: true,
+    sample: true,
+  },
+  {
+    slug: 'sample-wayfinding',
+    title: 'Finding your way around a business park',
+    client: 'Sample client',
+    industry: 'Property',
+    year: 2024,
+    location: 'Mombasa Road',
+    services: ['indoor-branding', 'outdoor-branding'],
+    summary: 'Directory signs, block names and parking signs for a twelve-building park.',
+    cover: img('sign-wall', 'A black directory sign on a brick wall'),
+    palette: ['#111111', '#ffffff', '#c8b9a6'],
+    brief: 'Visitors to a twelve-building park kept getting lost, and couriers called reception for every delivery.',
+    idea: 'Number every block, name every building, and put a directory at every entrance in the same black and white.',
+    result: 'Forty signs designed, made and installed, with a site map at both gates.',
+    facts: [
+      { label: 'Signs', value: '40' },
+      { label: 'Buildings', value: '12' },
+    ],
+    materials: ['Aluminium composite panel', 'Cut vinyl lettering', 'Powder-coated posts'],
+    applications: [
+      img('sign-wall', 'A directory sign', 'Directories at every entrance.'),
+      img('banner-outdoor', 'A vertical sign on a wall', 'Block names on the building faces.'),
+    ],
+    behindTheScenes: [shop.head],
+    beforeAfter: null,
+    featured: false,
+    sample: true,
+  },
+  {
+    slug: 'sample-retail-packaging',
+    title: 'Packaging people keep',
+    client: 'Sample client',
+    industry: 'Food and drink',
+    year: 2023,
+    location: 'Karen',
+    services: ['corporate-gifts', 'stationery'],
+    summary: 'Boxes, bags and tags for a bakery’s gift range.',
+    cover: img('packaging', 'A kraft box with its lid open'),
+    palette: ['#c69c6d', '#ffffff', '#2b2b2b'],
+    brief: 'A bakery’s gift boxes were plain brown and looked like any other.',
+    idea: 'Keep the kraft, add one confident stamp and a printed tag, so the box looks handmade and expensive at the same time.',
+    result: 'A box, a bag and a tag that customers reuse.',
+    facts: [{ label: 'Pieces', value: '1,500' }],
+    materials: ['Kraft board boxes', 'Kraft paper bags', 'Printed swing tags'],
+    applications: [
+      img('packaging', 'The gift box', 'The gift box.'),
+      img('kraft-bag', 'The paper bag', 'The carry bag.'),
+      img('tote-bag', 'A canvas tote bag', 'A canvas tote for regulars.'),
+    ],
+    behindTheScenes: [shop.offset],
+    beforeAfter: null,
+    featured: false,
     sample: true,
   },
 ];

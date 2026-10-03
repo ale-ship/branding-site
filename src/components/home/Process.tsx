@@ -1,6 +1,5 @@
 import { pad2 } from '@/lib/format';
 import { Container } from '../ui/Container';
-import { RegMark } from '../ui/PrintMarks';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from './SectionHeading';
 
@@ -28,10 +27,7 @@ export function Process() {
         <ol className="grid grid-cols-1 gap-px bg-on-navy/15 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map((step, i) => (
             <Reveal as="li" key={step.name} delay={i * 90} className="flex flex-col gap-10 bg-navy p-6 last:sm:col-span-2 sm:p-8 lg:last:col-span-1">
-              <span className="flex items-center justify-between text-on-navy-muted">
-                <span className="text-sm font-semibold tabular-nums">{pad2(i + 1)}</span>
-                <RegMark className="size-5 text-accent" />
-              </span>
+              <span className="text-sm font-semibold text-on-navy-muted tabular-nums">{pad2(i + 1)}</span>
               <span>
                 <span className="block font-display text-3xl font-bold text-on-navy">{step.name}</span>
                 <span className="mt-3 block text-on-navy-muted">{step.text}</span>

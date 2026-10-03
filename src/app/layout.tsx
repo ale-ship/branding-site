@@ -20,6 +20,18 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: '#ffffff' };
 
+/** Who we are and where, for search engines. Same premises as Noorcom Computers. */
+const businessJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  name: site.name,
+  description: site.description,
+  url: site.url,
+  telephone: site.phone.replace(/\s/g, ''),
+  email: site.email,
+  address: { '@type': 'PostalAddress', ...site.postalAddress },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-KE" className={`${inter.variable} ${bricolage.variable}`} suppressHydrationWarning>
@@ -40,6 +52,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <Footer />
         <WhatsAppButton />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(businessJsonLd).replace(/</g, '\\u003c') }}
+        />
       </body>
     </html>
   );

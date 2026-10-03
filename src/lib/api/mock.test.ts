@@ -34,13 +34,29 @@ describe('mock data', () => {
   it('points every photo at a file in public/ with alt text', async () => {
     const photos: Photo[] = [
       ...(await mockApi.listServices()).map((s) => s.image),
-      ...(await mockApi.listProjects()).map((p) => p.cover),
+      ...(await mockApi.listProjects()).flatMap((p) => [
+        p.cover,
+        ...p.applications,
+        ...p.behindTheScenes,
+        ...(p.beforeAfter ? [p.beforeAfter.before, p.beforeAfter.after] : []),
+      ]),
       ...(await mockApi.listProducts()).map((p) => p.image),
     ];
     for (const photo of photos) {
       expect(photo.alt.length, photo.src).toBeGreaterThan(0);
       expect(onDisk(photo), photo.src).toBe(true);
     }
+  });
+
+  it('finds a project by slug', async () => {
+    const [first] = await mockApi.listProjects();
+    expect((await mockApi.getProject(first!.slug))?.title).toBe(first!.title);
+    expect(await mockApi.getProject('no-such-project')).toBeNull();
+  });
+
+  it('lists projects newest first', async () => {
+    const years = (await mockApi.listProjects()).map((p) => p.year);
+    expect(years).toEqual([...years].sort((a, b) => b - a));
   });
 
   it('filters and limits', async () => {

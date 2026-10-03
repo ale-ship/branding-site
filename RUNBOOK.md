@@ -6,14 +6,14 @@ next. Update it at the end of every task.
 
 ## Where we are right now
 
-- **Phase 1 (foundation and home page) is built** (3 Oct 2026) and pushed to
-  https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
+- **Phases 1 and 2 are built** (3 Oct 2026): the home page, the Work archive and the case-study
+  page. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
 - **Scope for now is design and frontend only.** No backend, no Supabase, nothing from Lovable.
   Data comes from local typed content behind one data interface (`SiteApi`, mock only), so our own
   backend can plug in later without page changes.
-- **Only the home page exists.** Links to Work, Services, Shop, About, Contact and Quote show the
-  styled 404 until their phases are built.
-- **Next:** owner reviews the home page; then Phase 2 (Work archive and case-study template).
+- **Pages so far:** `/`, `/work`, `/work/[slug]`. Links to Services, Shop, About, Contact and Quote
+  show the styled 404 until their phases are built.
+- **Next:** Phase 3 (Services pages and the quote form).
 
 ## Start here on a new machine
 
@@ -48,8 +48,9 @@ but **this site is a separate project and never imports from it.**
 - **Noorcom Branding**, Nairobi, Kenya. Printing and branding: indoor and outdoor branding,
   signage, stationery, corporate gifts, apparel printing.
 - **Contact (from the live site):** +254 722 530 301 (also WhatsApp, `wa.me/254722530301`),
-  info@noorcombranding.co.ke, Nairobi. Street address, hours and social links are not on the site
-  yet: **to confirm**.
+  info@noorcombranding.co.ke.
+- **Address:** Chuka Elimu Plaza, 1st Floor, Loita Street, Nairobi: the same premises as Noorcom
+  Computers (owner, 3 Oct 2026). Opening hours and social links: **to confirm**.
 - **Products and services named on the live site:**
   - Categories: Branding, Printing, Outdoor Signs, Indoor Signs, Corporate Gifts.
   - Products: Business Cards, A5 Posters, Brochures, Booklet Printing, A4 Notebooks, Water Bottle
@@ -147,8 +148,9 @@ then services, then the shop and a quote. It should look like the best job Noorc
   (Agrumea), page transitions. Everything off under `prefers-reduced-motion`. Phones on mobile data
   must stay fast (Lighthouse performance 90+).
 - **Signature idea:** use print-production details as the design language: crop marks in the
-  corners of hero images, CMYK registration dots as bullets, colour-swatch chips for each project's
-  palette, paper/stock names in captions. It says "we print" without saying it.
+  corners of big images, CMYK dots, colour-swatch chips for each project's palette, paper/stock
+  names in captions. It says "we print" without saying it. **No registration (crosshair) marks:**
+  the owner asked for them to be removed (3 Oct 2026).
 
 ## 5. Proposed sitemap
 
@@ -199,7 +201,7 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | --- | --- | --- |
 | 0 Research | Audit the live site, review inspiration, propose direction, sitemap, stack; write this runbook | **Done 3 Oct 2026** |
 | 1 Foundation | Owner's answers recorded; Next.js app; mock data interface; placeholder photos; tokens, fonts, grid; header (overlay menu), footer; home page with placeholder work | **Done 3 Oct 2026** |
-| 2 Work | `/work` archive with filters; case-study template; first 3 real case studies | To do |
+| 2 Work | `/work` archive with filters; case-study template (sample content); real case studies when Noorcom sends them | **Built 3 Oct 2026**; real case studies to come |
 | 3 Services and quote | Service pages; `/quote` flow sending to email and WhatsApp | To do |
 | 4 Shop | Product catalogue and product pages; quote list (drawer) that feeds `/quote` | To do |
 | 5 Content and polish | About, contact, legal, 404; SEO, social images, JSON-LD; motion pass; accessibility and performance pass | To do |
@@ -216,7 +218,8 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 - [ ] For 3 flagship jobs: client, year, what was asked, what was done, materials, outcome.
 - [x] Prices for the 12 featured products (section 1).
 - [ ] Real minimum quantities (50 is a stand-in) and turnaround times.
-- [ ] Street address, opening hours, social media links, KRA PIN if invoices are shown.
+- [x] Street address: same as Noorcom Computers.
+- [ ] Opening hours, social media links, KRA PIN if invoices are shown.
 
 ## Phase 1: what was built (3 Oct 2026)
 
@@ -230,7 +233,7 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | --- | --- |
 | `src/lib/site.ts` | Business details and navigation |
 | `src/lib/api/` | `SiteApi` contract (`types.ts`), the mock (`mock.ts`), content (`data/services.ts`, `products.ts`, `projects.ts`) |
-| `src/components/ui/PrintMarks.tsx` | The signature details: crop marks, registration marks, CMYK dots, swatches, eyebrow labels |
+| `src/components/ui/PrintMarks.tsx` | The signature details: crop marks, CMYK dots, swatches, eyebrow labels |
 | `src/components/ui/` | `ButtonLink`, `Container`, `Reveal` (scroll reveal), `Marquee`, `RotatingBadge` |
 | `src/components/layout/` | `Header` (sticky; full-screen menu below 1024 px, a modal with focus trap and Escape), `Footer`, `Logo` (stand-in wordmark), `WhatsAppButton` |
 | `src/components/home/` | The home page sections, in page order below |
@@ -238,7 +241,8 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 
 **Home page, top to bottom:** Latest / Discover split (BP&O: the newest project large on the left
 with the rotating "Get a quote" badge, the next four in a 2×2 grid on the right, Sample tags; the
-page's h1 is visually hidden) → service ticker → What we do (numbered service index; photo opens on
+page's h1 is visually hidden) → service ticker → workshop band (the wide-format printer photo,
+full width with crop marks, three facts under it) → What we do (numbered service index; photo opens on
 hover on desktop) → Behind the scenes (workshop photos) → How a job runs (the one navy section, 5
 steps) → Clients (placeholder tiles on a ticker) → Shop teaser (4 products, price per piece, min 50)
 → Quote call to action (orange block) → footer.
@@ -254,6 +258,29 @@ process step was orphaned at tablet width, and the footer email broke mid-word a
 **Not yet:** an automated accessibility (axe) check like Noorcom Computers' `npm run a11y`; add it in
 Phase 5. Real logo, photos, client logos and confirmed wording (`TODO(business)` in the code).
 
+## Phase 2: what was built (3 Oct 2026)
+
+**Routes:**
+
+| Route | What it shows | Notes |
+| --- | --- | --- |
+| `/work` | Every project in a 3-column grid with filter rows for service, industry and year (Branding Style Guides) | Filters live in the URL (`?service=&industry=&year=`), are plain links (work without JavaScript), show how many results each option gives, and a second click clears an option. Filtered views are `noindex`; canonical is `/work`. Rows scroll sideways on phones |
+| `/work/[slug]` | A case study (Mindsparkle's order): back link, title, summary and credits (client, industry, year, location, services), cover with crop marks, The brief, The idea, big numbers, colours (swatches with hex) beside materials and finishes, The work (gallery with captions), Behind the scenes (production photos on paper), Before and after (rebrands only), The result, Next project, quote call to action | Static for every project. `CreativeWork` JSON-LD. Sample projects are `noindex` |
+
+**Data:** `Project` gained `brief`, `idea`, `result`, `facts`, `materials`, `applications`,
+`behindTheScenes` and `beforeAfter` (null unless it's a rebrand); `SiteApi.getProject(slug)` was
+added. There are now 8 sample projects, all marked `sample: true`, with invented wording. The filter
+logic is pure functions in `src/lib/work.ts` with tests in `work.test.ts`. The project card is shared
+(`components/work/ProjectCard.tsx`) by the home page and the archive.
+
+**Also on 3 Oct 2026:** the workshop printer photo is back on the home page as a full-width band
+after the service ticker, with the three facts under it; registration marks removed everywhere (the
+ticker now uses small orange squares); the shared address in the footer (links to Google Maps) and in
+site-wide `LocalBusiness` JSON-LD; extra footer bottom space so the WhatsApp button never covers it.
+
+**Checked:** lint, typecheck, 22 tests, build. `/`, `/work`, `/work?service=apparel` and a case study
+emulated at 320, 390, 768, 1024, 1440 and 1920 px: no horizontal overflow.
+
 ## 9. Decisions log
 
 Newest first.
@@ -263,6 +290,9 @@ Newest first.
 | 3 Oct 2026 | **The shop is "add to quote" only**: no cart payment or M-Pesa. Products go into a quote list; the quote form sends it with artwork, quantities and deadline | Owner's decision; most branding jobs need artwork and a proof first |
 | 3 Oct 2026 | **Logo:** Noorcom already has a refreshed logo; the owner will share it. Until then the site uses a text wordmark ("NOORCOM / BRANDING") in one component, so the real logo drops in one place. We do not design a new logo | Owner's decision |
 | 3 Oct 2026 | Prices are per piece; minimum order 50 for every product until confirmed | Owner's decision |
+| 3 Oct 2026 | **Address:** Chuka Elimu Plaza, 1st Floor, Loita Street, Nairobi, the same premises as Noorcom Computers | Owner's decision |
+| 3 Oct 2026 | **No registration (crosshair) marks** anywhere on the site | Owner's request |
+| 3 Oct 2026 | The workshop printer photo stays on the home page, as a full-width band after the service ticker | Owner's request |
 | 3 Oct 2026 | **No people in any photo** on the site; the photos with people were replaced and the van photo cropped | Owner's decision (replaces the earlier rule that people shown be Black African) |
 | 3 Oct 2026 | **The home page opens on the work, not a slogan**: a BP&O-style split, "Latest" (newest project, large) beside "Discover" (next four, 2×2), with a thin divider. The headline hero and the Selected work section were removed | Owner's request, from bpando.org |
 | 3 Oct 2026 | Placeholder photos from the internet (free licence) until real job photos arrive | Owner's decision |

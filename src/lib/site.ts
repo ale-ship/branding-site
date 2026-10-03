@@ -12,8 +12,15 @@ export const site = {
   whatsappHref: 'https://wa.me/254722530301',
   email: 'info@noorcombranding.co.ke',
   location: 'Nairobi, Kenya',
-  // TODO(business): street address, opening hours and social links are not confirmed yet.
-  address: null as string | null,
+  /** Same premises as Noorcom Computers (owner, 3 Oct 2026). */
+  address: 'Chuka Elimu Plaza, 1st Floor, Loita Street, Nairobi',
+  postalAddress: {
+    streetAddress: 'Chuka Elimu Plaza, 1st Floor, Loita Street',
+    addressLocality: 'Nairobi',
+    addressCountry: 'KE',
+  },
+  mapUrl: 'https://www.google.com/maps/search/?api=1&query=Chuka+Elimu+Plaza%2C+Loita+Street%2C+Nairobi',
+  // TODO(business): opening hours and social links are not confirmed yet.
   hours: null as string | null,
   socials: [] as { label: string; href: string }[],
 } as const;

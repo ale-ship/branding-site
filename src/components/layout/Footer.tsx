@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { mainNav, quoteHref, site } from '@/lib/site';
 import { Container } from '../ui/Container';
-import { CmykDots, RegMark } from '../ui/PrintMarks';
+import { CmykDots } from '../ui/PrintMarks';
 import { Logo } from './Logo';
 
 const linkClass = 'inline-flex min-h-11 items-center text-body transition-colors hover:text-heading';
@@ -11,7 +11,8 @@ export async function Footer() {
   const services = await api.listServices();
   return (
     <footer className="border-t border-border bg-paper">
-      <Container className="pt-16 pb-8 sm:pt-24">
+      {/* Extra bottom space so the floating WhatsApp button never covers the last line. */}
+      <Container className="pt-16 pb-24 sm:pt-24 sm:pb-28">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div className="flex flex-col items-start gap-6 sm:col-span-2 xl:col-span-1">
             <Logo />
@@ -73,7 +74,11 @@ export async function Footer() {
                   {site.email}
                 </a>
               </li>
-              <li className="py-2.5 text-body">{site.address ?? site.location}</li>
+              <li>
+                <a href={site.mapUrl} className={linkClass} target="_blank" rel="noopener noreferrer">
+                  {site.address}
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -85,7 +90,6 @@ export async function Footer() {
           <p className="flex items-center gap-3">
             <CmykDots />
             Designed, printed and installed in Nairobi
-            <RegMark className="size-3.5" />
           </p>
         </div>
       </Container>

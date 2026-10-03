@@ -29,16 +29,6 @@ export function CropMarks({ className = 'text-border-strong' }: { className?: st
   );
 }
 
-/** A registration mark (circle and cross), used as a bullet and divider. */
-export function RegMark({ className = 'size-3.5' }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 20 20" className={`shrink-0 ${className}`} fill="none" stroke="currentColor">
-      <circle cx="10" cy="10" r="5.5" strokeWidth="1.5" />
-      <path d="M10 0v20M0 10h20" strokeWidth="1.5" />
-    </svg>
-  );
-}
-
 /** Four process-colour dots: C, M, Y, K. */
 export function CmykDots({ className = '' }: { className?: string }) {
   return (
@@ -66,11 +56,10 @@ export function Swatches({ colours, label }: { colours: string[]; label: string 
   );
 }
 
-/** A small uppercase label with a registration mark, above section headings. */
+/** A small uppercase label above section headings. */
 export function Eyebrow({ children, className = 'text-muted' }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={`flex items-center gap-2.5 text-xs font-semibold tracking-[0.18em] uppercase ${className}`}>
-      <RegMark className="size-3.5" />
+    <p className={`text-xs font-semibold tracking-[0.18em] uppercase ${className}`}>
       {children}
     </p>
   );
