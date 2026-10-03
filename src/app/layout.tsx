@@ -1,0 +1,46 @@
+import type { Metadata, Viewport } from 'next';
+import { Bricolage_Grotesque, Inter } from 'next/font/google';
+import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout/Header';
+import { WhatsAppButton } from '@/components/layout/WhatsAppButton';
+import { site } from '@/lib/site';
+import './globals.css';
+
+// Downloaded at build time and served from our own domain: no requests to Google at runtime.
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const bricolage = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-bricolage', display: 'swap' });
+
+export const metadata: Metadata = {
+  metadataBase: new URL(site.url),
+  title: { default: `${site.name}: printing and branding in Nairobi`, template: `%s | ${site.name}` },
+  description: site.description,
+  openGraph: { type: 'website', siteName: site.name, locale: 'en_KE' },
+  twitter: { card: 'summary_large_image' },
+};
+
+export const viewport: Viewport = { themeColor: '#ffffff' };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en-KE" className={`${inter.variable} ${bricolage.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Marks JavaScript as available so scroll reveals start hidden; without it content just shows. */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+      </head>
+      <body className="flex min-h-dvh flex-col">
+        <a
+          href="#main"
+          className="sr-only z-50 bg-ink px-4 py-3 text-bg focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        >
+          Skip to content
+        </a>
+        <Header />
+        <main id="main" className="flex-1">
+          {children}
+        </main>
+        <Footer />
+        <WhatsAppButton />
+      </body>
+    </html>
+  );
+}

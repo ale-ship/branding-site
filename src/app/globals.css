@@ -1,0 +1,169 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Every colour in the app comes from here; components use the Tailwind
+ * utilities mapped in @theme below (bg-paper, text-heading, bg-accent...).
+ *
+ * Direction (RUNBOOK.md section 4): a studio with a print shop. White and warm paper pages,
+ * navy-black type, the logo's orange as the one accent (fills, never small text), the logo's
+ * blue for links, square corners, real photography. At most one navy section per page.
+ * Print-production details (crop marks, registration marks, CMYK dots) are the signature.
+ *
+ * Contrast: orange fails AA as text on white, so orange text uses --accent-ink. Text on an
+ * orange fill is --ink.
+ */
+:root {
+  --bg: #ffffff;
+  --paper: #f5f2ec;
+  --panel: #ece8df;
+  --border: #e2ddd3;
+  --border-strong: #b9b2a5;
+
+  --ink: #0f1a2e;
+  --ink-hover: #24324d;
+  --heading: #0f1a2e;
+  --body: #3a4254;
+  --muted: #5c6475;
+
+  --navy: #16244a;
+  --on-navy: #f5f2ec;
+  --on-navy-muted: #b4bdd0;
+
+  --accent: #f07f22;
+  --accent-hover: #e06f12;
+  --accent-ink: #a94c08;
+
+  --link: #1c6fb8;
+  --link-on-navy: #7cc0f5;
+  --focus: #1c6fb8;
+
+  /* Process colours, for decoration only (registration marks, swatch dots). */
+  --cmyk-c: #00a3e0;
+  --cmyk-m: #e6007e;
+  --cmyk-y: #ffe600;
+  --cmyk-k: #111111;
+
+  --whatsapp: #157f41;
+  --whatsapp-hover: #106a36;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@theme inline {
+  /* Only our tokens exist as colours; Tailwind's default palette is removed. */
+  --color-*: initial;
+  --color-white: var(--bg);
+  --color-bg: var(--bg);
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-hover: var(--ink-hover);
+  --color-heading: var(--heading);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-navy: var(--navy);
+  --color-on-navy: var(--on-navy);
+  --color-on-navy-muted: var(--on-navy-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-link: var(--link);
+  --color-link-on-navy: var(--link-on-navy);
+  --color-focus: var(--focus);
+  --color-cmyk-c: var(--cmyk-c);
+  --color-cmyk-m: var(--cmyk-m);
+  --color-cmyk-y: var(--cmyk-y);
+  --color-cmyk-k: var(--cmyk-k);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-hover: var(--whatsapp-hover);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Page width (max-w-page). */
+  --container-page: 1680px;
+
+  --radius-card: 0px;
+  --radius-pill: 9999px;
+
+  --ease-out: var(--ease-out);
+
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-spin-slow: spin 18s linear infinite;
+  --animate-cue: cue 2.2s var(--ease-out) infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes cue {
+    0% { transform: translateY(-100%); }
+    60%, 100% { transform: translateY(100%); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--bg);
+    color: var(--body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4 {
+    color: var(--heading);
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+}
+
+/* Scroll reveal (components/ui/Reveal.tsx). Content is visible without JavaScript. */
+@layer components {
+  .js [data-reveal] {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.9s var(--ease-out),
+      transform 0.9s var(--ease-out);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .js [data-reveal][data-visible='true'] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}
