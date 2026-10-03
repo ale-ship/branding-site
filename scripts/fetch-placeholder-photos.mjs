@@ -3,8 +3,9 @@
  * hotlinks, and writes CREDITS.md beside it. Photos are from Unsplash (free for commercial
  * use under the Unsplash licence; Unsplash+ premium photos are refused).
  *
- * Rule: any people shown must be Black African, never white. Every photo below was checked
- * by eye on 3 Oct 2026. Check any new one the same way before adding it.
+ * Rule: no people in any photo (owner, 3 Oct 2026). Show the work, the products and the
+ * machines. Every photo below was checked by eye; check any new one the same way, and crop
+ * out people in the background with `rect`.
  *
  * Replace with Noorcom's own job photos as they arrive.
  *
@@ -17,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 const out = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'images', 'placeholder');
 mkdirSync(out, { recursive: true });
 
-/** local file name -> Unsplash photo id */
+/** local file name -> Unsplash photo id, or { id, rect } where rect is [x, y, w, h] as fractions */
 const photos = {
   // Workshop and production
   'print-wide-format': 'CYrYxz-uvE4', // large printer feeding a pink banner
@@ -26,16 +27,14 @@ const photos = {
   'press-web': 'Tzm3Oyu_6sk', // printing press, sheets running
   'press-offset': 'QRykXu51r_0', // offset press with ink rollers
   'screen-inks': 'bGjzSW1rDXo', // screen-printing ink tubs
-  'heat-press': 't41MnAiCz-c', // Dwayne joe (Kenya): man at a heat press
-  'tshirt-proof': 'B7_VsO5Wsm8', // Dwayne joe (Kenya): man holding a printed t-shirt
-  'apparel-press': 'EY0BPl2rpME', // yellow t-shirt on a press, no people
-  // People (Black African only)
-  'team-review': 'M7ALc3UuX_g', // Iwaria: three women reviewing work on a laptop
-  'designer': 'h5xEHzfepNk', // Emmanuel Ikwuegbu (Nigeria): designer at his desk
+  'apparel-press': 'EY0BPl2rpME', // yellow t-shirt on a press
+  'tshirt-print': '40ifL0re5Xc', // close-up of a multicolour t-shirt print
+  'tshirts-rack': 'hWdzH8YY8kk', // rainbow of t-shirts on a rack
   // Signage, vehicles, places
   'sign-wall': 'A9EulB1cm6U', // directory sign on a brick wall
   'wall-mural': 'zbkBJNSQw0U', // office lounge with a branded wall mural
-  'van-wrap': 'IsvZEgPkehk', // white van with a full graphic wrap
+  // Cropped to the left 80%: people walk past in the top right of the original.
+  'van-wrap': { id: 'IsvZEgPkehk', rect: [0, 0, 0.8, 1] }, // white van with a full graphic wrap
   'billboard': 'Dnkr_lmdKi8', // blank roadside billboard
   'billboard-city': 't0lLGHhnh8w', // blank billboard on a terrace
   'banner-outdoor': '2J9Is8MUoM8', // vertical outdoor banner on a wall
@@ -51,8 +50,7 @@ const photos = {
   'mug': 'eNbt8E35Mhw',
   'umbrellas': 'PqqJ340jrow',
   'hoodie': 'kJXGTOY1wLQ',
-  'tshirt': 'bwhVFJHoTSM', // Moses Malik Roldan: Black woman in a printed t-shirt
-  'gift-bags': 'MjQQuJcNVJ0', // Aninge Fetzer (South Africa): Black hands with gift bags
+  'tshirts-folded': '20wx7IY7Ggk', // three folded t-shirts
   'tote-bag': 'smTDI-z1rlY',
   'kraft-bag': 'Dk7vG3MJ3hU',
   'packaging': '7KKy7-TeeVs',
@@ -72,15 +70,19 @@ async function fetchMeta(id) {
 
 const only = process.argv.slice(2);
 const credits = [];
-for (const [name, id] of Object.entries(photos)) {
+for (const [name, entry] of Object.entries(photos)) {
   if (only.length && !only.includes(name)) continue;
+  const { id, rect } = typeof entry === 'string' ? { id: entry } : entry;
   await sleep(1500);
   const meta = await fetchMeta(id);
   if (meta.premium || meta.plus) {
     console.log(`SKIP ${name}: premium photo, not free to use`);
     continue;
   }
-  const res = await fetch(`${meta.urls.raw}&w=2000&q=78&fm=jpg&fit=max`);
+  const crop = rect
+    ? `&rect=${[rect[0] * meta.width, rect[1] * meta.height, rect[2] * meta.width, rect[3] * meta.height].map(Math.round).join(',')}`
+    : '';
+  const res = await fetch(`${meta.urls.raw}${crop}&w=2000&q=78&fm=jpg&fit=max`);
   if (!res.ok) {
     console.log(`MISSING ${name} (${res.status})`);
     continue;

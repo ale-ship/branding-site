@@ -16,7 +16,7 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - Look: white and warm `paper` pages, navy-black type, the logo's orange `accent` as fills only (orange text uses `accent-ink`), square corners, real photography, at most one `navy` section per page. Bricolage Grotesque (`font-display`) for headings, Inter for text.
 - Signature details are in `components/ui/PrintMarks.tsx`: `CropMarks`, `RegMark`, `CmykDots`, `Swatches`, `Eyebrow`. Use them; don't invent new decoration.
 - Motion: `Reveal` for scroll reveals, `Marquee`, `RotatingBadge`. Everything must stand still under `prefers-reduced-motion` and show without JavaScript.
-- Photos of people show Black African people, never white people. Applies to every placeholder and any new image. Prefer photos of the work itself.
+- No people in any photo (owner, 3 Oct 2026): show the work, the products and the machines. Applies to placeholders and every new image; crop out people in the background (`rect` in the photo script).
 - The shop is add-to-quote only: prices per piece, a minimum quantity, no payment.
 - Sample projects carry `sample: true` and show a "Sample" tag until real work replaces them.
 - The logo is a stand-in wordmark in `components/layout/Logo.tsx`; the real logo replaces it there only.

@@ -1,92 +1,97 @@
 import Image from 'next/image';
+import Link from 'next/link';
+import type { Project } from '@/lib/api';
 import { quoteHref, site } from '@/lib/site';
-import { ButtonLink } from '../ui/ButtonLink';
 import { Container } from '../ui/Container';
-import { CropMarks, Eyebrow } from '../ui/PrintMarks';
 import { Reveal } from '../ui/Reveal';
 import { RotatingBadge } from '../ui/RotatingBadge';
 
-const facts = [
-  { value: 'In-house', label: 'Design, print and installation under one roof' },
-  { value: 'From 50', label: 'Pieces on most branded items' },
-  { value: 'Countrywide', label: 'Installs and delivery across Kenya' },
-];
+/**
+ * The home page opens on the work itself, not a slogan (BP&O's split, owner's request
+ * 3 Oct 2026): "Latest" is the newest project, big; "Discover" is the next four in a 2×2 grid.
+ */
+export function Hero({ projects }: { projects: Project[] }) {
+  const [latest, ...rest] = projects;
+  if (!latest) return null;
+  const discover = rest.slice(0, 4);
 
-export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="overflow-hidden pt-10 sm:pt-16">
-      <Container>
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.6fr_1fr] lg:items-end">
-          <div>
-            <Reveal>
-              <Eyebrow>Printing and branding studio · {site.location}</Eyebrow>
-            </Reveal>
-            <Reveal delay={80}>
-              <h1
-                id="hero-title"
-                className="mt-6 text-[clamp(2.9rem,8.2vw,8.25rem)] leading-[0.92] font-extrabold tracking-[-0.035em]"
-              >
-                We make brands <span className="text-accent-ink italic">impossible</span> to miss.
-              </h1>
-            </Reveal>
-          </div>
-          <Reveal delay={160} className="flex flex-col gap-7 lg:pb-3">
-            <p className="max-w-md text-lg text-body">
-              Signage, vehicle wraps, apparel, gifts and print, designed by our studio and made in our own
-              Nairobi workshop.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <ButtonLink href={quoteHref} variant="primary">
-                Get a quote
-              </ButtonLink>
-              <ButtonLink href="/work" variant="outline">
-                See our work
-              </ButtonLink>
+    <section aria-labelledby="latest-title" className="border-b border-border">
+      <h1 className="sr-only">
+        {site.name}: printing and branding in {site.location}
+      </h1>
+      <Container className="grid grid-cols-1 lg:grid-cols-2">
+        <div className="py-10 sm:py-14 lg:border-r lg:border-border lg:pr-10">
+          <Reveal>
+            <ColumnHeading id="latest-title" title="Latest" subtitle="Fresh off the press" />
+          </Reveal>
+          <Reveal delay={80} className="relative mt-8 sm:mt-10">
+            <ProjectLink project={latest} size="large" priority />
+            {/* Inside the photo on phones and tablets; over its corner on desktop, where the column has room. */}
+            <div className="absolute top-3 right-3 lg:top-0 lg:right-0 lg:translate-x-1/4 lg:-translate-y-1/3">
+              <RotatingBadge href={quoteHref} label="Get a quote" id="hero-badge" />
             </div>
           </Reveal>
         </div>
-      </Container>
 
-      <Container className="mt-14 sm:mt-20">
-        <Reveal delay={200} className="relative">
-          <div className="relative aspect-[4/5] overflow-hidden bg-panel sm:aspect-[16/9] lg:aspect-[21/9]">
-            <Image
-              src="/images/placeholder/print-wide-format.jpg"
-              alt="A wide-format printer feeding out a long printed banner in the workshop"
-              fill
-              priority
-              sizes="(min-width: 1680px) 1600px, 100vw"
-              className="object-cover"
-            />
-          </div>
-          <CropMarks />
-          <div className="absolute -top-14 right-4 sm:-top-18 sm:right-10">
-            <RotatingBadge href={quoteHref} label="Get a quote" id="hero-badge" />
-          </div>
-          <p className="absolute bottom-4 left-4 flex items-center gap-3 bg-bg px-3 py-2 text-xs font-semibold tracking-[0.18em] text-heading uppercase sm:bottom-6 sm:left-6">
-            <span aria-hidden className="relative h-6 w-px overflow-hidden bg-border">
-              <span className="absolute inset-0 animate-cue bg-ink" />
-            </span>
-            Scroll to discover
-          </p>
-        </Reveal>
-      </Container>
-
-      <Container>
-        <dl className="grid grid-cols-1 border-b border-border sm:grid-cols-3">
-          {facts.map((fact, i) => (
-            <Reveal
-              key={fact.value}
-              delay={i * 90}
-              className="flex flex-col gap-1 border-t border-border py-6 sm:border-t-0 sm:py-8 sm:pr-8 sm:not-first:border-l sm:not-first:pl-8"
-            >
-              <dt className="sr-only">{fact.label}</dt>
-              <dd className="font-display text-3xl font-bold text-heading">{fact.value}</dd>
-              <dd className="text-muted">{fact.label}</dd>
-            </Reveal>
-          ))}
-        </dl>
+        <div className="border-t border-border py-10 sm:py-14 lg:border-t-0 lg:pl-10">
+          <Reveal>
+            <ColumnHeading id="discover-title" title="Discover" subtitle="From the Noorcom archive" />
+          </Reveal>
+          <ul className="mt-8 grid grid-cols-1 gap-x-5 gap-y-8 sm:mt-10 sm:grid-cols-2">
+            {discover.map((project, i) => (
+              <Reveal as="li" key={project.slug} delay={120 + i * 70}>
+                <ProjectLink project={project} size="small" />
+              </Reveal>
+            ))}
+          </ul>
+        </div>
       </Container>
     </section>
+  );
+}
+
+function ColumnHeading({ id, title, subtitle }: { id: string; title: string; subtitle: string }) {
+  return (
+    <hgroup>
+      <h2 id={id} className="text-[clamp(2.5rem,4.5vw,4rem)] leading-none font-bold tracking-[-0.035em]">
+        {title}
+      </h2>
+      <p className="mt-2 font-display text-xl text-muted sm:text-2xl">{subtitle}</p>
+    </hgroup>
+  );
+}
+
+function ProjectLink({ project, size, priority }: { project: Project; size: 'large' | 'small'; priority?: boolean }) {
+  const large = size === 'large';
+  return (
+    <Link href={`/work/${project.slug}`} className="group block">
+      {/* The large card is taller on desktop so it lines up with the 2×2 grid beside it. */}
+      <div className={`relative aspect-[3/2] overflow-hidden bg-panel ${large ? 'lg:aspect-square xl:aspect-[6/5]' : ''}`}>
+        <Image
+          src={project.cover.src}
+          alt={project.cover.alt}
+          fill
+          priority={priority}
+          sizes={large ? '(min-width: 1024px) 50vw, 100vw' : '(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw'}
+          className="object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.04]"
+        />
+        {project.sample && (
+          <span className="absolute top-3 left-3 bg-bg px-2.5 py-1 text-[0.7rem] font-semibold tracking-[0.14em] text-heading uppercase">
+            Sample
+          </span>
+        )}
+      </div>
+      <h3
+        className={`mt-4 leading-tight font-bold tracking-[-0.02em] transition-colors group-hover:text-accent-ink ${
+          large ? 'text-[clamp(1.6rem,2.6vw,2.25rem)]' : 'text-xl sm:text-2xl lg:text-lg xl:text-2xl'
+        }`}
+      >
+        {project.title}
+      </h3>
+      <p className="mt-1.5 text-sm text-muted">
+        {project.client} · {project.industry} · {project.year}
+      </p>
+    </Link>
   );
 }

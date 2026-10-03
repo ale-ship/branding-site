@@ -30,7 +30,7 @@ export const services: Service[] = [
     name: 'Apparel printing',
     summary: 'Uniforms, t-shirts and hoodies printed to last the wash.',
     includes: ['T-shirts', 'Hoodies', 'Uniforms', 'Caps', 'Screen printing', 'Heat transfer'],
-    image: img('heat-press', 'A man preparing a black t-shirt on a heat press'),
+    image: img('tshirts-rack', 'A rack of t-shirts in every colour of the rainbow'),
   },
   {
     slug: 'corporate-gifts',

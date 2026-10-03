@@ -45,7 +45,7 @@ export const projects: Project[] = [
     location: 'Nairobi',
     services: ['apparel'],
     summary: 'Crew and fan t-shirts printed and packed in three days.',
-    cover: img('tshirt-proof', 'A man holding up a printed white t-shirt'),
+    cover: img('tshirt-print', 'Close-up of a bold multicolour print on a white t-shirt'),
     palette: ['#ffffff', '#2e9e4f', '#111111'],
     featured: true,
     sample: true,

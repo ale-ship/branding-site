@@ -106,7 +106,7 @@ export const products: Product[] = [
     pricePerPiece: 650,
     minQuantity: MIN,
     summary: 'Screen or heat-transfer printing for teams and events.',
-    image: img('tshirt', 'A woman wearing a black printed t-shirt'),
+    image: img('tshirts-folded', 'Three folded t-shirts in blue, sand and pale blue'),
     featured: true,
   },
   {
@@ -116,7 +116,7 @@ export const products: Product[] = [
     pricePerPiece: 430,
     minQuantity: MIN,
     summary: 'Paper gift bags with rope handles and your logo.',
-    image: img('gift-bags', 'Hands holding white paper gift bags'),
+    image: img('kraft-bag', 'A brown paper gift bag on a marble counter'),
     featured: false,
   },
   {

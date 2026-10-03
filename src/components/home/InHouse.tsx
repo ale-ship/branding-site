@@ -38,8 +38,8 @@ export function InHouse() {
           <Reveal className="relative col-span-2 aspect-[16/10]">
             <div className="relative size-full overflow-hidden bg-panel">
               <Image
-                src="/images/placeholder/heat-press.jpg"
-                alt="A printer preparing a black t-shirt on the heat press"
+                src="/images/placeholder/print-latex.jpg"
+                alt="A wide-format latex printer in the print room"
                 fill
                 sizes="(min-width: 1024px) 55vw, 100vw"
                 className="object-cover"
@@ -49,8 +49,8 @@ export function InHouse() {
           </Reveal>
           <Reveal delay={100} className="relative aspect-[4/5] overflow-hidden bg-panel">
             <Image
-              src="/images/placeholder/team-review.jpg"
-              alt="Three designers reviewing a proof together on a laptop"
+              src="/images/placeholder/apparel-press.jpg"
+              alt="A yellow t-shirt laid on the press, ready to print"
               fill
               sizes="(min-width: 1024px) 28vw, 50vw"
               className="object-cover"

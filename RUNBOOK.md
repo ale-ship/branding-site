@@ -135,8 +135,7 @@ then services, then the shop and a quote. It should look like the best job Noorc
 - **Look:** white and warm-off-white pages, near-black / navy type, **one strong accent** (the
   logo's orange) used sparingly, the logo's blue for links and small details. Full-bleed
   photography of real jobs (installed signage, vehicles, apparel, gifts) and of the workshop
-  (machines, people, ink, cutting). People in photos are Black African (same rule as Noorcom
-  Computers).
+  (machines, ink, cutting). **No people in photos.**
 - **Type:** a characterful display face for big headlines plus a clean sans for text. Proposal:
   **Bricolage Grotesque** (display) + **Inter** (text), both free on Google Fonts and self-hosted
   with `next/font`. Alternatives to show the owner: Clash Display + General Sans (Fontshare, free),
@@ -155,7 +154,7 @@ then services, then the shop and a quote. It should look like the best job Noorc
 
 | Route | What it shows |
 | --- | --- |
-| `/` | Hero (big statement + a showreel image or short video of real jobs) → selected work grid (6) → what we do (services index) → clients logo marquee → process (Brief → Design → Proof → Print → Install) → shop teaser → quote call to action |
+| `/` | Latest / Discover split of real work (BP&O) → what we do (services index) → clients logo marquee → process (Brief → Design → Proof → Print → Install) → shop teaser → quote call to action |
 | `/work` | All projects, filterable by service (indoor, outdoor, vehicle, apparel, gifts, stationery, identity), industry and year |
 | `/work/[slug]` | Case study: cover image, metadata (client, industry, year, services, location), the brief, the idea, palette and type, applications, **behind the scenes** (production photos), before/after when it is a rebrand, result, next project |
 | `/services` and `/services/[slug]` | Each service: what is included, materials and finishes, sizes, turnaround, minimum quantities, gallery from `/work`, FAQ, request a quote |
@@ -184,8 +183,8 @@ checkout run against the mock until then.
   no Lovable code or services.
 - **Placeholder photos** until the owner sends real job photos: free-licence images (Unsplash,
   Pexels) saved locally in `public/images/placeholder/`, each listed with its source and licence
-  in `public/images/placeholder/CREDITS.md`. **Any people shown must be Black African; no white
-  people.** Prefer photos of the work itself (signage, apparel, mugs, print) over people.
+  in `public/images/placeholder/CREDITS.md`. **No people in any photo** (owner, 3 Oct 2026): show the work, the
+  products and the machines.
   Replace them as real photos arrive.
 - Hosting: our VPS with nginx, like the rest of our projects. DNS moves from Lovable at cutover.
 - Quality bar (carried over): mobile first; checked at 390, 768 and 1440 px; keyboard accessible,
@@ -237,14 +236,14 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | `src/components/home/` | The home page sections, in page order below |
 | `scripts/fetch-placeholder-photos.mjs` | Downloads the placeholder photos and writes `CREDITS.md` |
 
-**Home page, top to bottom:** Hero (big headline, workshop photo with crop marks, rotating "Get a
-quote" badge, "Scroll to discover", three facts) → service ticker → Selected work (6 sample
-projects, editorial staggered grid, Sample tags, colour swatches) → What we do (numbered service
-index; photo opens on hover on desktop) → Behind the scenes (workshop photos) → How a job runs (the
-one navy section, 5 steps) → Clients (placeholder tiles on a ticker) → Shop teaser (4 products, price
-per piece, min 50) → Quote call to action (orange block) → footer.
+**Home page, top to bottom:** Latest / Discover split (BP&O: the newest project large on the left
+with the rotating "Get a quote" badge, the next four in a 2×2 grid on the right, Sample tags; the
+page's h1 is visually hidden) → service ticker → What we do (numbered service index; photo opens on
+hover on desktop) → Behind the scenes (workshop photos) → How a job runs (the one navy section, 5
+steps) → Clients (placeholder tiles on a ticker) → Shop teaser (4 products, price per piece, min 50)
+→ Quote call to action (orange block) → footer.
 
-**Placeholder photos:** 33 Unsplash photos, each checked by eye; people shown are Black African.
+**Placeholder photos:** 30 Unsplash photos, each checked by eye; none show people.
 Credits in `public/images/placeholder/CREDITS.md`.
 
 **Checked:** lint, typecheck, 9 tests, production build. Responsive check by emulating 320, 360, 390,
@@ -264,7 +263,9 @@ Newest first.
 | 3 Oct 2026 | **The shop is "add to quote" only**: no cart payment or M-Pesa. Products go into a quote list; the quote form sends it with artwork, quantities and deadline | Owner's decision; most branding jobs need artwork and a proof first |
 | 3 Oct 2026 | **Logo:** Noorcom already has a refreshed logo; the owner will share it. Until then the site uses a text wordmark ("NOORCOM / BRANDING") in one component, so the real logo drops in one place. We do not design a new logo | Owner's decision |
 | 3 Oct 2026 | Prices are per piece; minimum order 50 for every product until confirmed | Owner's decision |
-| 3 Oct 2026 | Placeholder photos from the internet (free licence) until real job photos arrive; people shown must be Black African, never white | Owner's decision |
+| 3 Oct 2026 | **No people in any photo** on the site; the photos with people were replaced and the van photo cropped | Owner's decision (replaces the earlier rule that people shown be Black African) |
+| 3 Oct 2026 | **The home page opens on the work, not a slogan**: a BP&O-style split, "Latest" (newest project, large) beside "Discover" (next four, 2×2), with a thin divider. The headline hero and the Selected work section were removed | Owner's request, from bpando.org |
+| 3 Oct 2026 | Placeholder photos from the internet (free licence) until real job photos arrive | Owner's decision |
 | 3 Oct 2026 | Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main` | Owner's decision |
 | 3 Oct 2026 | **Design and frontend first; no backend now.** When there is one it is entirely our own: no Supabase, nothing from Lovable. Data goes through a mock behind one interface | Owner's decision |
 | 3 Oct 2026 | Rebuild from scratch in this folder; do not reuse the Lovable code | The live site is a template SPA with empty HTML, mixed admin, and no portfolio |
