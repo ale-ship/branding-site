@@ -402,6 +402,18 @@ and closes it; the current page is marked; the header stays at the top; the quot
 **Robustness:** a section the visitor has already scrolled past (for example after Back restores a
 position mid-page) now shows at once instead of waiting to be scrolled past again.
 
+**Performance pass** (Lighthouse 12, phone emulation, slow 4G, against the standalone build):
+- Accessibility, best practices and SEO: **100** on the home and product pages.
+- Every scroll reveal used to be its own client component (36 on the home page). They are now plain
+  markup with **one shared observer** (`components/ui/RevealObserver.tsx`, in the root layout).
+  Home page blocked time fell from 3,360 ms to 1,180 ms; performance from 49 to 59.
+- Remaining: LCP about 3.7 s (the first project photo, 29 KB, shares the emulated 1.6 Mbps link
+  with two fonts of 89 KB and the scripts); layout shift 0. This machine is slow for Lighthouse
+  (benchmark index about 600, against 1,000 to 1,500 that its 4× CPU slowdown assumes); with 2×
+  the home page scores 70. Re-measure on the VPS at launch, and with real photos.
+- On Windows Git Bash, prefix `MSYS_NO_PATHCONV=1` when passing paths to the checks
+  (`ONLY=/shop`), or Git Bash turns them into Windows paths.
+
 **Motion:** kept to what's there (reveals, tickers, the rotating badge, hover zooms), all honouring
 reduced motion. The smooth-scroll library and page transitions considered in section 4 were left
 out: they add weight on phones on mobile data for little gain.
@@ -481,6 +493,7 @@ Newest first.
 | 3 Oct 2026 | **Logo:** Noorcom already has a refreshed logo; the owner will share it. Until then the site uses a text wordmark ("NOORCOM / BRANDING") in one component, so the real logo drops in one place. We do not design a new logo | Owner's decision |
 | 3 Oct 2026 | Prices are per piece; minimum order 50 for every product until confirmed | Owner's decision |
 | 3 Oct 2026 | Deploy on our VPS beside Noorcom Computers, same layout, port 4301; old Lovable checkout and order pages redirect to `/quote`, its admin and sign-in to the home page | Owner's decision (VPS like the other projects) |
+| 3 Oct 2026 | Scroll reveals use one shared observer instead of a client component each | Phone start-up time: blocked time on the home page cut by two thirds |
 | 3 Oct 2026 | No smooth-scroll library or page transitions | Weight on phones on mobile data; the site already has motion that respects reduced motion |
 | 3 Oct 2026 | Shop quantities: the minimum (50 for now) is enforced on the product page, in the quote form and on the server; prices shown are estimates "before design and delivery", confirmed in the quote | Prices per piece with a minimum, owner's decision |
 | 3 Oct 2026 | The service ticker's separators are small orange circles | Owner's request |
