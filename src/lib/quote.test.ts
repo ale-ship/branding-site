@@ -44,43 +44,73 @@ describe('normaliseKenyanPhone', () => {
 
 describe('validateQuote', () => {
   it('accepts a complete request', () => {
-    expect(validateQuote(valid, services, undefined, TODAY)).toEqual({});
+    expect(validateQuote(valid, { services }, undefined, TODAY)).toEqual({});
   });
 
   it('only checks the fields asked for, so each step validates on its own', () => {
-    const errors = validateQuote(emptyDraft(), services, QUOTE_STEPS[0].fields, TODAY);
+    const errors = validateQuote(emptyDraft(), { services }, QUOTE_STEPS[0].fields, TODAY);
     expect(Object.keys(errors).sort()).toEqual(['details', 'quantity', 'service']);
   });
 
   it('needs a known service and a whole quantity', () => {
-    const errors = validateQuote({ ...valid, service: 'rockets', quantity: '1.5' }, services, undefined, TODAY);
+    const errors = validateQuote({ ...valid, service: 'rockets', quantity: '1.5' }, { services }, undefined, TODAY);
     expect(errors.service).toBeDefined();
     expect(errors.quantity).toBe('Enter a whole number, like 100.');
   });
 
   it('refuses a deadline in the past but allows today or none', () => {
-    expect(validateQuote({ ...valid, deadline: '2026-10-02' }, services, undefined, TODAY).deadline).toBeDefined();
-    expect(validateQuote({ ...valid, deadline: TODAY }, services, undefined, TODAY).deadline).toBeUndefined();
-    expect(validateQuote({ ...valid, deadline: '' }, services, undefined, TODAY).deadline).toBeUndefined();
+    expect(validateQuote({ ...valid, deadline: '2026-10-02' }, { services }, undefined, TODAY).deadline).toBeDefined();
+    expect(validateQuote({ ...valid, deadline: TODAY }, { services }, undefined, TODAY).deadline).toBeUndefined();
+    expect(validateQuote({ ...valid, deadline: '' }, { services }, undefined, TODAY).deadline).toBeUndefined();
   });
 
   it('asks where to deliver or install, but not when collecting', () => {
-    expect(validateQuote({ ...valid, fulfilment: 'install' }, services, undefined, TODAY).location).toBe('Where should we install it?');
-    expect(validateQuote({ ...valid, fulfilment: 'deliver' }, services, undefined, TODAY).location).toBe('Where should we deliver it?');
-    expect(validateQuote({ ...valid, fulfilment: 'collect' }, services, undefined, TODAY).location).toBeUndefined();
+    expect(validateQuote({ ...valid, fulfilment: 'install' }, { services }, undefined, TODAY).location).toBe('Where should we install it?');
+    expect(validateQuote({ ...valid, fulfilment: 'deliver' }, { services }, undefined, TODAY).location).toBe('Where should we deliver it?');
+    expect(validateQuote({ ...valid, fulfilment: 'collect' }, { services }, undefined, TODAY).location).toBeUndefined();
   });
 
   it('makes email required only when it is the preferred channel', () => {
-    expect(validateQuote({ ...valid, preferredContact: 'email' }, services, undefined, TODAY).email).toBeDefined();
-    expect(validateQuote({ ...valid, email: 'not-an-email' }, services, undefined, TODAY).email).toBe('Check your email address.');
-    expect(validateQuote({ ...valid, email: 'amina@example.co.ke' }, services, undefined, TODAY).email).toBeUndefined();
+    expect(validateQuote({ ...valid, preferredContact: 'email' }, { services }, undefined, TODAY).email).toBeDefined();
+    expect(validateQuote({ ...valid, email: 'not-an-email' }, { services }, undefined, TODAY).email).toBe('Check your email address.');
+    expect(validateQuote({ ...valid, email: 'amina@example.co.ke' }, { services }, undefined, TODAY).email).toBeUndefined();
   });
 
   it('checks artwork files', () => {
     const big = { name: 'banner.pdf', size: 30 * 1024 * 1024, type: 'application/pdf' };
-    expect(validateQuote({ ...valid, artwork: [big] }, services, undefined, TODAY).artwork).toMatch(/over 25 MB/);
+    expect(validateQuote({ ...valid, artwork: [big] }, { services }, undefined, TODAY).artwork).toMatch(/over 25 MB/);
     const six = Array.from({ length: 6 }, (_, i) => ({ name: `f${i}.png`, size: 10, type: 'image/png' }));
-    expect(validateQuote({ ...valid, artwork: six }, services, undefined, TODAY).artwork).toBe('Attach up to 5 files.');
+    expect(validateQuote({ ...valid, artwork: six }, { services }, undefined, TODAY).artwork).toBe('Attach up to 5 files.');
+  });
+});
+
+describe('validateQuote with shop items', () => {
+  const products = [{ slug: 'mug-branding', name: 'Mug branding', minQuantity: 50 }];
+  const items = [{ slug: 'mug-branding', quantity: 60, options: { Mug: 'White ceramic' } }];
+  const onlyItems: QuoteDraft = { ...emptyDraft(), products: items, name: 'Amina', phone: '0722530301' };
+
+  it('needs no service, quantity or description when the list says what is wanted', () => {
+    expect(validateQuote(onlyItems, { services, products }, undefined, TODAY)).toEqual({});
+  });
+
+  it('still checks a service or quantity that was filled in', () => {
+    const errors = validateQuote({ ...onlyItems, service: 'rockets', quantity: 'lots' }, { services, products }, undefined, TODAY);
+    expect(errors.service).toBeDefined();
+    expect(errors.quantity).toBeDefined();
+  });
+
+  it('enforces each item’s minimum and refuses unknown items', () => {
+    const few = { ...onlyItems, products: [{ ...items[0]!, quantity: 10 }] };
+    expect(validateQuote(few, { services, products }, undefined, TODAY).products).toBe('Mug branding: the minimum is 50 pieces.');
+    const gone = { ...onlyItems, products: [{ slug: 'old-thing', quantity: 60, options: {} }] };
+    expect(validateQuote(gone, { services, products }, undefined, TODAY).products).toMatch(/no longer in the shop/);
+  });
+
+  it('sends quantity 0 and keeps the items', () => {
+    const request = toQuoteRequest(onlyItems);
+    expect(request.quantity).toBe(0);
+    expect(request.service).toBe('');
+    expect(request.products).toEqual(items);
   });
 });
 
@@ -103,11 +133,14 @@ describe('coerceDraft', () => {
     expect(draft.service).toBe('apparel');
     expect(draft.name).toHaveLength(120);
     expect(draft.artwork).toEqual([{ name: 'a.pdf', size: 10, type: 'application/pdf' }]);
+    expect(coerceDraft({ products: [{ slug: 'mug-branding', quantity: 60, options: { Mug: 'Enamel' } }, { slug: 5 }] }).products).toEqual([
+      { slug: 'mug-branding', quantity: 60, options: { Mug: 'Enamel' } },
+    ]);
   });
 
   it('lets an over-long description through so validation can reject it', () => {
     const draft = coerceDraft({ ...valid, details: 'x'.repeat(5000) });
-    expect(validateQuote(draft, services, undefined, TODAY).details).toMatch(/under 2000/);
+    expect(validateQuote(draft, { services }, undefined, TODAY).details).toMatch(/under 2000/);
   });
 });
 

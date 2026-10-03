@@ -2,11 +2,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/lib/api';
 import { formatKes } from '@/lib/format';
+import { productHref } from '@/lib/shop';
 
 /** A shop item: photo on a grey well, name, price per piece and the minimum order. */
 export function ProductCard({ product, as: Heading = 'h3' }: { product: Product; as?: 'h2' | 'h3' }) {
   return (
-    <Link href={`/shop/${product.slug}`} className="group block">
+    <Link href={productHref(product.slug)} className="group block">
       <div className="relative aspect-square overflow-hidden bg-panel">
         <Image
           src={product.image.src}

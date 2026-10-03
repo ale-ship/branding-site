@@ -24,7 +24,7 @@ const nextSteps = [
 ];
 
 export default async function QuotePage({ searchParams }: Props) {
-  const [params, services] = await Promise.all([searchParams, api.listServices()]);
+  const [params, services, products] = await Promise.all([searchParams, api.listServices(), api.listProducts()]);
   const asked = Array.isArray(params.service) ? params.service[0] : params.service;
   const initialService = services.some((s) => s.slug === asked) ? (asked as string) : '';
 
@@ -39,6 +39,7 @@ export default async function QuotePage({ searchParams }: Props) {
         <div>
           <QuoteForm
             services={services.map(({ slug, name, summary }) => ({ slug, name, summary }))}
+            products={products.map(({ slug, name, pricePerPiece, minQuantity, image }) => ({ slug, name, pricePerPiece, minQuantity, image }))}
             initialService={initialService}
             whatsappHref={site.whatsappHref}
             email={site.email}

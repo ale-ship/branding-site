@@ -15,15 +15,11 @@ export type SubmitQuoteResult =
 export async function submitQuoteAction(input: unknown): Promise<SubmitQuoteResult> {
   const draft = coerceDraft(input);
   const [services, products] = await Promise.all([api.listServices(), api.listProducts()]);
-  const errors = validateQuote(
-    draft,
-    services.map((s) => s.slug),
-  );
+  const errors = validateQuote(draft, { services: services.map((s) => s.slug), products });
   if (Object.keys(errors).length) {
     return { ok: false, errors, message: 'Some details need another look.' };
   }
-  const known = new Set(products.map((p) => p.slug));
-  const request = toQuoteRequest({ ...draft, products: draft.products.filter((slug) => known.has(slug)) });
+  const request = toQuoteRequest(draft);
   try {
     const { reference } = await api.submitQuote(request);
     return { ok: true, reference };

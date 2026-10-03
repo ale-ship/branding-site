@@ -2,9 +2,12 @@ import type {
   ArtworkFile,
   ContactChannel,
   FulfilmentMethod,
+  Product,
+  QuoteItem,
   QuoteRequest,
   ServiceSlug,
 } from './api/types';
+import { parseList, QUANTITY_MAX } from './quote-list';
 
 /**
  * Quote form rules, shared by the form (instant feedback) and the server action (the real
@@ -14,7 +17,8 @@ import type {
 /** What the form holds while the customer types: every field is a string or a list. */
 export type QuoteDraft = {
   service: string;
-  products: string[];
+  /** Shop items from the quote list. */
+  products: QuoteItem[];
   quantity: string;
   details: string;
   artwork: ArtworkFile[];
@@ -34,7 +38,7 @@ export type QuoteErrors = Partial<Record<QuoteField, string>>;
 
 /** The form's steps and the fields each one owns, in order. */
 export const QUOTE_STEPS = [
-  { id: 'job', label: 'The job', fields: ['service', 'quantity', 'details'] },
+  { id: 'job', label: 'The job', fields: ['products', 'service', 'quantity', 'details'] },
   { id: 'artwork', label: 'Artwork and timing', fields: ['artwork', 'needsDesign', 'deadline', 'fulfilment', 'location'] },
   { id: 'contact', label: 'Your details', fields: ['name', 'company', 'phone', 'email', 'preferredContact'] },
 ] as const satisfies readonly { id: string; label: string; fields: readonly QuoteField[] }[];
@@ -100,10 +104,19 @@ export function artworkProblem(file: ArtworkFile): string | null {
   return null;
 }
 
-/** Errors for the given fields only (one step), or every field when omitted. */
+/** What validation needs to know: the services that exist, and the shop's products. */
+export type QuoteContext = {
+  services: readonly string[];
+  products?: readonly Pick<Product, 'slug' | 'name' | 'minQuantity'>[];
+};
+
+/**
+ * Errors for the given fields only (one step), or every field when omitted. A request with shop
+ * items doesn't need a service, quantity or description: the items say what's wanted.
+ */
 export function validateQuote(
   draft: QuoteDraft,
-  knownServices: readonly string[],
+  context: QuoteContext,
   fields: readonly QuoteField[] = QUOTE_STEPS.flatMap((s) => s.fields),
   today = nairobiToday(),
 ): QuoteErrors {
@@ -111,18 +124,49 @@ export function validateQuote(
   const check = (field: QuoteField, message: string | null) => {
     if (fields.includes(field) && message) errors[field] = message;
   };
+  const hasItems = draft.products.length > 0;
 
-  check('service', knownServices.includes(draft.service) ? null : 'Choose what you need.');
+  const catalogue = new Map((context.products ?? []).map((p) => [p.slug, p]));
+  let itemProblem: string | null = null;
+  for (const item of draft.products) {
+    const product = catalogue.get(item.slug);
+    if (!product) {
+      itemProblem = 'An item in your list is no longer in the shop. Remove it to continue.';
+      break;
+    }
+    if (!Number.isInteger(item.quantity) || item.quantity < product.minQuantity) {
+      itemProblem = `${product.name}: the minimum is ${product.minQuantity} pieces.`;
+      break;
+    }
+    if (item.quantity > QUANTITY_MAX) {
+      itemProblem = `${product.name}: for more than ${QUANTITY_MAX.toLocaleString('en-KE')} pieces, tell us in the description.`;
+      break;
+    }
+  }
+  check('products', itemProblem);
+
+  check(
+    'service',
+    hasItems && !draft.service ? null : context.services.includes(draft.service) ? null : 'Choose what you need.',
+  );
 
   const qty = draft.quantity.trim();
   check(
     'quantity',
-    !qty ? 'Enter how many you need.' : /^\d+$/.test(qty) && Number(qty) >= 1 && Number(qty) <= 1_000_000 ? null : 'Enter a whole number, like 100.',
+    hasItems && !qty
+      ? null
+      : !qty
+        ? 'Enter how many you need.'
+        : /^\d+$/.test(qty) && Number(qty) >= 1 && Number(qty) <= 1_000_000
+          ? null
+          : 'Enter a whole number, like 100.',
   );
 
   check(
     'details',
-    draft.details.trim().length < 10
+    hasItems && !draft.details.trim()
+      ? null
+      : draft.details.trim().length < 10
       ? 'Tell us a little about the job: sizes, colours, where it will be used.'
       : draft.details.length > DETAILS_MAX
         ? `Keep it under ${DETAILS_MAX} characters; you can send more on WhatsApp.`
@@ -181,7 +225,8 @@ export function coerceDraft(input: unknown): QuoteDraft {
   const preferredContact = CHANNELS.find((c) => c === o.preferredContact) ?? 'whatsapp';
   return {
     service: str(o.service, 60),
-    products: list(o.products).filter((p): p is string => typeof p === 'string').slice(0, 50).map((p) => p.slice(0, 80)),
+    // The same rules as the stored quote list: malformed lines are dropped.
+    products: parseList(JSON.stringify(list(o.products))),
     quantity: str(o.quantity, 12),
     // One more than the limit, so an over-long text still fails validation instead of being cut.
     details: str(o.details, DETAILS_MAX + 1),
@@ -208,9 +253,9 @@ export function coerceDraft(input: unknown): QuoteDraft {
 /** The validated request to send. Call only when validateQuote returns no errors. */
 export function toQuoteRequest(draft: QuoteDraft): QuoteRequest {
   return {
-    service: draft.service as ServiceSlug,
-    products: draft.products,
-    quantity: Number(draft.quantity.trim()),
+    service: draft.service as ServiceSlug | '',
+    products: draft.products.map((p) => ({ ...p, options: { ...p.options } })),
+    quantity: draft.quantity.trim() ? Number(draft.quantity.trim()) : 0,
     details: draft.details.trim(),
     artwork: draft.artwork.map(({ name, size, type }) => ({ name, size, type })),
     needsDesign: draft.needsDesign,

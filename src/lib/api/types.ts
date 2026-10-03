@@ -75,15 +75,24 @@ export type Project = {
 
 export type ProductCategory = 'stationery' | 'print' | 'apparel' | 'gifts' | 'display';
 
+/** A choice the customer makes on the product page, e.g. Finish: Matte, Gloss. */
+export type ProductOption = { name: string; values: string[] };
+
 export type Product = {
   slug: string;
   name: string;
   category: ProductCategory;
+  /** The service it belongs to, for turnaround and "how we make it". */
+  service: ServiceSlug;
   /** Price per piece in whole shillings. */
   pricePerPiece: number;
   /** Minimum order quantity in pieces. */
   minQuantity: number;
   summary: string;
+  /** A short paragraph for the product page. */
+  description: string;
+  /** The first value of each option is the default. */
+  options: ProductOption[];
   image: Photo;
   featured: boolean;
 };
@@ -99,10 +108,15 @@ export type ContactChannel = 'whatsapp' | 'phone' | 'email';
 export type ArtworkFile = { name: string; size: number; type: string };
 
 /** A quote request as sent from /quote, already validated (src/lib/quote.ts). */
+/** A shop item in a quote: which product, how many, and the options chosen. */
+export type QuoteItem = { slug: string; quantity: number; options: Record<string, string> };
+
 export type QuoteRequest = {
-  service: ServiceSlug;
-  /** Shop items the customer added, by product slug (Phase 4). */
-  products: string[];
+  /** Empty when the request is only shop items. */
+  service: ServiceSlug | '';
+  /** Shop items from the quote list. */
+  products: QuoteItem[];
+  /** For the service job; 0 when the request is only shop items. */
   quantity: number;
   details: string;
   artwork: ArtworkFile[];
@@ -129,6 +143,7 @@ export interface SiteApi {
   listProjects(options?: ListOptions): Promise<Project[]>;
   getProject(slug: string): Promise<Project | null>;
   listProducts(options?: ListOptions): Promise<Product[]>;
+  getProduct(slug: string): Promise<Product | null>;
   listClients(): Promise<Client[]>;
   submitQuote(request: QuoteRequest): Promise<QuoteReceipt>;
 }

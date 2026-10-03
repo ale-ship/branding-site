@@ -42,6 +42,10 @@ export const mockApi: SiteApi = {
   async listProducts(options) {
     return structuredClone(pick(products, options));
   },
+  async getProduct(slug) {
+    const product = products.find((p) => p.slug === slug);
+    return product ? structuredClone(product) : null;
+  },
   async listClients() {
     return structuredClone(clients);
   },

@@ -1,11 +1,12 @@
 'use client';
 
 import { ArrowLeft, ArrowRight, Check, FileText, Paperclip, X } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition, type ChangeEvent, type DragEvent, type FormEvent } from 'react';
 import { submitQuoteAction } from '@/app/quote/actions';
-import type { ContactChannel, FulfilmentMethod } from '@/lib/api/types';
-import { pad2 } from '@/lib/format';
+import type { ContactChannel, FulfilmentMethod, Photo } from '@/lib/api/types';
+import { formatKes, pad2 } from '@/lib/format';
 import {
   ARTWORK_EXTENSIONS,
   ARTWORK_MAX_FILES,
@@ -20,10 +21,16 @@ import {
   type QuoteErrors,
   type QuoteField,
 } from '@/lib/quote';
+import { describeOptions, estimateTotal, itemKey, QUANTITY_MAX, totalPieces } from '@/lib/quote-list';
+import { useQuoteList } from '../shop/useQuoteList';
 import { ChoiceGroup, FieldError, Hint, TextArea, TextField } from './fields';
+
+/** What the form needs to show a shop item. */
+export type ShopItemInfo = { slug: string; name: string; pricePerPiece: number; minQuantity: number; image: Photo };
 
 type Props = {
   services: { slug: string; name: string; summary: string }[];
+  products: ShopItemInfo[];
   initialService: string;
   whatsappHref: string;
   email: string;
@@ -45,8 +52,14 @@ const CONTACT_OPTIONS: { value: ContactChannel; label: string }[] = [
  * The quote request, in three steps. Each step is checked before moving on; the server checks
  * everything again. On success the form is replaced by a confirmation with the reference.
  */
-export function QuoteForm({ services, initialService, whatsappHref, email }: Props) {
+export function QuoteForm({ services, products, initialService, whatsappHref, email }: Props) {
   const [draft, setDraft] = useState<QuoteDraft>(() => emptyDraft(initialService));
+  // Shop items live in the quote list (localStorage), not in the draft, so the shop and this form
+  // always agree. They join the draft when it's checked or sent.
+  const quoteList = useQuoteList();
+  const [sentItems, setSentItems] = useState(0);
+  // What the customer is typing in each item's quantity box, until it's a valid number.
+  const [qtyText, setQtyText] = useState<Record<string, string>>({});
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<QuoteErrors>({});
   const [announcement, setAnnouncement] = useState('');
@@ -64,7 +77,10 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
     headingRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [reference]);
 
-  const serviceSlugs = services.map((s) => s.slug);
+  const context = { services: services.map((s) => s.slug), products };
+  const withItems: QuoteDraft = { ...draft, products: quoteList.items };
+  const hasItems = quoteList.items.length > 0;
+  const productInfo = new Map(products.map((p) => [p.slug, p]));
   const isLast = step === QUOTE_STEPS.length - 1;
   const current = QUOTE_STEPS[step]!;
 
@@ -104,7 +120,7 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setFailure('');
-    const found = validateQuote(draft, serviceSlugs, isLast ? undefined : current.fields);
+    const found = validateQuote(withItems, context, isLast ? undefined : current.fields);
     if (Object.keys(found).length) {
       // On the last step a problem may sit on an earlier step: go back to it.
       const stepWithError = QUOTE_STEPS.findIndex((s) => s.fields.some((f) => found[f as QuoteField]));
@@ -118,8 +134,10 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
       return;
     }
     startTransition(async () => {
-      const result = await submitQuoteAction(draft);
+      const result = await submitQuoteAction(withItems);
       if (result.ok) {
+        setSentItems(quoteList.items.length);
+        quoteList.clear();
         setReference(result.reference);
       } else if (Object.keys(result.errors).length) {
         const stepWithError = QUOTE_STEPS.findIndex((s) => s.fields.some((f) => result.errors[f as QuoteField]));
@@ -139,7 +157,7 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
     if (!picked.length) return;
     const merged = [...draft.artwork, ...picked.filter((p) => !draft.artwork.some((a) => a.name === p.name && a.size === p.size))];
     update('artwork', merged);
-    const problem = validateQuote({ ...draft, artwork: merged }, serviceSlugs, ['artwork']).artwork;
+    const problem = validateQuote({ ...withItems, artwork: merged }, context, ['artwork']).artwork;
     if (problem) setErrors((er) => ({ ...er, artwork: problem }));
   };
 
@@ -157,7 +175,7 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
   const removeFile = (index: number) => {
     const next = draft.artwork.filter((_, i) => i !== index);
     update('artwork', next);
-    const problem = validateQuote({ ...draft, artwork: next }, serviceSlugs, ['artwork']).artwork;
+    const problem = validateQuote({ ...withItems, artwork: next }, context, ['artwork']).artwork;
     setErrors((er) => ({ ...er, artwork: problem }));
   };
 
@@ -176,6 +194,11 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
           Your reference is <strong className="font-display text-2xl text-heading">{reference}</strong>. We’ll reply {reply}{' '}
           within one working day with a price and, where it helps, a proof.
         </p>
+        {sentItems > 0 && (
+          <p className="mt-4 text-body">
+            {sentItems === 1 ? 'The item from the shop is' : `All ${sentItems} items from the shop are`} included, so your quote list is now empty.
+          </p>
+        )}
         {draft.artwork.length > 0 && (
           // TODO(backend): upload the files with the request; until then they're sent separately.
           <p className="mt-4 text-body">
@@ -224,9 +247,92 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
       <div className="mt-8 flex flex-col gap-8">
         {step === 0 && (
           <>
+            {hasItems && (
+              <section aria-labelledby="items-title">
+                <div className="flex items-baseline justify-between gap-4">
+                  <h3 id="items-title" className="font-sans text-base font-semibold tracking-normal text-heading">
+                    From the shop
+                  </h3>
+                  <Link href="/shop" className="text-sm font-semibold text-link underline underline-offset-4">
+                    Add more
+                  </Link>
+                </div>
+                <ul className="mt-3 border-t border-ink">
+                  {quoteList.items.map((item, i) => {
+                    const info = productInfo.get(item.slug);
+                    const key = itemKey(item);
+                    const name = info?.name ?? 'Item no longer available';
+                    return (
+                      <li key={key} className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-4 gap-y-3 border-b border-border py-4 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center">
+                        <div className="relative aspect-square overflow-hidden bg-panel">
+                          {info && <Image src={info.image.src} alt="" fill sizes="80px" className="object-cover" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-heading">{name}</p>
+                          {Object.keys(item.options).length > 0 && <p className="text-sm text-muted">{describeOptions(item.options)}</p>}
+                          {info && (
+                            <p className="text-sm text-muted">
+                              {formatKes(info.pricePerPiece)} / piece · min. {info.minQuantity}
+                            </p>
+                          )}
+                        </div>
+                        <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
+                          <label htmlFor={`item-qty-${i}`} className="sr-only">
+                            Quantity of {name}
+                          </label>
+                          <input
+                            id={`item-qty-${i}`}
+                            {...(i === 0 ? { 'data-field': 'products' } : {})}
+                            type="number"
+                            inputMode="numeric"
+                            min={info?.minQuantity ?? 1}
+                            max={QUANTITY_MAX}
+                            value={qtyText[key] ?? String(item.quantity)}
+                            onChange={(e) => {
+                              const text = e.target.value;
+                              setQtyText((t) => ({ ...t, [key]: text }));
+                              const n = Number(text);
+                              if (Number.isInteger(n) && n >= 1 && n <= QUANTITY_MAX) quoteList.update(key, n);
+                              if (errors.products) setErrors((er) => ({ ...er, products: undefined }));
+                            }}
+                            onBlur={() =>
+                              setQtyText((t) => {
+                                const rest = { ...t };
+                                delete rest[key];
+                                return rest;
+                              })
+                            }
+                            aria-invalid={errors.products ? true : undefined}
+                            aria-describedby={errors.products ? 'products-error' : undefined}
+                            className="min-h-11 w-28 border border-border-strong bg-bg px-3 text-heading tabular-nums hover:border-ink focus:border-ink"
+                          />
+                          <span className="text-sm text-muted">pieces</span>
+                          <button
+                            type="button"
+                            onClick={() => quoteList.remove(key)}
+                            aria-label={`Remove ${name}`}
+                            className="ml-auto grid size-11 place-items-center text-muted transition-colors hover:text-heading"
+                          >
+                            <X aria-hidden className="size-4" />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-3 flex flex-wrap justify-between gap-2 text-sm">
+                  <span className="text-muted">
+                    {totalPieces(quoteList.items).toLocaleString('en-KE')} pieces · estimate before design and delivery
+                  </span>
+                  <span className="font-semibold text-heading">{formatKes(estimateTotal(quoteList.items, products))}</span>
+                </p>
+                <FieldError name="products" error={errors.products} />
+              </section>
+            )}
             <ChoiceGroup
               name="service"
-              legend="What do you need?"
+              legend={hasItems ? 'Anything else? (optional)' : 'What do you need?'}
+              hint={hasItems ? 'Choose a service only if you need something beyond the items above.' : undefined}
               options={services.map((s) => ({ value: s.slug, label: s.name, description: s.summary }))}
               value={draft.service}
               onChange={(v) => update('service', v)}
@@ -235,6 +341,7 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
             <TextField
               name="quantity"
               label="How many?"
+              optional={hasItems}
               hint="Pieces, signs or vehicles. A rough number is fine."
               inputMode="numeric"
               placeholder="e.g. 100"
@@ -244,7 +351,7 @@ export function QuoteForm({ services, initialService, whatsappHref, email }: Pro
             />
             <TextArea
               name="details"
-              label="Tell us about the job"
+              label={hasItems ? 'Anything we should know? (optional)' : 'Tell us about the job'}
               hint="Sizes, colours, where it will be used, anything you have in mind."
               placeholder="e.g. 100 white t-shirts with our logo on the chest, sizes S to XXL, for a staff day."
               maxLength={DETAILS_MAX}

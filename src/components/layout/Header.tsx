@@ -1,11 +1,12 @@
 'use client';
 
-import { ArrowUpRight, Mail, Phone, X } from 'lucide-react';
+import { ArrowUpRight, ClipboardList, Mail, Phone, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { pad2 } from '@/lib/format';
 import { mainNav, quoteHref, site } from '@/lib/site';
+import { useQuoteList } from '../shop/useQuoteList';
 import { ButtonLink } from '../ui/ButtonLink';
 import { Container } from '../ui/Container';
 import { CmykDots } from '../ui/PrintMarks';
@@ -22,6 +23,8 @@ export function Header() {
   const pathname = usePathname();
   const menuButton = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const quoteCount = useQuoteList().items.length;
+  const quoteLabel = quoteCount ? `Your quote, ${quoteCount} ${quoteCount === 1 ? 'item' : 'items'}` : undefined;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -104,10 +107,33 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Phones: a compact link once the quote list has items. */}
+          {quoteCount > 0 && (
+            <Link
+              href={quoteHref}
+              aria-label={quoteLabel}
+              className="relative grid size-12 place-items-center text-heading sm:hidden"
+            >
+              <ClipboardList aria-hidden className="size-6" />
+              <span aria-hidden className="absolute top-1.5 right-1 grid min-w-5 place-items-center rounded-pill bg-accent px-1 text-xs font-bold text-ink">
+                {quoteCount}
+              </span>
+            </Link>
+          )}
           {/* Wrapped: ButtonLink's own inline-flex would beat a `hidden` passed to it. */}
           <div className="hidden sm:block">
-            <ButtonLink href={quoteHref} variant="accent">
-              Get a quote
+            <ButtonLink href={quoteHref} variant="accent" arrow={!quoteCount}>
+              {quoteCount ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="sr-only">{quoteLabel}</span>
+                  <span aria-hidden>Your quote</span>
+                  <span aria-hidden className="grid min-w-6 place-items-center rounded-pill bg-ink px-1.5 text-xs font-bold text-bg">
+                    {quoteCount}
+                  </span>
+                </span>
+              ) : (
+                'Get a quote'
+              )}
             </ButtonLink>
           </div>
           <button

@@ -6,14 +6,14 @@ next. Update it at the end of every task.
 
 ## Where we are right now
 
-- **Phases 1 to 3 are built** (3 Oct 2026): the home page, the Work archive and case studies, the
-  Services pages and the quote form. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
+- **Phases 1 to 4 are built** (3 Oct 2026): the home page, the Work archive and case studies, the
+  Services pages, the quote form and the shop with its quote list. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
 - **Scope for now is design and frontend only.** No backend, no Supabase, nothing from Lovable.
   Data comes from local typed content behind one data interface (`SiteApi`, mock only), so our own
   backend can plug in later without page changes.
-- **Pages so far:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/quote`. Links
-  to Shop, About, Contact and Privacy show the styled 404 until their phases are built.
-- **Next:** Phase 4 (Shop: catalogue, product pages and the quote list that feeds `/quote`).
+- **Pages so far:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`,
+  `/shop/[slug]`, `/quote`. Links to About, Contact and Privacy show the styled 404 until Phase 5.
+- **Next:** Phase 5 (About, Contact, Privacy and Terms; SEO files and social images; motion, accessibility and performance passes).
 
 ## Start here on a new machine
 
@@ -203,7 +203,7 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | 1 Foundation | Owner's answers recorded; Next.js app; mock data interface; placeholder photos; tokens, fonts, grid; header (overlay menu), footer; home page with placeholder work | **Done 3 Oct 2026** |
 | 2 Work | `/work` archive with filters; case-study template (sample content); real case studies when Noorcom sends them | **Built 3 Oct 2026**; real case studies to come |
 | 3 Services and quote | Service pages; `/quote` form (mock: the request is checked and given a reference; sending to email and WhatsApp needs our backend) | **Built 3 Oct 2026** |
-| 4 Shop | Product catalogue and product pages; quote list (drawer) that feeds `/quote` | To do |
+| 4 Shop | Product catalogue and product pages; quote list that feeds `/quote` | **Built 3 Oct 2026** |
 | 5 Content and polish | About, contact, legal, 404; SEO, social images, JSON-LD; motion pass; accessibility and performance pass | To do |
 | 6 Launch | Hosting, our own backend and back office (separate project, later), DNS cutover from Lovable, redirects, Google Search Console | Later |
 
@@ -321,6 +321,42 @@ optional props for service pages.
 empty fields, a missing install location, a past date and a bad phone number are each caught with
 focus on the field; a valid request returns a reference and focus moves to the confirmation.
 
+## Phase 4: what was built (3 Oct 2026)
+
+**Routes:**
+
+| Route | What it shows | Notes |
+| --- | --- | --- |
+| `/shop` | The 12 products in a 2/3/4-column grid with category chips (Stationery, Print, Apparel, Gifts, Display, with counts), "prices per piece" note, a "Need something that isn't here?" link to Services, the quote block | `?category=` in the URL; filtered views `noindex` |
+| `/shop/[slug]` | Photo with crop marks (sticky on desktop); category, name, price per piece and minimum; description; **Add to quote** panel; "Ask about this on WhatsApp" (prefilled); price, minimum, turnaround (from the product's service), proof, collection or delivery; link to the service; "You might also need"; quote block | Static for every product. `Product` JSON-LD with a per-piece `UnitPriceSpecification` and the minimum as `eligibleQuantity` |
+
+**Add to quote** (`components/shop/AddToQuote.tsx`): option chips (first value is the default), a
+quantity stepper that starts at the minimum (steps of 10 when the minimum is 50 or more) and refuses
+less, a live estimate ("About KES 2,160 before design and delivery…"), then a confirmation with
+"Review and send". Adding the same product with the same options again updates its quantity.
+
+**The quote list** is kept in the browser's localStorage (`noorcom-branding.quote-list.v1`), shared
+across tabs (`components/shop/useQuoteList.ts`). If storage is blocked it lasts for the page view.
+Rules are pure functions in `src/lib/quote-list.ts` (merge by product and options, at most 20 lines,
+safe parsing of what was stored, estimates). The header shows the count: "Your quote" with a badge
+from 640 px, a clipboard icon with a badge on phones.
+
+**In `/quote`**, step 1 starts with "From the shop": each line with photo, options, price, an
+editable quantity and Remove, plus the total pieces and an estimate. With items in the list, the
+service, quantity and description become optional; each item must meet its minimum (checked in the
+form and again in the server action against the real catalogue). After sending, the list is emptied.
+
+**Data:** `Product` gained `service`, `description` and `options`; `QuoteRequest.products` is now a
+list of `{ slug, quantity, options }`, `service` may be empty and `quantity` is 0 for shop-only
+requests. `validateQuote` takes a context (`{ services, products }`). Catalogue helpers are in
+`src/lib/shop.ts`.
+
+**Checked:** lint, typecheck, 72 tests, build. `/shop`, `/shop?category=gifts` and two product pages
+emulated at 320 to 1920 px with no horizontal overflow. The journey driven in Chrome: below-minimum
+quantity refused, estimate shown, two items added (header count 1 then 2), a quantity under the
+minimum caught in `/quote` with focus on it, sent without choosing a service, list emptied and the
+header reset.
+
 ## 9. Decisions log
 
 Newest first.
@@ -330,6 +366,7 @@ Newest first.
 | 3 Oct 2026 | **The shop is "add to quote" only**: no cart payment or M-Pesa. Products go into a quote list; the quote form sends it with artwork, quantities and deadline | Owner's decision; most branding jobs need artwork and a proof first |
 | 3 Oct 2026 | **Logo:** Noorcom already has a refreshed logo; the owner will share it. Until then the site uses a text wordmark ("NOORCOM / BRANDING") in one component, so the real logo drops in one place. We do not design a new logo | Owner's decision |
 | 3 Oct 2026 | Prices are per piece; minimum order 50 for every product until confirmed | Owner's decision |
+| 3 Oct 2026 | Shop quantities: the minimum (50 for now) is enforced on the product page, in the quote form and on the server; prices shown are estimates "before design and delivery", confirmed in the quote | Prices per piece with a minimum, owner's decision |
 | 3 Oct 2026 | The service ticker's separators are small orange circles | Owner's request |
 | 3 Oct 2026 | Quote requests: artwork file names travel with the request, the files themselves go by WhatsApp or email until our backend takes uploads | No backend in scope yet |
 | 3 Oct 2026 | **Address:** Chuka Elimu Plaza, 1st Floor, Loita Street, Nairobi, the same premises as Noorcom Computers | Owner's decision |
