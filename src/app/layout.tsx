@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex min-h-dvh flex-col">
         <a
           href="#main"
-          className="sr-only z-50 bg-ink px-4 py-3 text-bg focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+          className="fixed top-3 left-3 z-50 inline-flex min-h-11 -translate-y-24 items-center bg-ink px-4 text-bg focus:translate-y-0"
         >
           Skip to content
         </a>

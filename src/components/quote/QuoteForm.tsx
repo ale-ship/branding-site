@@ -253,7 +253,7 @@ export function QuoteForm({ services, products, initialService, whatsappHref, em
                   <h3 id="items-title" className="font-sans text-base font-semibold tracking-normal text-heading">
                     From the shop
                   </h3>
-                  <Link href="/shop" className="text-sm font-semibold text-link underline underline-offset-4">
+                  <Link href="/shop" className="inline-flex min-h-11 items-center text-sm font-semibold text-link underline underline-offset-4">
                     Add more
                   </Link>
                 </div>

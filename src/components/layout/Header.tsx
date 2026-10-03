@@ -93,12 +93,12 @@ export function Header() {
                 <Link
                   href={item.href}
                   aria-current={isCurrent(item.href) ? 'page' : undefined}
-                  className="group relative py-2 text-[0.95rem] font-medium text-heading"
+                  className="group relative inline-flex min-h-11 items-center text-[0.95rem] font-medium text-heading"
                 >
                   {item.label}
                   <span
                     aria-hidden
-                    className="absolute inset-x-0 -bottom-0.5 h-0.5 origin-left scale-x-0 bg-accent transition-transform duration-300 ease-out group-hover:scale-x-100 group-aria-[current=page]:scale-x-100"
+                    className="absolute inset-x-0 bottom-1.5 h-0.5 origin-left scale-x-0 bg-accent transition-transform duration-300 ease-out group-hover:scale-x-100 group-aria-[current=page]:scale-x-100"
                   />
                 </Link>
               </li>

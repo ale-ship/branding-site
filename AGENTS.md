@@ -7,6 +7,7 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - `npm run dev`: dev server on http://localhost:3000
 - `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test`: all four must pass before a task is handed over
 - `npm run photos`: re-downloads the placeholder photos into `public/images/placeholder` and rewrites `CREDITS.md`
+- `npm run a11y`, `npm run devices`, `npm run menu`: browser checks against a running production server (`BASE=http://localhost:3100`)
 
 ## Architecture rules
 
@@ -24,3 +25,5 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - Prefer server components; add `'use client'` only to interactive leaves.
 - Don't pass `hidden` to a component whose base classes set `display` (ButtonLink is `inline-flex`): wrap it instead.
 - Responsive: mobile first; check 320, 360, 390, 768, 1024, 1440 and 1920 px with no horizontal overflow; 44 px touch targets; visible focus; alt text on every content image.
+- Before handing over: `lint`, `typecheck`, `test`, `build`, then `a11y`, `devices` and `menu` against a production server (`BASE=http://localhost:3100`). All must pass.
+- Deploy files are in `deploy/` (VPS, port 4301); see RUNBOOK.md, "Deploying to the VPS". Never commit real env files.

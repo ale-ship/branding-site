@@ -21,7 +21,7 @@ export function WorkFiltersBar({ facets, filters }: { facets: WorkFacets; filter
       <Row label="Industry" name="industry" options={facets.industries} filters={filters} />
       <Row label="Year" name="year" options={facets.years} filters={filters} />
       {hasFilters(filters) && (
-        <Link href="/work" className="self-start text-sm font-semibold text-heading underline decoration-accent decoration-2 underline-offset-4">
+        <Link href="/work" className="inline-flex min-h-11 items-center self-start text-sm font-semibold text-heading underline decoration-accent decoration-2 underline-offset-4">
           Clear all filters
         </Link>
       )}

@@ -6,14 +6,16 @@ next. Update it at the end of every task.
 
 ## Where we are right now
 
-- **Phases 1 to 4 are built** (3 Oct 2026): the home page, the Work archive and case studies, the
-  Services pages, the quote form and the shop with its quote list. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
+- **All six phases are done** (3 Oct 2026). The whole site is built; Phase 6 prepared the launch
+  (VPS deploy files, redirects from the old site, checklist) but **nothing is deployed to the VPS
+  and DNS still points at Lovable**. The launch waits for the VPS and the "Launch checklist" below. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
 - **Scope for now is design and frontend only.** No backend, no Supabase, nothing from Lovable.
   Data comes from local typed content behind one data interface (`SiteApi`, mock only), so our own
   backend can plug in later without page changes.
-- **Pages so far:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`,
-  `/shop/[slug]`, `/quote`. Links to About, Contact and Privacy show the styled 404 until Phase 5.
-- **Next:** Phase 5 (About, Contact, Privacy and Terms; SEO files and social images; motion, accessibility and performance passes).
+- **Pages:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`, `/shop/[slug]`,
+  `/quote`, `/about`, `/contact`, `/privacy`, `/terms`, plus the 404 and error pages,
+  `/sitemap.xml`, `/robots.txt`, `/opengraph-image`, icons.
+- **Next:** deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
 
 ## Start here on a new machine
 
@@ -22,7 +24,13 @@ next. Update it at the end of every task.
    and `npm install`.
 3. `npm run dev`, then open http://localhost:3000.
 4. Before handing over a task: `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
-   (stop the dev server before building; both use `.next/`).
+   (stop the dev server before building; both use `.next/`). Then, against a production server
+   (`npx next start -p 3100`, with `BASE=http://localhost:3100` before each command):
+   - `npm run a11y`: axe (WCAG 2.2 AA) on every route and state at 390, 768 and 1440 px, plus one h1,
+     skip link, no sideways scroll, 44 px targets, and motion stopping under reduced motion.
+   - `npm run devices`: every route on 11 devices (phones, landscape, tablets, laptop, desktops):
+     sideways scroll, JavaScript errors, failed requests, broken images, sections that never appear.
+   - `npm run menu`: the header and full-screen menu at 8 widths with real key presses.
 
 The placeholder photos are committed in `public/images/placeholder` (`npm run photos` re-downloads them).
 Project rules for Claude are in `AGENTS.md` (loaded through `CLAUDE.md`).
@@ -204,8 +212,8 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | 2 Work | `/work` archive with filters; case-study template (sample content); real case studies when Noorcom sends them | **Built 3 Oct 2026**; real case studies to come |
 | 3 Services and quote | Service pages; `/quote` form (mock: the request is checked and given a reference; sending to email and WhatsApp needs our backend) | **Built 3 Oct 2026** |
 | 4 Shop | Product catalogue and product pages; quote list that feeds `/quote` | **Built 3 Oct 2026** |
-| 5 Content and polish | About, contact, legal, 404; SEO, social images, JSON-LD; motion pass; accessibility and performance pass | To do |
-| 6 Launch | Hosting, our own backend and back office (separate project, later), DNS cutover from Lovable, redirects, Google Search Console | Later |
+| 5 Content and polish | About, contact, legal, 404; SEO, social images, JSON-LD; motion pass; accessibility and performance pass | **Done 3 Oct 2026** |
+| 6 Launch | VPS deploy files, redirects from the old site, launch checklist | **Prepared 3 Oct 2026**; deploy and DNS cutover still to do. Our own backend and back office: separate project, later |
 
 ## 8. Assets we need from Noorcom
 
@@ -357,6 +365,112 @@ quantity refused, estimate shown, two items added (header count 1 then 2), a qua
 minimum caught in `/quote` with focus on it, sent without choosing a service, list emptied and the
 header reset.
 
+## Phase 5: what was built (3 Oct 2026)
+
+**Pages:**
+
+| Route | What it shows |
+| --- | --- |
+| `/about` | Header, workshop photo with crop marks, Our story (draft), three principles (one team, proof first, made to last), the workshop's machines, How a job runs, clients, quote block |
+| `/contact` | WhatsApp, call and email as large links; the address with a lazy Google map and "Open in Google Maps"; a "Looking for a price?" link to the quote form; a message form (name, phone or email, message) that returns an `NM-` reference |
+| `/privacy`, `/terms` | Numbered sections with an "On this page" list and a visible **Draft for legal review** notice (Kenya Data Protection Act, 2019; quote validity, proofs, deposit, turnaround, changes, faults) |
+| `error.tsx` | "This page jammed in the press": Try again, WhatsApp us, and the error reference |
+
+The footer links to Privacy and Terms. The contact form follows the quote form's pattern: rules in
+`src/lib/contact.ts` (tested), a server action that checks again (`src/app/contact/actions.ts`), and
+`SiteApi.sendMessage` (the mock keeps messages in memory; delivering them needs the backend).
+
+**Search and sharing:** `sitemap.xml` (every page, service and product; sample projects left out),
+`robots.txt`, a default 1200×630 link-preview image (`app/opengraph-image.tsx`: paper background,
+crop marks, "We make brands impossible to miss."), an Apple home-screen icon, and JSON-LD:
+`LocalBusiness` site-wide, `CreativeWork` on case studies, `Service` and `FAQPage` on service pages,
+`Product` on product pages. All URLs come from `NEXT_PUBLIC_SITE_URL`.
+
+**Accessibility pass** (`npm run a11y`, adapted from Noorcom Computers): no axe violations on any of
+20 routes and states (forms with errors, menu open, quote list loaded, product added) at 390, 768 and
+1440 px. Fixed on the way: the floating WhatsApp button now sits in a labelled region; 44 px targets
+for the skip link, logo, desktop menu links, "Start a job", "Clear all filters", the case-study
+service links and "Add more". Animations (tickers, the rotating badge) stand still under reduced
+motion.
+
+**Devices pass** (`npm run devices`, new): every route on 11 devices from a 320 px phone to a
+1920 px desktop, portrait and landscape, with touch on phones and tablets. **Menu pass** (`npm run
+menu`, new): at 320 to 1920 px the right navigation shows; Enter opens the menu with focus inside and
+the page locked; Tab and Shift+Tab stay inside; Escape closes it and returns focus; a link navigates
+and closes it; the current page is marked; the header stays at the top; the quote badge counts.
+
+**Robustness:** a section the visitor has already scrolled past (for example after Back restores a
+position mid-page) now shows at once instead of waiting to be scrolled past again.
+
+**Motion:** kept to what's there (reveals, tickers, the rotating badge, hover zooms), all honouring
+reduced motion. The smooth-scroll library and page transitions considered in section 4 were left
+out: they add weight on phones on mobile data for little gain.
+
+## Phase 6: launch preparation (3 Oct 2026)
+
+**Built:**
+- `next.config.ts`: `output: 'standalone'` (a self-contained server for the VPS) and redirects from
+  the old Lovable site: `/checkout` and `/order-confirmation` → `/quote` (permanent); `/auth` and
+  `/admin/*` → `/` (temporary, until our own back office exists).
+- `deploy/`: the nginx site (`nginx/noorcom-branding.conf`: HTTPS, www → bare domain, HSTS, gzip, a
+  year's cache for `/_next/static`), the systemd service (`systemd/noorcom-branding-web.service`,
+  port **4301**, clear of Noorcom Computers' 4200 and 4201), env templates (`env/`), the deploy
+  script (`scripts/deploy-branding.sh`: build first, switch one link, roll back automatically if the
+  new release doesn't answer within 30 s, keep 5 releases; `--install` the first time, `--rollback`
+  to go back) and a smoke test (`scripts/smoke-branding.sh`).
+- `.env.example` with `NEXT_PUBLIC_SITE_URL`; `.gitattributes` keeps server files with LF endings.
+
+### Deploying to the VPS
+
+The same VPS and layout as Noorcom Computers (`/var/www/<site>/releases`, a `current` link, env
+files in `/etc/<site>/`). As root:
+
+1. `git clone https://github.com/Noorcom-Network-NNL/noorcom-branding.git /var/www/noorcom-branding/repo`
+2. `bash /var/www/noorcom-branding/repo/deploy/scripts/deploy-branding.sh --install`. The first run
+   writes `/etc/noorcom-branding/web.env` and `hosts.env` from the examples and stops: fill them in
+   (staging host names first), then run `--install` again.
+3. Point the staging name's DNS at the VPS, then get the certificate:
+   `certbot certonly --webroot -w /var/www/letsencrypt -d <SITE_HOST> -d <WWW_HOST>`, then
+   `nginx -t && systemctl reload nginx`.
+4. `bash /var/www/noorcom-branding/repo/deploy/scripts/deploy-branding.sh`, and wait for
+   `[deploy] live: <release>`.
+5. `bash /var/www/noorcom-branding/repo/deploy/scripts/smoke-branding.sh https://<SITE_HOST>`
+6. Every later deploy: steps 4 and 5. To go back: `deploy-branding.sh --rollback`.
+
+Node.js 22 or newer must be on the VPS (it already is for Noorcom Computers). The build needs about
+1 GB of free memory.
+
+### Launch checklist
+
+Content (the site says "Sample" and "Draft" until this is done):
+- [ ] Real job photos replace the placeholders; the 8 sample projects replaced by real case studies
+      (`src/lib/api/data/projects.ts`), or the Work section trimmed to the real ones.
+- [ ] The refreshed logo in `components/layout/Logo.tsx`, `app/icon.svg`, `app/apple-icon.tsx` and
+      `app/opengraph-image.tsx`.
+- [ ] Real client logos with permission (`clients` in `projects.ts`), or the Clients strip removed.
+- [ ] Every `TODO(business)` in the code confirmed: service wording, turnaround times, minimum
+      quantities per product, product options, opening hours, social links, the About story.
+- [ ] Privacy and Terms reviewed by a lawyer; then remove the draft notice in
+      `components/legal/LegalPage.tsx`.
+
+Backend (separate project; until then the forms work but nothing is delivered):
+- [ ] Our own API implementing `SiteApi` (`submitQuote`, `sendMessage`): storing requests, emailing
+      Noorcom and the customer, artwork upload. Swap it in at `src/lib/api/index.ts`.
+- [ ] Then a strict Content-Security-Policy (see the TODO in `next.config.ts`).
+
+Switching over:
+- [ ] Deployed on the VPS under a staging name and checked: `smoke-branding.sh`, plus `npm run a11y`,
+      `npm run devices` and `npm run menu` with `BASE=https://<staging host>`.
+- [ ] `web.env` and `hosts.env` changed to `noorcombranding.co.ke`; `--install` again, the
+      certificate for the real names, deploy, smoke test.
+- [ ] DNS for `noorcombranding.co.ke` and `www` moved from Lovable to the VPS (lower the TTL a day
+      before). Keep the Lovable project until the new site has run for a week.
+- [ ] The old site's admin and POS (Supabase) stop being reachable at the switch: make sure nobody at
+      Noorcom still needs them, or export their data first.
+- [ ] Google Search Console: verify the domain and submit `https://noorcombranding.co.ke/sitemap.xml`.
+- [ ] Google Business Profile: the same address, phone and website.
+- [ ] Share a link on WhatsApp to check the preview image and text.
+
 ## 9. Decisions log
 
 Newest first.
@@ -366,6 +480,8 @@ Newest first.
 | 3 Oct 2026 | **The shop is "add to quote" only**: no cart payment or M-Pesa. Products go into a quote list; the quote form sends it with artwork, quantities and deadline | Owner's decision; most branding jobs need artwork and a proof first |
 | 3 Oct 2026 | **Logo:** Noorcom already has a refreshed logo; the owner will share it. Until then the site uses a text wordmark ("NOORCOM / BRANDING") in one component, so the real logo drops in one place. We do not design a new logo | Owner's decision |
 | 3 Oct 2026 | Prices are per piece; minimum order 50 for every product until confirmed | Owner's decision |
+| 3 Oct 2026 | Deploy on our VPS beside Noorcom Computers, same layout, port 4301; old Lovable checkout and order pages redirect to `/quote`, its admin and sign-in to the home page | Owner's decision (VPS like the other projects) |
+| 3 Oct 2026 | No smooth-scroll library or page transitions | Weight on phones on mobile data; the site already has motion that respects reduced motion |
 | 3 Oct 2026 | Shop quantities: the minimum (50 for now) is enforced on the product page, in the quote form and on the server; prices shown are estimates "before design and delivery", confirmed in the quote | Prices per piece with a minimum, owner's decision |
 | 3 Oct 2026 | The service ticker's separators are small orange circles | Owner's request |
 | 3 Oct 2026 | Quote requests: artwork file names travel with the request, the files themselves go by WhatsApp or email until our backend takes uploads | No backend in scope yet |

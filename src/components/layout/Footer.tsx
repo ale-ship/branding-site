@@ -19,7 +19,7 @@ export async function Footer() {
             <p className="max-w-sm text-body">{site.description}</p>
             <Link
               href={quoteHref}
-              className="group font-display text-3xl font-bold text-heading underline decoration-accent decoration-2 underline-offset-8 transition-colors hover:text-accent-ink sm:text-4xl"
+              className="group inline-flex min-h-12 items-center font-display text-3xl font-bold text-heading underline decoration-accent decoration-2 underline-offset-8 transition-colors hover:text-accent-ink sm:text-4xl"
             >
               Start a job →
             </Link>
@@ -84,8 +84,16 @@ export async function Footer() {
         </div>
 
         <div className="mt-16 flex flex-col gap-4 border-t border-border pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © {new Date().getFullYear()} {site.name}. All rights reserved.
+          <p className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            <span>
+              © {new Date().getFullYear()} {site.name}. All rights reserved.
+            </span>
+            <Link href="/privacy" className="inline-flex min-h-11 items-center hover:text-heading">
+              Privacy
+            </Link>
+            <Link href="/terms" className="inline-flex min-h-11 items-center hover:text-heading">
+              Terms
+            </Link>
           </p>
           <p className="flex items-center gap-3">
             <CmykDots />

@@ -1,0 +1,23 @@
+# Noorcom Branding website: the Next.js standalone server on 127.0.0.1:4301 (nginx in front).
+# RUNBOOK.md, "Deploying to the VPS". Port 4301 keeps clear of Noorcom Computers (4200, 4201).
+[Unit]
+Description=Noorcom Branding website
+After=network.target
+
+[Service]
+User=noorcom-branding
+Group=noorcom-branding
+WorkingDirectory=/var/www/noorcom-branding/current
+EnvironmentFile=/etc/noorcom-branding/web.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# next/image keeps its optimised copies under .next/cache.
+ReadWritePaths=-/var/www/noorcom-branding/current/.next/cache
+
+[Install]
+WantedBy=multi-user.target

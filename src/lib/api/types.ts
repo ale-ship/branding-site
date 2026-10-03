@@ -136,6 +136,9 @@ export type QuoteRequest = {
 
 export type QuoteReceipt = { reference: string };
 
+/** A message from the contact form, already validated (src/lib/contact.ts). */
+export type ContactMessage = { name: string; phone: string; email: string; message: string };
+
 export interface SiteApi {
   listServices(): Promise<Service[]>;
   getService(slug: string): Promise<Service | null>;
@@ -146,4 +149,5 @@ export interface SiteApi {
   getProduct(slug: string): Promise<Product | null>;
   listClients(): Promise<Client[]>;
   submitQuote(request: QuoteRequest): Promise<QuoteReceipt>;
+  sendMessage(message: ContactMessage): Promise<QuoteReceipt>;
 }

@@ -49,7 +49,7 @@ export function CaseStudy({ project, services, next }: { project: Project; servi
               {serviceNames.map((service, i) => (
                 <span key={service.slug}>
                   {i > 0 && ', '}
-                  <Link href={`/services/${service.slug}`} className="underline decoration-border-strong underline-offset-4 hover:decoration-ink">
+                  <Link href={`/services/${service.slug}`} className="inline-flex min-h-11 items-center underline decoration-border-strong underline-offset-4 hover:decoration-ink">
                     {service.name}
                   </Link>
                 </span>

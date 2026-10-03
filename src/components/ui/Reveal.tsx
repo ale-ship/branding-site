@@ -22,7 +22,8 @@ export function Reveal({ children, as: Tag = 'div', delay = 0, className }: Prop
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) {
+        // Also reveal anything already scrolled past (e.g. Back restoring a position mid-page).
+        if (entry && (entry.isIntersecting || entry.boundingClientRect.bottom < 0)) {
           el.dataset.visible = 'true';
           observer.disconnect();
         }

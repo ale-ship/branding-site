@@ -10,13 +10,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "photos": "node scripts/fetch-placeholder-photos.mjs"
+    "photos": "node scripts/fetch-placeholder-photos.mjs",
+    "a11y": "node scripts/check-a11y.mjs",
+    "devices": "node scripts/check-devices.mjs",
+    "menu": "node scripts/check-menu.mjs"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "axe-core": "^4.13.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4.3.3",

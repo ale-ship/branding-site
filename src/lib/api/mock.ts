@@ -1,7 +1,7 @@
 import { products } from './data/products';
 import { clients, projects } from './data/projects';
 import { services } from './data/services';
-import type { ListOptions, QuoteRequest, SiteApi } from './types';
+import type { ContactMessage, ListOptions, QuoteRequest, SiteApi } from './types';
 
 function pick<T extends { featured: boolean }>(items: T[], { featured, limit }: ListOptions = {}): T[] {
   const filtered = featured === undefined ? items : items.filter((item) => item.featured === featured);
@@ -14,12 +14,16 @@ function pick<T extends { featured: boolean }>(items: T[], { featured, limit }: 
  */
 export const receivedQuotes: (QuoteRequest & { reference: string; receivedAt: string })[] = [];
 
-/** `NB-` and six digits, unique within this process. */
-function quoteReference(): string {
+/** Contact-form messages received by the mock, newest last. */
+export const receivedMessages: (ContactMessage & { reference: string; receivedAt: string })[] = [];
+
+/** A prefix and six digits, unique among everything received in this process. */
+function newReference(prefix: 'NB' | 'NM'): string {
+  const used = new Set([...receivedQuotes, ...receivedMessages].map((r) => r.reference));
   let reference: string;
   do {
-    reference = `NB-${String(Math.floor(100000 + Math.random() * 900000))}`;
-  } while (receivedQuotes.some((q) => q.reference === reference));
+    reference = `${prefix}-${String(Math.floor(100000 + Math.random() * 900000))}`;
+  } while (used.has(reference));
   return reference;
 }
 
@@ -50,8 +54,13 @@ export const mockApi: SiteApi = {
     return structuredClone(clients);
   },
   async submitQuote(request) {
-    const reference = quoteReference();
+    const reference = newReference('NB');
     receivedQuotes.push({ ...structuredClone(request), reference, receivedAt: new Date().toISOString() });
+    return { reference };
+  },
+  async sendMessage(message) {
+    const reference = newReference('NM');
+    receivedMessages.push({ ...structuredClone(message), reference, receivedAt: new Date().toISOString() });
     return { reference };
   },
 };
