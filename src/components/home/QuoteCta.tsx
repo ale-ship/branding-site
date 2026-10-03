@@ -4,7 +4,8 @@ import { Container } from '../ui/Container';
 import { CropMarks, Eyebrow } from '../ui/PrintMarks';
 import { Reveal } from '../ui/Reveal';
 
-export function QuoteCta() {
+/** The orange "Have a job in mind?" block. `href` lets a service page preselect its service. */
+export function QuoteCta({ href = quoteHref }: { href?: string }) {
   return (
     <section aria-labelledby="cta-title" className="pb-20 sm:pb-32">
       <Container>
@@ -18,7 +19,7 @@ export function QuoteCta() {
             Send us the brief, the quantity and your deadline. We’ll come back with a price and a proof.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <ButtonLink href={quoteHref} variant="primary">
+            <ButtonLink href={href} variant="primary">
               Get a quote
             </ButtonLink>
             <ButtonLink href={site.whatsappHref} variant="outline" external>

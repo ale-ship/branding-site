@@ -6,14 +6,14 @@ next. Update it at the end of every task.
 
 ## Where we are right now
 
-- **Phases 1 and 2 are built** (3 Oct 2026): the home page, the Work archive and the case-study
-  page. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
+- **Phases 1 to 3 are built** (3 Oct 2026): the home page, the Work archive and case studies, the
+  Services pages and the quote form. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
 - **Scope for now is design and frontend only.** No backend, no Supabase, nothing from Lovable.
   Data comes from local typed content behind one data interface (`SiteApi`, mock only), so our own
   backend can plug in later without page changes.
-- **Pages so far:** `/`, `/work`, `/work/[slug]`. Links to Services, Shop, About, Contact and Quote
-  show the styled 404 until their phases are built.
-- **Next:** Phase 3 (Services pages and the quote form).
+- **Pages so far:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/quote`. Links
+  to Shop, About, Contact and Privacy show the styled 404 until their phases are built.
+- **Next:** Phase 4 (Shop: catalogue, product pages and the quote list that feeds `/quote`).
 
 ## Start here on a new machine
 
@@ -202,7 +202,7 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | 0 Research | Audit the live site, review inspiration, propose direction, sitemap, stack; write this runbook | **Done 3 Oct 2026** |
 | 1 Foundation | Owner's answers recorded; Next.js app; mock data interface; placeholder photos; tokens, fonts, grid; header (overlay menu), footer; home page with placeholder work | **Done 3 Oct 2026** |
 | 2 Work | `/work` archive with filters; case-study template (sample content); real case studies when Noorcom sends them | **Built 3 Oct 2026**; real case studies to come |
-| 3 Services and quote | Service pages; `/quote` flow sending to email and WhatsApp | To do |
+| 3 Services and quote | Service pages; `/quote` form (mock: the request is checked and given a reference; sending to email and WhatsApp needs our backend) | **Built 3 Oct 2026** |
 | 4 Shop | Product catalogue and product pages; quote list (drawer) that feeds `/quote` | To do |
 | 5 Content and polish | About, contact, legal, 404; SEO, social images, JSON-LD; motion pass; accessibility and performance pass | To do |
 | 6 Launch | Hosting, our own backend and back office (separate project, later), DNS cutover from Lovable, redirects, Google Search Console | Later |
@@ -275,11 +275,51 @@ logic is pure functions in `src/lib/work.ts` with tests in `work.test.ts`. The p
 
 **Also on 3 Oct 2026:** the workshop printer photo is back on the home page as a full-width band
 after the service ticker, with the three facts under it; registration marks removed everywhere (the
-ticker now uses small orange squares); the shared address in the footer (links to Google Maps) and in
+ticker now uses small orange circles); the shared address in the footer (links to Google Maps) and in
 site-wide `LocalBusiness` JSON-LD; extra footer bottom space so the WhatsApp button never covers it.
 
 **Checked:** lint, typecheck, 22 tests, build. `/`, `/work`, `/work?service=apparel` and a case study
 emulated at 320, 390, 768, 1024, 1440 and 1920 px: no horizontal overflow.
+
+## Phase 3: what was built (3 Oct 2026)
+
+**Routes:**
+
+| Route | What it shows | Notes |
+| --- | --- | --- |
+| `/services` | The seven services as large numbered cards (photo, name, summary, what's included), then How a job runs and the quote block | Static |
+| `/services/[slug]` | Back link, "Service 0X", name, intro, Get a quote (service preselected) and WhatsApp; photo with crop marks; turnaround, smallest job, coverage; What we make beside Materials and finishes; related work (links to `/work?service=`); How a job runs; matching shop items; FAQ (native `details`, keyboard friendly); quote block with the service preselected | Static for every service. `Service` and `FAQPage` JSON-LD |
+| `/quote` | The quote form in three steps (The job → Artwork and timing → Your details), with "What happens next" and contact options beside it | `?service=<slug>` preselects the service; unknown values are ignored |
+
+**The quote form** (`components/quote/QuoteForm.tsx`, client):
+- Step 1: service (radio cards), quantity, description. Step 2: artwork files (choose or drag and
+  drop; PDF, AI, EPS, SVG, PSD, CDR, PNG, JPG, TIFF, ZIP; up to 5 files of 25 MB), "I need you to
+  design it", deadline (optional, not in the past, Nairobi date), collect / deliver / install, and
+  where (required for deliver and install). Step 3: name, company (optional), Kenyan phone, email
+  (required only if email is the preferred reply), preferred reply (WhatsApp, phone, email).
+- Each step is checked before Next. Errors sit under their field, focus moves to the first one, and a
+  live region says how many need attention. On success the form becomes a confirmation with the
+  reference (`NB-` and six digits), focus moves to it, and "Continue on WhatsApp" opens a chat
+  that quotes the reference.
+- **Rules live in `src/lib/quote.ts`** (pure, tested in `quote.test.ts`): Kenyan phone
+  normalisation to `+254…`, field checks per step, artwork checks, and `coerceDraft`, which rebuilds
+  a clean draft from whatever the browser sent.
+- **Submitting** goes through a server action (`src/app/quote/actions.ts`) that coerces and checks
+  everything again, drops unknown product slugs and calls `api.submitQuote`. The mock keeps requests
+  in memory (`receivedQuotes`) for as long as the server runs.
+- **Not yet (needs our backend):** storing requests, emailing Noorcom and the customer, WhatsApp
+  notifications and uploading the artwork files. Until then only the file names and sizes travel;
+  the confirmation asks the customer to send the files on WhatsApp or by email with the reference.
+
+**Data:** `Service` gained `intro`, `materials`, `turnaround`, `minimum`, `productCategories` and
+`faqs` (all draft wording, `TODO(business)`); `SiteApi` gained `getService` and `submitQuote`. The
+product card is shared (`components/shop/ProductCard.tsx`); `ShopTeaser` and `QuoteCta` take
+optional props for service pages.
+
+**Checked:** lint, typecheck, 53 tests, build. `/services`, two service pages and `/quote` emulated at
+320 to 1920 px with no horizontal overflow. The form driven end to end in Chrome at 390 and 1440 px:
+empty fields, a missing install location, a past date and a bad phone number are each caught with
+focus on the field; a valid request returns a reference and focus moves to the confirmation.
 
 ## 9. Decisions log
 
@@ -290,6 +330,8 @@ Newest first.
 | 3 Oct 2026 | **The shop is "add to quote" only**: no cart payment or M-Pesa. Products go into a quote list; the quote form sends it with artwork, quantities and deadline | Owner's decision; most branding jobs need artwork and a proof first |
 | 3 Oct 2026 | **Logo:** Noorcom already has a refreshed logo; the owner will share it. Until then the site uses a text wordmark ("NOORCOM / BRANDING") in one component, so the real logo drops in one place. We do not design a new logo | Owner's decision |
 | 3 Oct 2026 | Prices are per piece; minimum order 50 for every product until confirmed | Owner's decision |
+| 3 Oct 2026 | The service ticker's separators are small orange circles | Owner's request |
+| 3 Oct 2026 | Quote requests: artwork file names travel with the request, the files themselves go by WhatsApp or email until our backend takes uploads | No backend in scope yet |
 | 3 Oct 2026 | **Address:** Chuka Elimu Plaza, 1st Floor, Loita Street, Nairobi, the same premises as Noorcom Computers | Owner's decision |
 | 3 Oct 2026 | **No registration (crosshair) marks** anywhere on the site | Owner's request |
 | 3 Oct 2026 | The workshop printer photo stays on the home page, as a full-width band after the service ticker | Owner's request |

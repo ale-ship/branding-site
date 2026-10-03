@@ -20,8 +20,18 @@ export type Service = {
   name: string;
   /** One line for lists. */
   summary: string;
+  /** A short paragraph for the service page. */
+  intro: string;
   /** Things we make under this service, shown as tags. */
   includes: string[];
+  materials: string[];
+  /** Typical time from approved proof to finished job, e.g. "3 to 5 working days". */
+  turnaround: string;
+  /** Smallest job we take, e.g. "50 pieces" or "One sign". */
+  minimum: string;
+  /** Shop categories that belong to this service, for "Ready to brand" on its page. */
+  productCategories: ProductCategory[];
+  faqs: { question: string; answer: string }[];
   image: Photo;
 };
 
@@ -82,11 +92,43 @@ export type Client = { name: string; logo: Photo | null };
 
 export type ListOptions = { featured?: boolean; limit?: number };
 
+export type FulfilmentMethod = 'collect' | 'deliver' | 'install';
+export type ContactChannel = 'whatsapp' | 'phone' | 'email';
+
+/** Artwork the customer attached. Only the details travel for now; see RUNBOOK.md (Phase 3). */
+export type ArtworkFile = { name: string; size: number; type: string };
+
+/** A quote request as sent from /quote, already validated (src/lib/quote.ts). */
+export type QuoteRequest = {
+  service: ServiceSlug;
+  /** Shop items the customer added, by product slug (Phase 4). */
+  products: string[];
+  quantity: number;
+  details: string;
+  artwork: ArtworkFile[];
+  needsDesign: boolean;
+  /** YYYY-MM-DD, or empty for "no fixed date". */
+  deadline: string;
+  fulfilment: FulfilmentMethod;
+  /** Where to deliver or install; empty when collecting. */
+  location: string;
+  name: string;
+  company: string;
+  /** Normalised to +2547XXXXXXXX / +2541XXXXXXXX. */
+  phone: string;
+  email: string;
+  preferredContact: ContactChannel;
+};
+
+export type QuoteReceipt = { reference: string };
+
 export interface SiteApi {
   listServices(): Promise<Service[]>;
+  getService(slug: string): Promise<Service | null>;
   /** Newest first. */
   listProjects(options?: ListOptions): Promise<Project[]>;
   getProject(slug: string): Promise<Project | null>;
   listProducts(options?: ListOptions): Promise<Product[]>;
   listClients(): Promise<Client[]>;
+  submitQuote(request: QuoteRequest): Promise<QuoteReceipt>;
 }

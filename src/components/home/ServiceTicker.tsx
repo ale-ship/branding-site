@@ -1,7 +1,7 @@
 import type { Service } from '@/lib/api';
 import { Marquee } from '../ui/Marquee';
 
-/** A big, slow ticker of service names, separated by small orange squares. */
+/** A big, slow ticker of service names, separated by small orange circles. */
 export function ServiceTicker({ services }: { services: Service[] }) {
   return (
     <section aria-label="What we make" className="border-b border-border py-8 sm:py-12">
@@ -12,7 +12,7 @@ export function ServiceTicker({ services }: { services: Service[] }) {
             className="flex items-center gap-8 pr-8 font-display text-[clamp(2.25rem,6vw,5rem)] leading-none font-bold tracking-[-0.03em] text-heading"
           >
             {service.name}
-            <span aria-hidden className="size-3 shrink-0 bg-accent sm:size-4" />
+            <span aria-hidden className="size-3 shrink-0 rounded-pill bg-accent sm:size-4" />
           </span>
         ))}
       />

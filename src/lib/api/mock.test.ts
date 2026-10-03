@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { mockApi } from './mock';
+import { mockApi, receivedQuotes } from './mock';
 import type { Photo } from './types';
 
 const publicDir = path.resolve(__dirname, '..', '..', '..', 'public');
@@ -57,6 +57,32 @@ describe('mock data', () => {
   it('lists projects newest first', async () => {
     const years = (await mockApi.listProjects()).map((p) => p.year);
     expect(years).toEqual([...years].sort((a, b) => b - a));
+  });
+
+  it('finds a service by slug', async () => {
+    expect((await mockApi.getService('apparel'))?.name).toBe('Apparel printing');
+    expect(await mockApi.getService('rockets')).toBeNull();
+  });
+
+  it("gives every service a page's worth of content", async () => {
+    for (const s of await mockApi.listServices()) {
+      expect(s.intro.length, s.slug).toBeGreaterThan(40);
+      expect(s.materials.length, s.slug).toBeGreaterThan(0);
+      expect(s.faqs.length, s.slug).toBeGreaterThan(0);
+    }
+  });
+
+  it('stores a quote request and returns a unique reference', async () => {
+    const request = {
+      service: 'apparel' as const, products: [], quantity: 100, details: 'Crew shirts', artwork: [], needsDesign: false,
+      deadline: '', fulfilment: 'collect' as const, location: '', name: 'Amina', company: '', phone: '+254722530301',
+      email: '', preferredContact: 'whatsapp' as const,
+    };
+    const a = await mockApi.submitQuote(request);
+    const b = await mockApi.submitQuote(request);
+    expect(a.reference).toMatch(/^NB-\d{6}$/);
+    expect(b.reference).not.toBe(a.reference);
+    expect(receivedQuotes.at(-1)?.reference).toBe(b.reference);
   });
 
   it('filters and limits', async () => {
