@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const [product, products, services] = await Promise.all([api.getProduct(slug), api.listProducts(), api.listServices()]);
+  const [product, products, services, orderProducts] = await Promise.all([api.getProduct(slug), api.listProducts(), api.listServices(), api.listOrderProducts()]);
   if (!product) notFound();
   const service = services.find((s) => s.slug === product.service);
 
@@ -110,6 +110,7 @@ export default async function ProductPage({ params }: Props) {
               pricePerPiece={product.pricePerPiece}
               minQuantity={product.minQuantity}
               options={product.options}
+              orderSlug={orderProducts.find((p) => p.mechanism === 'A' && p.shopSlug === product.slug)?.slug}
             />
           </div>
 

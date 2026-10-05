@@ -38,7 +38,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: '/checkout', destination: '/quote', permanent: true },
-      { source: '/order-confirmation', destination: '/quote', permanent: true },
+      // The old site's confirmation page: orders are now found and tracked under /order.
+      { source: '/order-confirmation', destination: '/order', permanent: true },
       { source: '/auth', destination: '/', permanent: false },
       { source: '/admin', destination: '/', permanent: false },
       { source: '/admin/:path*', destination: '/', permanent: false },

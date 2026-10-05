@@ -33,6 +33,11 @@
   --accent-hover: #e06f12;
   --accent-ink: #a94c08;
 
+  /* The logo's red (5 Oct 2026). `brand-red` (pure, 4:1 on white) only for decoration: bars and
+     edges. `brand-red-ink` (AA, 5.9:1) for any red text or white text on red, the wordmark included. */
+  --brand-red: #ff0001;
+  --brand-red-ink: #c8000f;
+
   --link: #1c6fb8;
   --link-on-navy: #7cc0f5;
   --focus: #1c6fb8;
@@ -69,6 +74,8 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
+  --color-brand-red: var(--brand-red);
+  --color-brand-red-ink: var(--brand-red-ink);
   --color-link: var(--link);
   --color-link-on-navy: var(--link-on-navy);
   --color-focus: var(--focus);

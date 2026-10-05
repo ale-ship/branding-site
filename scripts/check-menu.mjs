@@ -87,7 +87,7 @@ for (const width of WIDTHS) {
     check(`menu says it is expanded ${at}`, (await ev(`document.querySelector('${menuButton}').getAttribute('aria-expanded')`)) === 'true');
     check(`focus moves into the menu ${at}`, await ev(focusInDialog));
     check(`page behind is locked ${at}`, (await ev(`document.documentElement.style.overflow`)) === 'hidden');
-    check(`all five links are in the menu ${at}`, (await ev(`document.querySelectorAll('#site-menu nav a').length`)) === 5);
+    check(`all six links are in the menu ${at}`, (await ev(`document.querySelectorAll('#site-menu nav a').length`)) === 6);
     check(`menu fits the screen without sideways scroll ${at}`, (await ev(`(() => { const m = document.getElementById('site-menu'); return m.scrollWidth <= m.clientWidth; })()`)) === true);
 
     let stayed = true;

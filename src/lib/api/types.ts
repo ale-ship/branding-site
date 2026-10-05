@@ -3,6 +3,18 @@
  * never to the files in ./data. Today the mock serves it; our own backend will later.
  */
 
+import type {
+  Order,
+  OrderAccess,
+  OrderCategory,
+  OrderInput,
+  OrderPayment,
+  OrderProduct,
+  PriceEstimate,
+  PriceRequest,
+} from './order-types';
+
+
 /** A photo in public/images. `alt` describes it for screen readers. */
 export type Photo = { src: string; alt: string };
 
@@ -150,4 +162,21 @@ export interface SiteApi {
   listClients(): Promise<Client[]>;
   submitQuote(request: QuoteRequest): Promise<QuoteReceipt>;
   sendMessage(message: ContactMessage): Promise<QuoteReceipt>;
+
+  // Online ordering (docs/ORDER_WORKFLOW_SPEC.md). The order methods throw OrderError.
+  listOrderCategories(): Promise<OrderCategory[]>;
+  listOrderProducts(): Promise<OrderProduct[]>;
+  getOrderProduct(slug: string): Promise<OrderProduct | null>;
+  /** The live price for a brief, quantity, deadline tier and handover. */
+  priceEstimate(request: PriceRequest): Promise<PriceEstimate>;
+  /** Prices the order again (the browser's price is never trusted) and opens it, awaiting payment. */
+  createOrder(input: OrderInput): Promise<{ ref: string; token: string }>;
+  /** Sends an M-Pesa STK Push for what's due now. The order moves on only when the callback confirms. */
+  startPayment(ref: string, access: OrderAccess, phone: string): Promise<OrderPayment>;
+  getOrder(ref: string, access: OrderAccess): Promise<Order | null>;
+  approveProof(ref: string, access: OrderAccess, version: number): Promise<Order>;
+  requestChanges(ref: string, access: OrderAccess, version: number, comments: string): Promise<Order>;
+  bookSurvey(ref: string, access: OrderAccess, date: string): Promise<Order>;
 }
+
+export type * from './order-types';

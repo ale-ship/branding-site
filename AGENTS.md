@@ -18,10 +18,11 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - Signature details are in `components/ui/PrintMarks.tsx`: `CropMarks`, `CmykDots`, `Swatches`, `Eyebrow`. Use them; don't invent new decoration. No registration (crosshair) marks: the owner asked for them to be removed (3 Oct 2026).
 - Motion: `Reveal` for scroll reveals (plain markup; the one `RevealObserver` in the root layout does the work, so don't add a client component per section), `Marquee`, `RotatingBadge`. Everything must stand still under `prefers-reduced-motion` and show without JavaScript.
 - No people in any photo (owner, 3 Oct 2026): show the work, the products and the machines. Applies to placeholders and every new image; crop out people in the background (`rect` in the photo script).
-- The shop is add-to-quote only: prices per piece, a minimum quantity, no payment. Items go into the quote list (`useQuoteList`, rules in `src/lib/quote-list.ts`); never add a cart or checkout.
+- Online ordering with M-Pesa (docs/ORDER_WORKFLOW_SPEC.md; approved to build 5 Oct 2026, replacing the 3 Oct add-to-quote-only rule): orders and payments go only through `SiteApi` (`priceEstimate`, `createOrder`, `startPayment`, `getOrder`, `approveProof`, `requestChanges`, `bookSurvey`). Payments are **mocked** until our backend exists; never call M-Pesa, Absa or Daraja from the site. An order only moves forward on a confirmed payment callback, never on the browser saying "paid". Prices come from `src/lib/pricing.ts` (pure; the form uses it for the instant price, the server recomputes and is the one that counts).
+- The quote list (`useQuoteList`, `src/lib/quote-list.ts`) and the quote form stay for "ask us first" requests.
 - Quote rules live in `src/lib/quote.ts` (shared by the form and the server action). The server action (`src/app/quote/actions.ts`) must `coerceDraft` and validate again; never trust the browser. Pages link to the form with `serviceQuoteHref(slug)` to preselect a service.
 - Sample projects carry `sample: true` and show a "Sample" tag until real work replaces them.
-- The logo is a stand-in wordmark in `components/layout/Logo.tsx`; the real logo replaces it there only.
+- The logo (5 Oct 2026) is in `public/brand/`: `nb-logo.png` (full lockup) and `nb-mark.png` (the N mark). Use it only through `components/layout/Logo.tsx`.
 - Prefer server components; add `'use client'` only to interactive leaves.
 - Don't pass `hidden` to a component whose base classes set `display` (ButtonLink is `inline-flex`): wrap it instead.
 - Responsive: mobile first; check 320, 360, 390, 768, 1024, 1440 and 1920 px with no horizontal overflow; 44 px touch targets; visible focus; alt text on every content image.

@@ -40,6 +40,25 @@ const seedQuote = `localStorage.setItem('noorcom-branding.quote-list.v1', ${JSON
   ]),
 )});`;
 
+
+/** Fills and sends the design-only order form (the shortest), landing on the new order's page. */
+const placeOrder = `(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const set = (sel, val) => {
+    const el = document.querySelector(sel);
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, val);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  set('#brief-format', 'A3 poster');
+  for (let i = 0; i < 3; i++) { document.querySelector('form button[type=submit]').click(); await wait(500); }
+  set('#name', 'Amina Otieno');
+  set('#phone', '0722 530 303');
+  set('#email', 'amina@example.co.ke');
+  document.querySelector('#agree').click();
+  await wait(100);
+  document.querySelector('form button[type=submit]').click();
+})()`;
+
 /**
  * Each route, with optional setup before load and an action after it (to put the page into the
  * state worth checking, e.g. a form with errors showing).
@@ -59,6 +78,20 @@ const ROUTES = [
   { path: '/quote' },
   { path: '/quote', name: 'quote with errors', action: `document.querySelector('form button[type=submit]').click()` },
   { path: '/quote', name: 'quote with shop items', setup: seedQuote },
+  { path: '/order' },
+  { path: '/order/new?product=business-cards', name: 'order form' },
+  { path: '/order/new?product=business-cards', name: 'order form with errors', action: `document.querySelector('form button[type=submit]').click()` },
+  { path: '/order/new?product=t-shirt-printing', name: 'apparel order form' },
+  { path: '/order/new?product=indoor-branding-job', name: 'site job order form' },
+  { path: '/order/new?product=poster-design', name: 'order page (placed)', action: placeOrder, waitFor: `location.pathname.startsWith('/order/NB-') && !!document.querySelector('#pay-title')` },
+  {
+    path: '/order/new?product=poster-design',
+    name: 'invoice',
+    action: placeOrder,
+    // Once the order page is up, follow its invoice link; done when the invoice has loaded.
+    waitFor: `(location.pathname.endsWith('/invoice') && !!document.querySelector('article h1')) || (!!document.querySelector('a[href*="/invoice"]') && (document.querySelector('a[href*="/invoice"]').click(), false))`,
+  },
+  { path: '/order/NB-000000', name: 'find your order' },
   { path: '/about' },
   { path: '/contact' },
   { path: '/contact', name: 'contact with errors', action: `document.querySelector('form button[type=submit]').click()` },

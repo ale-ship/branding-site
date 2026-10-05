@@ -37,15 +37,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ServicePage({ params }: Props) {
   const { slug } = await params;
-  const [service, services, projects, products] = await Promise.all([
+  const [service, services, projects, products, orderCategories, orderProducts] = await Promise.all([
     api.getService(slug),
     api.listServices(),
     api.listProjects(),
     api.listProducts(),
+    api.listOrderCategories(),
+    api.listOrderProducts(),
   ]);
   if (!service) notFound();
 
   const index = services.findIndex((s) => s.slug === service.slug);
+  // Online ordering for this service: a site job books a survey; anything else links to its products.
+  const category = orderCategories.find((c) => c.service === service.slug);
+  const siteJob = orderProducts.find((p) => p.mechanism === 'B' && p.category === category?.slug);
+  const orderEntry = siteJob
+    ? { href: `/order/new?product=${siteJob.slug}`, label: 'Book a site survey' }
+    : category
+      ? { href: `/order#cat-${category.slug}`, label: 'Order online' }
+      : null;
   const work = relatedProjects(service, projects);
   const shop = relatedProducts(service, products);
 
@@ -95,7 +105,10 @@ export default async function ServicePage({ params }: Props) {
         <Reveal delay={100} className="flex flex-col gap-7">
           <p className="text-lg text-body">{service.intro}</p>
           <div className="flex flex-wrap gap-3">
-            <ButtonLink href={serviceQuoteHref(service.slug)}>Get a quote</ButtonLink>
+            {orderEntry && <ButtonLink href={orderEntry.href}>{orderEntry.label}</ButtonLink>}
+            <ButtonLink href={serviceQuoteHref(service.slug)} variant={orderEntry ? 'outline' : 'primary'}>
+              Get a quote
+            </ButtonLink>
             <ButtonLink href={site.whatsappHref} variant="outline" external>
               WhatsApp us
             </ButtonLink>

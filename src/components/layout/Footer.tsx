@@ -10,12 +10,12 @@ const linkClass = 'inline-flex min-h-11 items-center text-body transition-colors
 export async function Footer() {
   const services = await api.listServices();
   return (
-    <footer className="border-t border-border bg-paper">
+    <footer className="border-t border-border bg-paper print:hidden">
       {/* Extra bottom space so the floating WhatsApp button never covers the last line. */}
       <Container className="pt-16 pb-24 sm:pt-24 sm:pb-28">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div className="flex flex-col items-start gap-6 sm:col-span-2 xl:col-span-1">
-            <Logo />
+            <Logo variant="full" />
             <p className="max-w-sm text-body">{site.description}</p>
             <Link
               href={quoteHref}

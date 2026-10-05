@@ -10,6 +10,8 @@ import { clampQuantity } from '@/lib/shop';
 import { useQuoteList } from './useQuoteList';
 
 type Props = {
+  /** The online-order product for this item, if it can be ordered and paid for online. */
+  orderSlug?: string;
   slug: string;
   name: string;
   pricePerPiece: number;
@@ -21,7 +23,7 @@ type Props = {
  * Options, quantity and "Add to quote" on a product page. There is no payment: the item goes
  * into the quote list and is sent with /quote. The quantity starts at the minimum order.
  */
-export function AddToQuote({ slug, name, pricePerPiece, minQuantity, options }: Props) {
+export function AddToQuote({ orderSlug, slug, name, pricePerPiece, minQuantity, options }: Props) {
   const quoteList = useQuoteList();
   const [chosen, setChosen] = useState<Record<string, string>>(() =>
     Object.fromEntries(options.map((o) => [o.name, o.values[0] ?? ''])),
@@ -132,11 +134,26 @@ export function AddToQuote({ slug, name, pricePerPiece, minQuantity, options }: 
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {orderSlug && (
+          <Link
+            href={`/order/new?${new URLSearchParams([
+              ['product', orderSlug],
+              ['qty', valid ? String(quantity) : String(minQuantity)],
+              ...Object.entries(chosen).map(([k, v]) => ['opt', `${k}:${v}`]),
+            ]).toString()}`}
+            className="group inline-flex min-h-12 items-center justify-center gap-2 bg-ink px-7 font-semibold text-bg transition-colors hover:bg-ink-hover"
+          >
+            Order now
+            <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        )}
         <button
           type="button"
           onClick={add}
           disabled={!valid}
-          className="inline-flex min-h-12 items-center justify-center gap-2 bg-ink px-7 font-semibold text-bg transition-colors hover:bg-ink-hover disabled:opacity-50"
+          className={`inline-flex min-h-12 items-center justify-center gap-2 px-7 font-semibold transition-colors disabled:opacity-50 ${
+            orderSlug ? 'border border-ink text-ink hover:bg-ink hover:text-bg' : 'bg-ink text-bg hover:bg-ink-hover'
+          }`}
         >
           {inList && !added ? 'Update quote' : 'Add to quote'}
         </button>

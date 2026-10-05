@@ -4,7 +4,7 @@ import { site } from '@/lib/site';
 /** Floating WhatsApp button, bottom right on every page. Inside a landmark so it isn't orphaned. */
 export function WhatsAppButton() {
   return (
-    <aside aria-label="Quick contact">
+    <aside aria-label="Quick contact" className="print:hidden">
       <a
         href={site.whatsappHref}
         target="_blank"

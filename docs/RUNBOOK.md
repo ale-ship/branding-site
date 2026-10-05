@@ -9,13 +9,18 @@ next. Update it at the end of every task.
 - **All six phases are done** (3 Oct 2026). The whole site is built; Phase 6 prepared the launch
   (VPS deploy files, redirects from the old site, checklist) but **nothing is deployed to the VPS
   and DNS still points at Lovable**. The launch waits for the VPS and the "Launch checklist" below. Repo: https://github.com/Noorcom-Network-NNL/noorcom-branding, branch `main`.
+- **Online ordering, Phase 1 is built (5 Oct 2026), mocked, and waiting for review**: order catalogue, the
+  4-step order form with a live price, M-Pesa STK Push and Paybill (simulated), the order page and the
+  invoice. See "Online ordering, Phase 1" below and `docs/ORDER_WORKFLOW_SPEC.md`.
 - **Scope for now is design and frontend only.** No backend, no Supabase, nothing from Lovable.
   Data comes from local typed content behind one data interface (`SiteApi`, mock only), so our own
   backend can plug in later without page changes.
 - **Pages:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`, `/shop/[slug]`,
-  `/quote`, `/about`, `/contact`, `/privacy`, `/terms`, plus the 404 and error pages,
+  `/quote`, `/order`, `/order/new`, `/order/[ref]`, `/order/[ref]/invoice`, `/about`, `/contact`,
+  `/privacy`, `/terms`, plus the 404 and error pages,
   `/sitemap.xml`, `/robots.txt`, `/opengraph-image`, icons.
-- **Next:** deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
+- **Next:** the owner reviews online ordering Phase 1 (open questions 4 to 8 below); then spec Phase 2
+  (proofs and production). Also: deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
 
 ## Start here on a new machine
 
@@ -483,12 +488,96 @@ Switching over:
 - [ ] Google Business Profile: the same address, phone and website.
 - [ ] Share a link on WhatsApp to check the preview image and text.
 
+## Online ordering, Phase 1: core ordering (5 Oct 2026)
+
+Built from `docs/ORDER_WORKFLOW_SPEC.md`, Phase 1, **with every payment and message mocked**: no
+money moves and nothing is sent. Stopped here for review.
+
+**What a customer can do now**
+
+| Route | What it does |
+| --- | --- |
+| `/order` | The order catalogue: 10 categories, 21 products, each tagged by mechanism (A "Priced instantly", B "Survey first", C "Design files"), with "from" prices; "Find your order" (order number + phone) |
+| `/order/new?product=<slug>` | The order form in 4 steps: **What you need** (quantity with price tiers, then the product's own brief), **Your brief** (artwork status, logo and assets, brand colours with a picker, fonts, exact wording, style tags, inspiration images and links, notes), **Deadline and delivery** (Economy, Standard, Express, Rush, each with its ready date and total; pickup or delivery by zone), **Your details and payment** (name, company, phone, email, Terms). The price updates live beside the form (folded at the top on phones). `?qty=` and `?opt=Name:Value` prefill from a shop page |
+| `/order/NB-123456?t=<token>` | The order page: pay panel (M-Pesa STK Push with "Check your phone", a 60 s countdown and live status; Paybill as the fallback), progress along the order's track, pieces / stages / revision rounds, survey dates for site jobs, payments with receipts, the order in plain words, history, messages sent (WhatsApp and email), the price agreed, the invoice and "Ask about this order" on WhatsApp. Without the token it asks for the order number and phone |
+| `/order/NB-123456/invoice` | The invoice, laid out after Noorcom's template (INV00870): print or save as PDF |
+
+Ways in: "Order" in the main navigation; **Order now** on shop product pages (carrying the options
+and quantity; Add to quote stays beside it); **Book a site survey** on the indoor, outdoor and
+vehicle service pages, **Order online** on the others. The old site's `/order-confirmation` now
+redirects to `/order`.
+
+**How it works**
+
+- **Three mechanisms** (A quantity run, B site installation, C design only), set per product. The
+  mechanism decides the form, the price, what's paid now, the tracker and the handover.
+- **The catalogue** is data: `src/lib/api/data/order-catalogue.ts`. Each product carries its brief
+  questions (`select`, `multiselect`, `number`, `text`, `textarea`, `sizes`, `dimensions`, `dates`,
+  `yesno`), and priced choices carry per-piece or once-per-order amounts. `BriefFields` draws any of
+  them, so a new product needs no new code. Products also in the shop keep the shop's price and
+  minimum as their first tier (a test checks this).
+- **Pricing** is pure (`src/lib/pricing.ts`, tests in `pricing.test.ts`): unit price by quantity tier
+  + setup + design + priced choices, × the deadline multiplier, + delivery. Under KES 5,000 is paid in
+  full, above it a 50% deposit; design-only in full; site jobs pay the survey fee. Ready dates count
+  Monday to Saturday, skipping Kenyan public holidays (`src/lib/calendar.ts`), from the day after
+  the order (when the proof is assumed approved). The form uses it for the live price; the server
+  prices the order again when it is placed, and only that price counts.
+- **Form rules** (`src/lib/order.ts`, tests in `order.test.ts`): each step checked before Next
+  (sizes must add up to the quantity, survey dates from the next working day, colours as HEX or
+  Pantone, print-ready artwork must be attached), focus on the first problem, errors announced. The
+  server action (`src/app/order/actions.ts`) rebuilds the draft against the product's own brief
+  (`coerceOrderDraft`) and checks everything again.
+- **The data contract** gained `listOrderCategories`, `listOrderProducts`, `getOrderProduct`,
+  `priceEstimate`, `createOrder`, `startPayment`, `getOrder`, `approveProof`, `requestChanges` and
+  `bookSurvey` (types in `src/lib/api/order-types.ts`). All are mocked.
+- **The mock order system** (`src/lib/api/mock-orders.ts`, tests in `mock-orders.test.ts`) enforces
+  the spec's payment rules: an order moves only on a confirmed callback; a receipt number credits
+  once; underpayment keeps the order waiting with the rest due; overpayment becomes credit; unpaid
+  orders expire after 48 hours; one prompt at a time; the balance is asked for after proof approval,
+  and production can't start before it is paid. STK outcomes by the phone's last digit: **0
+  cancelled, 1 no answer (60 s), 2 failed, anything else paid after about 6 s**. Callbacks are applied
+  when the order is next read, so no background timers are needed.
+- **Access:** a guest opens the order with the secret link (`?t=`) or by order number + phone; a
+  cookie remembers it in that browser for 90 days.
+- **Demo controls** (mock only, at the foot of the order page): Paybill payment (full or part), skip
+  the phone wait, repeat the last callback (to show it can't credit twice), and the staff side:
+  upload a proof, approve or ask for changes, log production, hand over. `apiMode` in
+  `src/lib/api/index.ts` switches them off when a real backend is in.
+
+**The logo** is in: `public/brand/nb-logo.png` (full) and `nb-mark.png` (the N). The header shows the
+mark with "Noorcom **Branding**" and the tagline as live text; the footer and invoice show the full
+lockup; the favicon, Apple icon and link preview use the mark. New tokens `brand-red` (the logo's
+#FF0001, logo and brand documents only) and `brand-red-ink` (#C8000F, for any ordinary red text).
+
+**Checked:** lint, typecheck, 137 tests, build. The whole journey driven in Chrome at 390 and
+1440 px: shop page → Order now (quantity and finish carried over) → minimum and Terms checks → order
+placed → M-Pesa prompt → paid with a receipt → repeated callback ignored → proof → approved →
+production 120 of 120 → handed over → completed → invoice with balance KES 0.00 and the amount in
+words; a cancelled prompt shows its message and keeps the order waiting. No JavaScript errors, no
+sideways scroll. `npm run a11y`, `menu` and `devices` include the new pages.
+
+**Not in Phase 1** (later phases of the spec, or the backend):
+- Real M-Pesa (Absa STK Push and C2B, or Daraja), real WhatsApp and email, real uploads, storage:
+  the backend. **The mock keeps orders in server memory**: they vanish on a restart, and on the Vercel
+  preview separate server instances don't share them, so an order can occasionally "disappear" there.
+- Customers approving proofs and asking for changes on the order page, pinned comments, the balance
+  payment request messages, production logging, pickup codes, delivery records: spec Phase 2. (The
+  methods exist and are tested; the demo controls use them.)
+- Accounts, brand kits, reorder, survey booking by the customer, the firm-quote builder and sign-off:
+  spec Phase 3. Capacity calendar, mockups, artwork file checks, reports: Phase 4.
+- The **staff order board**: the spec's Phase 1 lists it, but it belongs to the back office, which
+  stays out of the public site. It comes with the backend.
+- Cart for several items in one order: one item per order for now. The quote list stays for "ask
+  us first" requests.
+
 ## 9. Decisions log
 
 Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 5 Oct 2026 | **Online ordering with M-Pesa is approved to build** (docs/ORDER_WORKFLOW_SPEC.md): self-serve orders with a live price, a deposit by M-Pesa STK Push or Paybill, and an order tracker. Payments are mocked until our backend exists. This replaces the 3 Oct "add to quote only" decision for orders; the quote form and quote list stay for "ask us first" requests | Owner's instruction to start Phase 1 of the spec |
+| 5 Oct 2026 | The real logo is in (`public/brand/nb-logo.png`, `nb-mark.png`), replacing the stand-in wordmark | Owner supplied it |
 | 3 Oct 2026 | **The shop is "add to quote" only**: no cart payment or M-Pesa. Products go into a quote list; the quote form sends it with artwork, quantities and deadline | Owner's decision; most branding jobs need artwork and a proof first |
 | 3 Oct 2026 | **Logo:** Noorcom already has a refreshed logo; the owner will share it. Until then the site uses a text wordmark ("NOORCOM / BRANDING") in one component, so the real logo drops in one place. We do not design a new logo | Owner's decision |
 | 3 Oct 2026 | Prices are per piece; minimum order 50 for every product until confirmed | Owner's decision |
@@ -516,5 +605,19 @@ Newest first.
 3. **Real minimum quantities** per product (50 is a stand-in).
 
 Answered: back office (our own, later, no Supabase); git repo (given 3 Oct 2026); photos
-(placeholders now, real ones later); shop is add-to-quote; logo refreshed by Noorcom, file to come;
-prices per piece; hosting on our VPS.
+(placeholders now, real ones later); shop is add-to-quote (replaced 5 Oct by online ordering);
+prices per piece; hosting on our VPS; the logo arrived (5 Oct 2026); online payment approved to build (5 Oct 2026).
+
+Online ordering (5 Oct 2026; the full list is in `docs/ORDER_WORKFLOW_SPEC.md`, "Open questions"):
+
+4. **Accent colour:** the new logo is red and black, but the site's accent is the old logo's orange.
+   Switch the accent (buttons, highlights, the quote block) to the logo's red?
+5. **Paybill:** the invoice template's Paybill (Absa 303030) takes the bank account as the account
+   number, so a payment can't carry the order number and can't be matched automatically. Get a
+   dedicated Paybill or till, or Absa C2B with the order number as the reference?
+6. **Invoice contacts:** the template shows 0722723352 and a staff email; generated invoices use the
+   main number and info@ (as the spec says). Keep that?
+7. **Invoice numbers:** the mock numbers invoices from INV00871. Real numbers must come from Noorcom's
+   accounting, so the backend needs to take them from there (and eTIMS, if VAT-registered).
+8. Every price tier, fee, lead time, deposit rule, delivery zone and survey fee is a proposal
+   (`TODO(business)` in `order-catalogue.ts`, `pricing.ts`, `calendar.ts`).

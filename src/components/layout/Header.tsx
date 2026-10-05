@@ -79,7 +79,7 @@ export function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 bg-bg/95 backdrop-blur transition-[border-color,box-shadow] duration-300 ${
+      className={`sticky top-0 z-40 bg-bg/95 backdrop-blur transition-[border-color,box-shadow] duration-300 print:hidden ${
         scrolled ? 'border-b border-border' : 'border-b border-transparent'
       }`}
     >
