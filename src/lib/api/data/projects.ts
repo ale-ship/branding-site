@@ -20,7 +20,7 @@ const shop = {
 /**
  * SAMPLE projects so the layouts can be reviewed. None of these are real Noorcom jobs:
  * every one has `sample: true` and shows a "Sample" tag, and the wording is invented. Replace
- * them with real case studies (RUNBOOK.md section 8) before launch. Newest first.
+ * them with real case studies (docs/RUNBOOK.md section 8) before launch. Newest first.
  */
 export const projects: Project[] = [
   {

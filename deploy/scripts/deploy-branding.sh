@@ -2,7 +2,7 @@
 # ═══════════════════════════════════════════════════════════════════════════
 #  deploy-branding.sh  -  build and switch a release of the Noorcom Branding website
 # ───────────────────────────────────────────────────────────────────────────
-#  RUNBOOK.md, "Deploying to the VPS". Run as root on the VPS:
+#  docs/RUNBOOK.md, "Deploying to the VPS". Run as root on the VPS:
 #
 #    deploy-branding.sh                 build the latest main and switch to it
 #    deploy-branding.sh --rollback      switch back to the previous release
@@ -61,7 +61,7 @@ install() {
   log "first-time install"
   id -u "$RUN_AS" >/dev/null 2>&1 || useradd --system --home "$BASE" --shell /usr/sbin/nologin "$RUN_AS"
   mkdir -p "$RELEASES" "$ENV_DIR" /var/www/letsencrypt
-  [[ -d $REPO/.git ]] || die "clone the repository into $REPO first (RUNBOOK.md)"
+  [[ -d $REPO/.git ]] || die "clone the repository into $REPO first (docs/RUNBOOK.md)"
   for f in web.env hosts.env; do
     [[ -e $ENV_DIR/$f ]] || { cp "$REPO/deploy/env/$f.example" "$ENV_DIR/$f"; log "wrote $ENV_DIR/$f from the example: fill it in, then run --install again"; }
   done

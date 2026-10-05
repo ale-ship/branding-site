@@ -1,6 +1,6 @@
 # Noorcom Branding website
 
-Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (strict), Tailwind CSS v4, lucide-react, Vitest. Design and frontend only for now: all data comes from a typed mock. Read `RUNBOOK.md` first.
+Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (strict), Tailwind CSS v4, lucide-react, Vitest. Design and frontend only for now: all data comes from a typed mock. Read `docs/RUNBOOK.md` first; for online ordering and payments, also `docs/ORDER_WORKFLOW_SPEC.md`.
 
 ## Commands
 
@@ -26,4 +26,4 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - Don't pass `hidden` to a component whose base classes set `display` (ButtonLink is `inline-flex`): wrap it instead.
 - Responsive: mobile first; check 320, 360, 390, 768, 1024, 1440 and 1920 px with no horizontal overflow; 44 px touch targets; visible focus; alt text on every content image.
 - Before handing over: `lint`, `typecheck`, `test`, `build`, then `a11y`, `devices` and `menu` against a production server (`BASE=http://localhost:3100`). All must pass.
-- Deploy files are in `deploy/` (VPS, port 4301); see RUNBOOK.md, "Deploying to the VPS". Never commit real env files.
+- Deploy files are in `deploy/` (VPS, port 4301); see docs/RUNBOOK.md, "Deploying to the VPS". Never commit real env files.

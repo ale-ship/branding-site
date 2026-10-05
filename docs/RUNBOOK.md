@@ -37,9 +37,9 @@ Project rules for Claude are in `AGENTS.md` (loaded through `CLAUDE.md`).
 
 ## Resuming work with Claude Code
 
-Claude does not know this file exists unless told. Start a new chat with something like:
+Claude does not know this file exists unless told. This runbook and the order workflow spec (`docs/ORDER_WORKFLOW_SPEC.md`) live in `docs/`. Start a new chat with something like:
 
-> Read RUNBOOK.md in C:\Users\USER\Downloads\Noorcom-branding first. We are rebuilding
+> Read docs\RUNBOOK.md in C:\Users\USER\Downloads\Noorcom-branding first. We are rebuilding
 > noorcombranding.co.ke from scratch. Continue with the next unfinished phase, then stop for review.
 
 When Claude finishes a task it should update this runbook (what changed, decisions, open items),

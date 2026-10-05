@@ -104,7 +104,7 @@ export type ListOptions = { featured?: boolean; limit?: number };
 export type FulfilmentMethod = 'collect' | 'deliver' | 'install';
 export type ContactChannel = 'whatsapp' | 'phone' | 'email';
 
-/** Artwork the customer attached. Only the details travel for now; see RUNBOOK.md (Phase 3). */
+/** Artwork the customer attached. Only the details travel for now; see docs/RUNBOOK.md (Phase 3). */
 export type ArtworkFile = { name: string; size: number; type: string };
 
 /** A quote request as sent from /quote, already validated (src/lib/quote.ts). */

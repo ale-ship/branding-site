@@ -10,7 +10,7 @@ function pick<T extends { featured: boolean }>(items: T[], { featured, limit }: 
 
 /**
  * Quote requests received by the mock, newest last. Lives only as long as the server process;
- * our own backend will store and email them (RUNBOOK.md, Phase 3).
+ * our own backend will store and email them (docs/RUNBOOK.md, Phase 3).
  */
 export const receivedQuotes: (QuoteRequest & { reference: string; receivedAt: string })[] = [];
 

@@ -10,7 +10,7 @@ export type SubmitQuoteResult =
 /**
  * Receives the quote form. Everything is checked again here: the browser's checks are only for
  * speed. Artwork arrives as file details only; the files themselves are sent on WhatsApp or by
- * email until our backend takes uploads (RUNBOOK.md, Phase 3).
+ * email until our backend takes uploads (docs/RUNBOOK.md, Phase 3).
  */
 export async function submitQuoteAction(input: unknown): Promise<SubmitQuoteResult> {
   const draft = coerceDraft(input);

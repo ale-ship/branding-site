@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   /**
-   * The old Lovable site's addresses (RUNBOOK.md, Phase 6), so bookmarks and search results land
+   * The old Lovable site's addresses (docs/RUNBOOK.md, Phase 6), so bookmarks and search results land
    * somewhere useful after the switch. Its shop checkout becomes the quote form; its admin and
    * sign-in pages are gone (our own back office comes later), so they go to the home page with a
    * temporary redirect that can change once that exists.

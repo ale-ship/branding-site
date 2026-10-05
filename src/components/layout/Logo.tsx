@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 /**
- * Stand-in wordmark until Noorcom's refreshed logo arrives (RUNBOOK.md decisions,
+ * Stand-in wordmark until Noorcom's refreshed logo arrives (docs/RUNBOOK.md decisions,
  * 3 Oct 2026). Swap the logo in here only; everything else uses this component.
  */
 export function Logo({ tone = 'ink', className = '' }: { tone?: 'ink' | 'on-navy'; className?: string }) {

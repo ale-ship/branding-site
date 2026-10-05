@@ -2,7 +2,7 @@
 
 Last updated 5 Oct 2026.
 
-> **For Claude Code:** read `RUNBOOK.md` and `AGENTS.md` first, then this spec. This spec changes an existing owner decision (see "Fit with the current codebase"). Do not write payment or checkout code until `AGENTS.md` and the RUNBOOK decisions log have been updated to allow it. Follow the existing architecture rules: pages get data only through `api` from `@/lib/api`, new behaviour is added to the `SiteApi` interface and mocked first, and all checks (`lint`, `typecheck`, `test`, `build`, `a11y`, `devices`, `menu`) must pass before handover. All numbers marked as proposals are placeholders for Noorcom to confirm.
+> **For Claude Code:** read `docs/RUNBOOK.md` and `AGENTS.md` first, then this spec. This spec changes an existing owner decision (see "Fit with the current codebase"). Do not write payment or checkout code until `AGENTS.md` and the RUNBOOK decisions log have been updated to allow it. Follow the existing architecture rules: pages get data only through `api` from `@/lib/api`, new behaviour is added to the `SiteApi` interface and mocked first, and all checks (`lint`, `typecheck`, `test`, `build`, `a11y`, `devices`, `menu`) must pass before handover. All numbers marked as proposals are placeholders for Noorcom to confirm.
 
 ## Overview
 
