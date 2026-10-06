@@ -139,9 +139,11 @@ noorcom-branding/
 │  ├─ src/                      the backend's code
 │  └─ test/
 ├─ shared/                      used by both sides, JavaScript + JSDoc
-│  ├─ rules/                    pricing, calendar, order rules, c2b, proof, production, capacity, site-quote,
+│  ├─ package.json              @noorcom-branding/shared (an npm workspace)
+│  ├─ rules/                    calendar, phone, format, pricing, capacity, c2b, proof, production, site-quote,
 │  │                            statement, account, artwork-check (moved from src/lib at step B0)
-│  ├─ contract/                 zod schemas: catalogue, brief fields, order input, order, payment, errors
+│  ├─ contract/                 order-types.d.ts and content.d.ts (the types both sides read), errors.js
+│  │                            (OrderError); the zod schemas join them as the endpoints need them (B1, B2)
 │  └─ documents/                invoice, receipt and job-card HTML templates (site pages and PDFs)
 ├─ admin/                       the staff back office, Vite + React in JavaScript (later, step B4)
 ├─ deploy/                      nginx, systemd, env templates, scripts (section 10)
@@ -154,10 +156,14 @@ today. `npm run dev` in `backend/` runs the API (port 4300) and `npm run worker`
 Setting `NEXT_PUBLIC_API_MODE=live` points the site at the local API, so a problem can be narrowed
 to one side at a time. Logs from the API carry a request id that the site passes along.
 
-**Types across the line.** The site is TypeScript and imports `shared/` directly (path alias
-`@shared/*`); `shared/` ships `.d.ts` files generated from its JSDoc
-(`tsc --allowJs --declaration --emitDeclarationOnly`), so the site gets types and `shared/` stays
-JavaScript.
+**Types across the line (as built at B0).** `shared/` is JavaScript with `// @ts-check` and JSDoc;
+its types come from `shared/contract/order-types.d.ts`, a declarations file both sides read. The site
+imports it through the path alias `@shared/*` (with `allowJs`, so the site's strict `tsc` checks
+`shared/` too); the old `src/lib/pricing.ts` and friends are one-line re-exports, so no page changed.
+The backend imports it as the workspace package `@noorcom-branding/shared/rules/pricing.js` and checks
+it with its own `tsc -p jsconfig.json`. JSDoc type imports inside `shared/` use explicit `.js`
+extensions (Node's resolution needs them; the site's accepts them). The rules' tests stay in
+`src/lib/*.test.ts` and run with the site's `npm test`.
 
 ## 4. The backend (`backend/`), file by file
 
@@ -174,7 +180,7 @@ backend/
 │  ├─ config.js            the ONLY place process.env is read; validated with zod at start-up
 │  │
 │  ├─ db/
-│  │  ├─ knex.js           the shared Knex instance; `transaction(fn)` helper
+│  │  ├─ pool.js           the `pg` pool, `withTransaction(pool, fn)`, `dbHealthy`; dates come back as text
 │  │  ├─ migrations/       one file per change, numbered (section 5)
 │  │  └─ seeds/
 │  │     ├─ 01-catalogue.js       categories, products, tiers from shared/contract's catalogue
@@ -490,12 +496,51 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 
 | Step | What | Done when |
 | --- | --- | --- |
-| B0 | Folders: create `backend/` (skeleton: config with zod, health, pino with phone masking, Postgres, Redis user `nb`, the rate limiter, ESLint layer rule, Vitest with a test database) and `shared/` (move pricing, calendar, c2b and order rules out of `src/lib` into `shared/rules` as JavaScript + JSDoc; `shared/contract`); the site keeps `src/` and imports `@shared/*`; the site's `eslint.config.mjs` ignores and `tsconfig.json` excludes `backend/` and `admin/`, which have their own checks | The site builds and passes every check; `backend/` answers `/api/health` |
+| B0 ✓ | Folders: create `backend/` (skeleton: config with zod, health, pino with phone masking, Postgres, Redis user `nb`, the rate limiter, ESLint layer rule, Vitest with a test database) and `shared/` (move pricing, calendar, c2b and order rules out of `src/lib` into `shared/rules` as JavaScript + JSDoc; `shared/contract`); the site keeps `src/` and imports `@shared/*`; the site's `eslint.config.mjs` ignores and `tsconfig.json` excludes `backend/` and `admin/`, which have their own checks | The site builds and passes every check; `backend/` answers `/api/health` |
 | B1 | Catalogue and pricing in the database; `GET /api/catalogue`, `POST /api/quotes/price`; `live.ts` for those methods | The order form prices from the API |
 | B2 | Orders: create, read, lookup, expiry; invoices (INV); WhatsApp and email outbox with "order placed" | An order placed on staging appears in the database with its invoice |
 | B3 | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; receipt and invoice PDFs | A real KES 1 payment on staging confirms the order and sends the receipt, by both STK and Paybill |
 | B4 | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger | Staff run an order through without the demo controls |
 | B5 | Spec Phase 2 to 4: proofs and approval, production and deliveries, accounts and brand kits, surveys and firm quotes, capacity calendar, reports | As in the spec |
+
+### Step B0, done 6 Oct 2026
+
+- `shared/` holds the contract (`contract/order-types.d.ts`, `content.d.ts`, `errors.js`) and twelve
+  rule modules (`rules/*.js`), moved from `src/lib`; the site's files there re-export them.
+- `backend/` is an npm workspace with `src/config.js` (zod), `src/lib/logger.js` (pino, phones masked,
+  secrets redacted), `src/lib/errors.js` (the `{ error, message, details? }` shape; the rules'
+  OrderError becomes 404/400/409), `src/db/pool.js`, `src/redis.js` (`nb:` keys),
+  `src/middleware/requestId.js` and `rateLimit.js` (Redis, fails open unless `failClosed`),
+  `src/modules/health/` (routes → controller → service), `src/app.js`, `src/server.js`,
+  `knexfile.js` (migrations only), `eslint.config.js` (the layer rules, `max-lines: 250`, no site
+  imports), `jsconfig.json` (strict `checkJs` over `src/` and `shared/`).
+- Tests: `backend/test/unit` (config, logger) and `backend/test/integration` (the app with supertest;
+  Postgres and Redis for real when `TEST_DATABASE_URL` and `TEST_REDIS_URL` are set, skipped
+  otherwise).
+- Commands: `npm run backend` at the root (the API with `--watch`), `npm run backend:check` (lint,
+  typecheck, tests), or inside `backend/`: `npm run dev | test | lint | typecheck | migrate`.
+- Without `DATABASE_URL` and `REDIS_URL` the API still starts in development and `/api/health` answers
+  503 `degraded` with `db: down`, `redis: down`; production refuses to start without them.
+
+### Setting up Postgres and Redis on a development machine
+
+Once per machine (the VPS has its own steps in section 10). Postgres 18 is installed on the office
+machine; Redis is not, so it runs in Docker.
+
+```bash
+# Postgres: a role and two databases (psql asks for the postgres password)
+psql -U postgres -h 127.0.0.1 -c "CREATE ROLE noorcom_branding LOGIN PASSWORD '<choose one>'"
+psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE noorcom_branding OWNER noorcom_branding"
+psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE noorcom_branding_test OWNER noorcom_branding"
+
+# Redis 7 with the ACL user nb, allowed only keys nb:*
+docker run -d --name nb-redis -p 127.0.0.1:6379:6379 redis:7 \
+  redis-server --user default off --user nb on '><choose one>' '~nb:*' '&*' '+@all' '-@dangerous' '+info' '+flushdb'
+```
+
+Then copy `backend/.env.example` to `backend/.env` (never committed) and fill in `DATABASE_URL`,
+`TEST_DATABASE_URL`, `REDIS_URL` (database 0) and `TEST_REDIS_URL` (database 15). `npm run backend:check`
+then runs the Postgres and Redis tests too, and `/api/health` answers 200 `ok`.
 
 ## 14. What to get from Absa before B3
 

@@ -33,8 +33,12 @@ next. Update it at the end of every task.
   deadlines offered, proofs show a mockup on the item, print-ready files are checked in the browser
   (resolution, RGB, bleed), accounts get a statement (page and CSV), and company accounts (members,
   approvers, PO numbers on invoices). **All four spec phases are now on the site.**
-- **Next:** backend step B0 (`docs/BACKEND_RUNBOOK.md`). Staff reports and the staff dashboard come
-  with the backend (B4).
+- **6 Oct 2026, backend step B0 done** (`docs/BACKEND_RUNBOOK.md`, "Step B0"): `shared/` holds the
+  order contract and the pure rules (the site re-exports them), and `backend/` is an Express API
+  skeleton with config, logging, Postgres, Redis, rate limits and `/api/health`.
+- **Next:** create the development database and Redis ("Setting up Postgres and Redis" in the backend
+  runbook), then step B1: catalogue and pricing from the database, and `live.ts` for those methods.
+  Staff reports and the staff dashboard come with B4.
   Ask Absa for the items in its section 14. Also: deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
 
 ## Start here on a new machine
@@ -720,6 +724,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 6 Oct 2026 | Backend B0: the shared code is JavaScript + JSDoc in `shared/` (npm workspace), its types in a `.d.ts` both sides read; the site keeps its imports through re-exports | One copy of every rule, checked by both type checkers |
 | 6 Oct 2026 | Company orders are approved only by the company's owner or an approver; PO numbers print on invoices | Spec "company accounts" |
 | 6 Oct 2026 | Deadlines offered come from the capacity calendar; a tier the workshop can't meet is switched off, not sold | Spec "capacity calendar" |
 | 6 Oct 2026 | Accounts sign in with the phone and a WhatsApp code only; an account is its verified phone, so guest orders join it without claiming | Spec "Accounts"; no passwords to leak |

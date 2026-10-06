@@ -26,17 +26,9 @@ import type {
 } from './order-types';
 
 
-/** A photo in public/images. `alt` describes it for screen readers. */
-export type Photo = { src: string; alt: string };
+import type { ArtworkFile, Photo, ServiceSlug } from '@shared/contract/content';
 
-export type ServiceSlug =
-  | 'indoor-branding'
-  | 'outdoor-branding'
-  | 'vehicle-branding'
-  | 'apparel'
-  | 'corporate-gifts'
-  | 'stationery'
-  | 'large-format';
+export type { ArtworkFile, Photo, ServiceSlug };
 
 export type Service = {
   slug: ServiceSlug;
@@ -128,7 +120,6 @@ export type FulfilmentMethod = 'collect' | 'deliver' | 'install';
 export type ContactChannel = 'whatsapp' | 'phone' | 'email';
 
 /** Artwork the customer attached. Only the details travel for now; see docs/RUNBOOK.md (Phase 3). */
-export type ArtworkFile = { name: string; size: number; type: string };
 
 /** A quote request as sent from /quote, already validated (src/lib/quote.ts). */
 /** A shop item in a quote: which product, how many, and the options chosen. */

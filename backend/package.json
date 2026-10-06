@@ -1,0 +1,41 @@
+{
+  "name": "@noorcom-branding/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Noorcom Branding API and worker (docs/BACKEND_RUNBOOK.md).",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "migrate": "knex migrate:latest",
+    "migrate:rollback": "knex migrate:rollback --all",
+    "migrate:status": "knex migrate:list",
+    "migrate:make": "knex migrate:make"
+  },
+  "dependencies": {
+    "@noorcom-branding/shared": "0.1.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "ioredis": "^5.11.1",
+    "knex": "^3.3.0",
+    "pg": "^8.23.1",
+    "pino": "^9.14.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/express": "^5.0.3",
+    "@types/pg": "^8.15.5",
+    "@types/supertest": "^6.0.3",
+    "globals": "^16.4.0",
+    "supertest": "^7.1.4"
+  }
+}

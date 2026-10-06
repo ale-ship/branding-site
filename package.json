@@ -2,6 +2,10 @@
   "name": "noorcom-branding-site",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "shared",
+    "backend"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,7 +17,9 @@
     "photos": "node scripts/fetch-placeholder-photos.mjs",
     "a11y": "node scripts/check-a11y.mjs",
     "devices": "node scripts/check-devices.mjs",
-    "menu": "node scripts/check-menu.mjs"
+    "menu": "node scripts/check-menu.mjs",
+    "backend": "npm run dev -w backend",
+    "backend:check": "npm run check -w backend"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

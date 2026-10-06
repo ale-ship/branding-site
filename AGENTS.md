@@ -8,10 +8,13 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test`: all four must pass before a task is handed over
 - `npm run photos`: re-downloads the placeholder photos into `public/images/placeholder` and rewrites `CREDITS.md`
 - `npm run a11y`, `npm run devices`, `npm run menu`: browser checks against a running production server (`BASE=http://localhost:3100`)
+- `npm run backend`: the API on http://127.0.0.1:4300; `npm run backend:check`: its lint, typecheck and tests (see docs/BACKEND_RUNBOOK.md)
 
 ## Architecture rules
 
 - Pages and components get data only through `api` from `@/lib/api` (the `SiteApi` interface in `src/lib/api/types.ts`). Never import `src/lib/api/data/*` or `mock.ts` outside `src/lib/api/`. No Supabase, nothing from Lovable: our own backend will implement `SiteApi` later.
+- Code the backend also needs lives in `shared/` (JavaScript with `// @ts-check` and JSDoc): the order contract in `shared/contract/order-types.d.ts`, the pure rules in `shared/rules/*.js`. The site imports them through `@shared/*` or the re-exports in `src/lib`; change a rule in `shared/`, never in a re-export. `shared/` imports nothing from `src/` and has no dependencies.
+- `backend/` follows docs/BACKEND_RUNBOOK.md: routes → controller → service → repo (enforced by its ESLint), config only in `src/config.js`, Redis keys only `nb:*`, never the site's code.
 - Business details and navigation live in `src/lib/site.ts`, not in components.
 - Colours are CSS variables in `src/app/globals.css`, mapped in `@theme inline` (`bg-paper`, `text-heading`, `bg-accent`...). Tailwind's default palette is removed, so hex values and default colour classes won't work in components (the one exception: a project's own `palette` values, shown as swatches).
 - Look, in the logo's colours (6 Oct 2026): white and warm `paper` pages, black type, the logo's red as the one `accent`. Text on a red fill is white (`text-on-accent`); red text on white uses `accent-ink`; `brand-red` (the logo's pure red) only for decorative bars and edges. Links are black and underlined; focus rings are red. Square corners, real photography, at most one `dark` section per page. Bricolage Grotesque (`font-display`) for headings, Inter for text.

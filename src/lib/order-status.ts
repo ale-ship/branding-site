@@ -82,8 +82,4 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   timeout: 'No answer',
 };
 
-/** `+254722530301` -> `0722 530 301`, for showing and prefilling. */
-export function localPhone(msisdn: string): string {
-  const m = /^\+254(\d{3})(\d{3})(\d{3})$/.exec(msisdn);
-  return m ? `0${m[1]} ${m[2]} ${m[3]}` : msisdn;
-}
+export { localPhone } from '@shared/rules/phone.js';

@@ -8,6 +8,10 @@ import type {
   ServiceSlug,
 } from './api/types';
 import { parseList, QUANTITY_MAX } from './quote-list';
+import { nairobiToday } from '@shared/rules/calendar.js';
+import { normaliseKenyanPhone } from '@shared/rules/phone.js';
+
+export { nairobiToday, normaliseKenyanPhone };
 
 /**
  * Quote form rules, shared by the form (instant feedback) and the server action (the real
@@ -68,26 +72,9 @@ export function emptyDraft(service = ''): QuoteDraft {
   };
 }
 
-/**
- * Kenyan mobile or landline-style mobile numbers to +254XXXXXXXXX. Accepts 07…, 01…, 7…, 1…,
- * 2547…, +2547…, with spaces, dashes or brackets. Returns null for anything else.
- */
-export function normaliseKenyanPhone(input: string): string | null {
-  const digits = input.replace(/[\s\-().]/g, '').replace(/^\+/, '');
-  if (!/^\d+$/.test(digits)) return null;
-  let local: string;
-  if (digits.startsWith('254')) local = digits.slice(3);
-  else if (digits.startsWith('0')) local = digits.slice(1);
-  else local = digits;
-  return /^[17]\d{8}$/.test(local) ? `+254${local}` : null;
-}
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/** Today's date in Nairobi as YYYY-MM-DD. */
-export function nairobiToday(now = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(now);
-}
 
 function extension(name: string): string {
   const dot = name.lastIndexOf('.');
