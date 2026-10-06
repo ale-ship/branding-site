@@ -89,6 +89,8 @@ in Redis is the only copy of anything that matters.
 | `nb:callback:seen:<receipt>` | Fast drop of a repeated callback before it reaches the database (the unique column stays the authority) | 24 h |
 | `nb:cache:catalogue` | The catalogue answer; deleted when staff change a product, price or tier | 10 min |
 | `nb:order:events:<orderNo>` | Pub/sub channel: the API publishes when an order changes, so the order page can update live (server-sent events) instead of polling every 3 s | Not stored |
+| `nb:otp:<phone>` | A sign-in code's hash, tries left and when it was sent (code 6 digits, 5 tries, resend after 60 s) | 10 min |
+| `nb:session:<hash>` | A customer session (phone); the cookie holds the token, Redis only its hash | 30 days, sliding |
 | `nb:fake:*` | The fakes' state in development and staging (section 2.3) | 1 day |
 
 `/api/health` pings Redis and reports it. If Redis is down, the API still answers reads; anything
@@ -137,7 +139,8 @@ noorcom-branding/
 │  ├─ src/                      the backend's code
 │  └─ test/
 ├─ shared/                      used by both sides, JavaScript + JSDoc
-│  ├─ rules/                    pricing.js, calendar.js, order-rules.js, c2b.js (moved from src/lib at step B0)
+│  ├─ rules/                    pricing, calendar, order rules, c2b, proof, production, capacity, site-quote,
+│  │                            statement, account, artwork-check (moved from src/lib at step B0)
 │  ├─ contract/                 zod schemas: catalogue, brief fields, order input, order, payment, errors
 │  └─ documents/                invoice, receipt and job-card HTML templates (site pages and PDFs)
 ├─ admin/                       the staff back office, Vite + React in JavaScript (later, step B4)
@@ -192,7 +195,9 @@ backend/
 │  │  ├─ rawBody.js        keeps the raw body for provider callbacks (signature checks, audit)
 │  │  ├─ validate.js       zod schema per route: body, params, query
 │  │  ├─ rateLimit.js      Redis-backed limits (`nb:rl:*`), section 8.1
-│  │  ├─ customerAccess.js the order's secret token, or order number + phone (the site's rule)
+│  │  ├─ customerAccess.js the order's secret token, order number + phone, or the session's phone
+│  │  │                    (the customer's own orders, and a company approver's colleagues')
+│  │  ├─ customerSession.js the `nb-session` token → customer (hash looked up in Redis)
 │  │  ├─ staffAuth.js      session cookie → staff user + role; `requireRole('production')`
 │  │  └─ providerGuard.js  callbacks: secret path segment, Absa IP allowlist, signature if offered
 │  │
@@ -223,10 +228,16 @@ backend/
 │  │  │  ├─ invoices.js    an invoice per order (INV), its lines frozen from the order's price
 │  │  │  ├─ receipts.js    a receipt per confirmed payment (RCT), created by the ledger
 │  │  │  └─ pdf.js         render shared/documents templates to PDF; store in R2; signed link
-│  │  ├─ proofs/           upload (staff), approve / request changes (customer), versions, comments
-│  │  ├─ production/       staff log pieces or stages; ETA from the recent rate
-│  │  ├─ surveys/          Mechanism B: book, reschedule, firm quote, accept
+│  │  ├─ proofs/           upload (staff, with mockup), approve with the checklist / request changes with pins
+│  │  │                    (customer), versions, the pre-production sample; company approver rule
+│  │  ├─ production/       staff log pieces or stages; ETA from shared/rules/production.js
+│  │  ├─ capacity/         GET /api/capacity; reserve on order, release on expiry (shared/rules/capacity.js)
+│  │  ├─ surveys/          Mechanism B: book the survey, the quote builder (shared/rules/site-quote.js),
+│  │  │                    accept, installation date, sign-off
 │  │  ├─ deliveries/       pickup codes, rider or courier records, partial deliveries
+│  │  ├─ accounts/         sign-in codes (WhatsApp), sessions in Redis, profile, brand kit, addresses,
+│  │  │                    reorder, statement (shared/rules/statement.js)
+│  │  ├─ companies/        company, members and roles; who may approve a company's proofs
 │  │  ├─ uploads/          POST /api/uploads → presigned PUT; file records; size and type checks
 │  │  ├─ notifications/
 │  │  │  ├─ outbox.js      write a message row in the same transaction as the event
@@ -235,7 +246,7 @@ backend/
 │  │  │  └─ templates/     one file per event: order-placed, payment-confirmed, proof-ready, …
 │  │  ├─ requests/         the existing quote form and contact messages (submitQuote, sendMessage)
 │  │  ├─ staff/            sign in / out, users, roles, audit log
-│  │  └─ reports/          revenue by category, on-time rate, outstanding balances
+│  │  └─ reports/          staff: revenue by category, on-time rate, outstanding balances, machine load
 │  │
 │  ├─ jobs/
 │  │  ├─ queues.js         queue names and options (BullMQ `prefix: 'nb:bull'`)
@@ -272,14 +283,14 @@ backend/
 | --- | --- | --- |
 | 001 | catalogue | `categories`, `products` (mechanism A/B/C, brief_schema JSONB, min_qty, lead days, setup and design fees, survey fee, package price, active), `price_tiers` |
 | 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
-| 003 | people | `customers` (phone unique, email, company, credit_balance), `brand_kits`, `staff_users` (role), `staff_sessions` |
-| 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, promised_date, expires_at), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events` |
+| 003 | people | `customers` (phone unique, name, email, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, phone unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
+| 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
 | 005 | files | `files` (owner, kind: logo, inspiration, artwork, proof, final, photo; R2 key; size; type) |
-| 006 | proofs | `proofs` (version, status, approved_at, approved_by), `proof_comments` (x, y, text) |
+| 006 | proofs | `proofs` (version, status, file, mockup file, decided_at, approved_by and the checklist ticked), `proof_comments` (x, y nullable for a note on the whole proof, text), `samples` (pre-production sample: photo, status, comments) |
 | 007 | payments | `payment_requests` (STK attempts: provider request id **unique**, phone, amount, status, timeout_at), `payments` (purpose, method, amount, **mpesa_receipt unique**, receipt_no unique, raw callback JSONB), `c2b_confirmations` (raw body, **trans_id unique**, route result, unmatched reason, assigned_by) |
 | 008 | documents | `invoices` (invoice_no unique, order, lines JSONB, totals, pdf file), `receipts` (receipt_no unique, payment, pdf file), `counters` (name, value) |
-| 009 | production | `production_logs` (qty_added or stage, photo, staff), `stages` (Mechanism B), `deliveries` (method, batch qty, rider, waybill, pickup_code, handed_over_at) |
-| 010 | operations | `capacity` (machine, date, units booked), `notifications` (outbox: channel, template, payload, status, attempts), `audit_log` |
+| 009 | production | `production_logs` (qty_added or stage, photo, staff), `stages` (Mechanism B), `deliveries` (batch qty, partial, status, rider, rider phone, waybill, recipient, delivered_at), `handovers` (method, detail, pickup code checked, collector name, photos) |
+| 010 | operations | `machines` (code, daily units), `capacity_bookings` (machine, date, units, order: reserved at order, released on expiry), `notifications` (outbox: channel, template, payload, status, attempts), `audit_log` |
 | 011 | requests | `quote_requests`, `contact_messages` (the forms the site already has) |
 
 Money is whole shillings in `integer` columns. Every table has `created_at`; anything staff can
@@ -365,8 +376,20 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | (Absa) | `POST /api/payments/absa/stk/:secret` | STK callback |
 | (Absa) | `POST /api/payments/absa/c2b/confirm/:secret` | C2B confirmation |
 | (Absa, optional) | `POST /api/payments/absa/c2b/validate/:secret` | Always accepts |
-| `approveProof`, `requestChanges` | `POST /api/proofs/:id/approve`, `/changes` | Phase 2 |
-| `bookSurvey` | `POST /api/surveys/:orderNo/book` | Phase 3 |
+| `getCapacity` | `GET /api/capacity` | Units booked per machine per day, 60 days ahead; cached 1 min |
+| `approveProof` | `POST /api/orders/:no/proofs/:version/approve` | Checklist all true; company orders only by an owner or approver |
+| `requestChanges` | `POST /api/orders/:no/proofs/:version/changes` | Notes and pins (x, y, text), cleaned by shared/rules/proof.js |
+| `reviewSample` | `POST /api/orders/:no/sample` | Approve, or changes with notes |
+| `requestPartialDelivery` | `POST /api/orders/:no/deliveries` | Finished pieces only; one open early delivery |
+| `bookSurvey` | `POST /api/orders/:no/survey` | After the survey fee |
+| `acceptSiteQuote` | `POST /api/orders/:no/quote/accept` | Within its validity; sets the total and the deposit |
+| `bookInstall` | `POST /api/orders/:no/install` | Two working days' notice, working days only |
+| `requestSignInCode`, `verifySignInCode` | `POST /api/auth/code`, `/api/auth/verify` | WhatsApp code; session cookie set by the site |
+| `getAccount`, `updateAccount`, `signOut` | `GET`, `PATCH /api/account`; `POST /api/auth/sign-out` | Session required |
+| `saveBrandKit`, `saveAddress`, `removeAddress` | `PUT /api/account/brand-kit`; `/api/account/addresses` | |
+| `reorderDraft` | `GET /api/account/orders/:no/reorder` | The account's own A orders with an approved proof |
+| `getStatement` | `GET /api/account/statement` (`?format=csv`) | Built by shared/rules/statement.js |
+| `createCompany`, `addCompanyMember`, `removeCompanyMember` | `POST /api/account/company`, `/members`, `DELETE /members/:phone` | Owner only for members |
 | (documents) | `GET /api/orders/:no/invoice.pdf`, `/receipts/:receiptNo.pdf` | Signed, short-lived links |
 | (uploads) | `POST /api/uploads` | Presigned PUT to R2 |
 | `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | |
@@ -385,6 +408,8 @@ Per IP, 429 `rate_limited` beyond them, Redis keys `nb:rl:<name>:<ip>` (Noorcom 
 | `POST /api/payments/stk` | 10 per 10 minutes, and one pending prompt per order (`nb:stk:lock:*`) |
 | `POST /api/uploads` | 30 per 10 minutes |
 | `POST /api/requests/quote`, `/contact` | 5 per hour, with a hidden honeypot field |
+| `POST /api/auth/code` | 5 per hour per IP and 1 per minute per phone (`nb:otp:*`) |
+| `POST /api/auth/verify` | 20 per 10 minutes per IP; 5 tries per code |
 | Document downloads | 60 per 10 minutes |
 | Absa callbacks | Not limited (Absa's few addresses; a wrong secret stores nothing) |
 

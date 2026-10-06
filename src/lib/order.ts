@@ -34,6 +34,8 @@ export type OrderDraft = {
   company: string;
   phone: string;
   email: string;
+  /** The customer's PO or LPO number, for company orders. */
+  poNumber: string;
   /** Agreed to the Terms. */
   agree: boolean;
 };
@@ -115,8 +117,23 @@ export function emptyOrderDraft(product: OrderProduct): OrderDraft {
     company: '',
     phone: '',
     email: '',
+    poNumber: '',
     agree: false,
   };
+}
+
+/** Saved answers (a past order's) back into the form's text values, for this product's fields only. */
+export function draftBriefFrom(product: OrderProduct, answers: BriefAnswers): Record<string, DraftBriefValue> {
+  const brief = emptyBrief(product);
+  for (const f of product.brief) {
+    const v = answers[f.id];
+    if (v === undefined) continue;
+    if (typeof v === 'number') brief[f.id] = String(v);
+    else if (typeof v === 'string' || typeof v === 'boolean' || Array.isArray(v)) brief[f.id] = structuredClone(v);
+    else if ('widthCm' in v && 'heightCm' in v && typeof v.widthCm === 'number') brief[f.id] = { widthCm: String(v.widthCm), heightCm: String(v.heightCm) };
+    else brief[f.id] = Object.fromEntries(Object.entries(v as Record<string, number>).map(([k, n]) => [k, n ? String(n) : '']));
+  }
+  return brief;
 }
 
 const intOf = (s: string) => (/^\d+$/.test(s.trim()) ? Number(s.trim()) : NaN);
@@ -423,6 +440,7 @@ export function coerceOrderDraft(input: unknown, product: OrderProduct): OrderDr
     company: str(o.company, 120),
     phone: str(o.phone, 30),
     email: str(o.email, 200),
+    poNumber: str(o.poNumber, 40),
     agree: o.agree === true,
   };
 }

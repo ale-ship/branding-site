@@ -3,6 +3,7 @@ import { orderProducts } from './data/order-catalogue';
 import { products } from './data/products';
 import { mockApi } from './mock';
 import { clock, mockStaff, unmatchedPayments } from './mock-orders';
+import type { ApprovalChecklist } from './order-types';
 import type { OrderInput } from './order-types';
 
 const T0 = Date.parse('2026-10-05T07:00:00Z'); // Monday 10:00 in Nairobi
@@ -28,6 +29,7 @@ const common: OrderInput['common'] = {
   artwork: 'need-design',
   notes: '',
 };
+const ticked: ApprovalChecklist = { spelling: true, colours: true, size: true, quantity: true, colourVariance: true };
 const customer = { name: 'Amina Otieno', company: '', phone: '+254722530303', email: 'amina@example.co.ke' };
 
 function teesInput(quantity = 100): OrderInput {
@@ -218,10 +220,10 @@ describe('proofs and the balance gate', () => {
     const { ref, access } = await place();
     mockStaff.paybill(ref, 31000);
     mockStaff.uploadProof(ref);
-    let order = await mockApi.requestChanges(ref, access, 1, 'Make the logo bigger');
+    let order = await mockApi.requestChanges(ref, access, 1, 'Make the logo bigger', []);
     expect(order.status).toBe('in_design');
     mockStaff.uploadProof(ref);
-    order = await mockApi.approveProof(ref, access, 2);
+    order = await mockApi.approveProof(ref, access, 2, ticked);
     expect(order.status).toBe('awaiting_balance');
     expect(order.dueNow).toBe(31000);
     expect(() => mockStaff.logProgress(ref)).toThrow(/production/);
@@ -234,11 +236,115 @@ describe('proofs and the balance gate', () => {
     order = (await mockApi.getOrder(ref, access))!;
     expect(order.progress).toMatchObject({ kind: 'pieces', done: 100, total: 100 });
     expect(order.status).toBe('ready');
+    expect(order.production.logs.map((l) => l.pieces)).toEqual([60, 40]);
+    // Dates count from the day production started.
+    expect(order.production.startedOn).toBe('2026-10-05');
+    expect(order.production.promisedBy! > order.production.startedOn!).toBe(true);
+  });
+
+  it('needs every checklist item ticked to approve', async () => {
+    const { ref, access } = await place();
+    mockStaff.paybill(ref, 31000);
+    mockStaff.uploadProof(ref);
+    await expect(mockApi.approveProof(ref, access, 1, { ...ticked, colourVariance: false })).rejects.toThrow(/checklist/);
+    const order = (await mockApi.getOrder(ref, access))!;
+    expect(order.status).toBe('awaiting_approval');
+    expect(order.proofs[0]!.image).toMatch(/^data:image\/svg\+xml/);
+    expect(decodeURIComponent(order.proofs[0]!.image)).toContain('PROOF');
+  });
+
+  it('keeps pinned notes on the version they were made on', async () => {
+    const { ref, access } = await place();
+    mockStaff.paybill(ref, 31000);
+    mockStaff.uploadProof(ref);
+    await expect(mockApi.requestChanges(ref, access, 1, '', [])).rejects.toThrow(/what to change/);
+    const pins = [{ x: 0.2, y: 0.3, text: 'Bigger logo here' }];
+    let order = await mockApi.requestChanges(ref, access, 1, '', pins);
+    expect(order.proofs[0]).toMatchObject({ status: 'changes_requested', pins, comments: null });
+    mockStaff.uploadProof(ref);
+    order = (await mockApi.getOrder(ref, access))!;
+    expect(order.proofs.map((p) => p.version)).toEqual([1, 2]);
+    expect(order.proofs[1]!.pins).toEqual([]);
+    expect(order.proofs[1]!.image).not.toBe(order.proofs[0]!.image);
   });
 
   it('can’t approve an old or missing proof', async () => {
     const { ref, access } = await place();
-    await expect(mockApi.approveProof(ref, access, 1)).rejects.toThrow(/can’t be approved/);
+    await expect(mockApi.approveProof(ref, access, 1, ticked)).rejects.toThrow(/can’t be approved/);
+  });
+});
+
+describe('production and handover', () => {
+  async function inProduction(input: OrderInput) {
+    const placed = await place(input);
+    const first = (await mockApi.getOrder(placed.ref, placed.access))!;
+    mockStaff.paybill(placed.ref, first.dueNow);
+    mockStaff.uploadProof(placed.ref);
+    const approved = await mockApi.approveProof(placed.ref, placed.access, 1, ticked);
+    if (approved.dueNow) mockStaff.paybill(placed.ref, approved.dueNow);
+    return placed;
+  }
+
+  it('holds a big run until its sample is approved', async () => {
+    const { ref, access } = await inProduction({ ...teesInput(250), customer: { ...customer, phone: '+254722530401' } });
+    let order = (await mockApi.getOrder(ref, access))!;
+    expect(order.status).toBe('in_production');
+    expect(order.sample?.status).toBe('waiting');
+    expect(() => mockStaff.logProgress(ref, 50)).toThrow(/sample/);
+    mockStaff.uploadSample(ref);
+    await expect(mockApi.reviewSample(ref, access, 'changes', '')).rejects.toThrow(/what to change/);
+    order = await mockApi.reviewSample(ref, access, 'changes', 'The print is too light');
+    expect(order.sample).toMatchObject({ status: 'changes_requested', comments: 'The print is too light' });
+    mockStaff.uploadSample(ref);
+    order = await mockApi.reviewSample(ref, access, 'approve', '');
+    expect(order.sample?.status).toBe('approved');
+    mockStaff.logProgress(ref, 100);
+    expect((await mockApi.getOrder(ref, access))!.progress).toMatchObject({ done: 100, total: 250 });
+  });
+
+  it('skips the sample for small runs', async () => {
+    const { ref, access } = await inProduction({ ...teesInput(100), customer: { ...customer, phone: '+254722530404' } });
+    expect((await mockApi.getOrder(ref, access))!.sample).toBeNull();
+  });
+
+  it('gives a pickup code, and completes only when the code matches', async () => {
+    const { ref, access } = await inProduction({ ...teesInput(100), customer: { ...customer, phone: '+254722530402' } });
+    mockStaff.logProgress(ref, 100);
+    mockStaff.handOver(ref);
+    const order = (await mockApi.getOrder(ref, access))!;
+    expect(order.status).toBe('out_for_handover');
+    expect(order.pickupCode).toMatch(/^\d{6}$/);
+    expect(order.notifications.at(-1)!.text).toContain(order.pickupCode!);
+    const wrong = order.pickupCode === '000000' ? '111111' : '000000';
+    expect(mockStaff.collect(ref, wrong, 'Brian')).toBe(false);
+    expect(mockStaff.collect(ref, order.pickupCode!, 'Brian')).toBe(true);
+    const done = (await mockApi.getOrder(ref, access))!;
+    expect(done.status).toBe('completed');
+    expect(done.handedOver).toMatchObject({ method: 'pickup', detail: 'Collected by Brian, code checked.' });
+  });
+
+  it('delivers an early batch as its own record, then the rest', async () => {
+    const input: OrderInput = { ...teesInput(150), handover: { method: 'delivery', zone: 'inner', address: 'Westlands' }, customer: { ...customer, phone: '+254722530403' } };
+    const { ref, access } = await inProduction(input);
+    await expect(mockApi.requestPartialDelivery(ref, access, 50)).rejects.toThrow(/No finished pieces/);
+    mockStaff.logProgress(ref, 60);
+    await expect(mockApi.requestPartialDelivery(ref, access, 61)).rejects.toThrow(/Only 60/);
+    let order = await mockApi.requestPartialDelivery(ref, access, 50);
+    expect(order.deliveries).toHaveLength(1);
+    await expect(mockApi.requestPartialDelivery(ref, access, 10)).rejects.toThrow(/already on its way/);
+    mockStaff.advanceEarlyDelivery(ref);
+    mockStaff.advanceEarlyDelivery(ref);
+    order = (await mockApi.getOrder(ref, access))!;
+    expect(order.deliveries[0]).toMatchObject({ pieces: 50, partial: true, status: 'delivered', rider: 'Kevin Mwangi', recipient: 'Amina Otieno' });
+    mockStaff.logProgress(ref, 90);
+    mockStaff.handOver(ref);
+    mockStaff.handOver(ref);
+    order = (await mockApi.getOrder(ref, access))!;
+    expect(order.status).toBe('completed');
+    expect(order.deliveries.map((d) => [d.pieces, d.partial, d.status])).toEqual([
+      [50, true, 'delivered'],
+      [100, false, 'delivered'],
+    ]);
   });
 });
 

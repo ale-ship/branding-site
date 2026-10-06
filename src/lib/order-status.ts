@@ -1,4 +1,4 @@
-import type { Mechanism, OrderStatus, PaymentPurpose, PaymentStatus } from './api/order-types';
+import type { Mechanism, Order, OrderStatus, PaymentPurpose, PaymentStatus } from './api/order-types';
 
 /** What customers read for each status (docs/ORDER_WORKFLOW_SPEC.md, "Order statuses"). */
 export const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -34,11 +34,12 @@ export const TRACKS: Record<Mechanism, Step[]> = {
   ],
   B: [
     { label: 'Survey fee', statuses: ['awaiting_payment'] },
-    { label: 'Survey and firm price', statuses: ['in_design'] },
+    { label: 'Survey and firm quote', statuses: ['in_design'] },
+    { label: 'Deposit', statuses: [] },
     { label: 'Design approval', statuses: ['awaiting_approval'] },
-    { label: 'Payment', statuses: ['awaiting_balance'] },
     { label: 'Production and installation', statuses: ['in_production', 'ready', 'out_for_handover'] },
-    { label: 'Signed off', statuses: ['completed'] },
+    { label: 'Sign-off and balance', statuses: ['awaiting_balance'] },
+    { label: 'Done', statuses: ['completed'] },
   ],
   C: [
     { label: 'Payment', statuses: ['awaiting_payment'] },
@@ -48,6 +49,18 @@ export const TRACKS: Record<Mechanism, Step[]> = {
     { label: 'Done', statuses: ['completed'] },
   ],
 };
+
+/**
+ * The current step for an order. Site jobs pass through "awaiting payment" and "in design" twice
+ * (survey fee then deposit; survey then design), so the firm quote decides which step it is.
+ */
+export function orderTrackIndex(order: Pick<Order, 'mechanism' | 'status' | 'duePurpose' | 'siteQuote'>): number {
+  if (order.mechanism === 'B') {
+    if (order.status === 'awaiting_payment' && order.duePurpose === 'deposit') return 2;
+    if (order.status === 'in_design' && order.siteQuote?.status === 'accepted') return 3;
+  }
+  return trackIndex(order.mechanism, order.status);
+}
 
 /** Index of the current step on the track, or -1 for a side status. */
 export function trackIndex(mechanism: Mechanism, status: OrderStatus): number {

@@ -79,6 +79,9 @@ export default async function OrderPage() {
               Find your order
             </h2>
             <p className="mt-3 text-body">Your order number is in the WhatsApp message and email we sent. Not sure what you need? <Link href="/quote" className="font-semibold text-link underline">Ask us for a quote</Link> instead.</p>
+            <p className="mt-3 text-body">
+              Order often? <Link href="/account" className="font-semibold text-link underline">Sign in with your phone</Link> to see every order, save your brand kit and reorder in one tap.
+            </p>
           </div>
           <OrderLookup />
         </section>

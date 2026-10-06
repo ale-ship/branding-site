@@ -12,7 +12,7 @@ expect() {
   if [[ $got == "$want" ]]; then echo "ok   $want $path"; else echo "FAIL $path: wanted $want, got $got"; fail=1; fi
 }
 
-for path in / /work /services /services/apparel /shop /shop/business-cards /order '/order/new?product=business-cards' /quote /about /contact /privacy /terms /robots.txt /sitemap.xml /opengraph-image /icon.png; do
+for path in / /work /services /services/apparel /shop /shop/business-cards /order '/order/new?product=business-cards' /quote /account /about /contact /privacy /terms /robots.txt /sitemap.xml /opengraph-image /icon.png; do
   expect "$path" 200
 done
 expect /no-such-page 404

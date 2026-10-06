@@ -11,7 +11,8 @@ import type {
   TierOption,
   UrgencyCode,
 } from './api/order-types';
-import { addWorkingDays } from './calendar';
+import { addWorkingDays, formatDay } from './calendar';
+import { capacityFinish, type CapacityCalendar } from './capacity';
 import { formatKes } from './format';
 
 /**
@@ -178,14 +179,29 @@ function estimateCore(product: OrderProduct, request: PriceRequest, today: strin
   };
 }
 
-/** The full estimate, with every deadline tier priced so the customer can compare. */
-export function estimatePrice(product: OrderProduct, request: PriceRequest, today: string): PriceEstimate {
+/**
+ * The full estimate, with every deadline tier priced so the customer can compare. With the capacity
+ * calendar, a tier the workshop can't meet is switched off (express, rush) or moved to the earliest
+ * day it can (economy, standard).
+ */
+export function estimatePrice(product: OrderProduct, request: PriceRequest, today: string, calendar?: CapacityCalendar): PriceEstimate {
   const quantity = product.mechanism === 'A' ? request.quantity : 1;
+  const finish = calendar ? capacityFinish(product, quantity, request.brief, today, calendar) : null;
+  const later = (date: string | null) => (date && finish && finish > date ? finish : date);
   const tiers: TierOption[] = URGENCY_TIERS.map((t) => {
-    const { available, reason } = tierAvailability(product, t.code, quantity);
+    let { available, reason } = tierAvailability(product, t.code, quantity);
     const core = available ? estimateCore(product, { ...request, urgency: t.code }, today) : null;
-    return { code: t.code, label: t.label, multiplier: t.multiplier, available, reason, readyBy: core?.readyBy ?? null, total: core?.total ?? null };
+    if (core?.readyBy && finish && finish > core.readyBy && (t.code === 'express' || t.code === 'rush')) {
+      available = false;
+      reason = `Fully booked: the earliest we can finish is ${formatDay(finish)}`;
+    }
+    return { code: t.code, label: t.label, multiplier: t.multiplier, available, reason, readyBy: available ? later(core?.readyBy ?? null) : null, total: available ? (core?.total ?? null) : null };
   });
-  const chosen = tierAvailability(product, request.urgency, quantity).available ? request.urgency : 'standard';
-  return { ...estimateCore(product, { ...request, urgency: chosen }, today), tiers };
+  const chosen = tiers.find((t) => t.code === request.urgency)?.available ? request.urgency : 'standard';
+  const core = estimateCore(product, { ...request, urgency: chosen }, today);
+  if (core.readyBy && finish && finish > core.readyBy) {
+    core.readyBy = finish;
+    core.notes.push(`The workshop is busy: the earliest we can finish is ${formatDay(finish)}.`);
+  }
+  return { ...core, tiers };
 }

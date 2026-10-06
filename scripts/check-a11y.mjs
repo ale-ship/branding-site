@@ -59,6 +59,22 @@ const placeOrder = `(async () => {
   document.querySelector('form button[type=submit]').click();
 })()`;
 
+const signIn = `(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const set = (sel, val) => {
+    const el = document.querySelector(sel);
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, val);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  // Signed in already (an earlier width): nothing to do.
+  if (!document.querySelector('#signin-phone')) return;
+  set('#signin-phone', '0722 530 303');
+  document.querySelector('form button[type=submit]').click();
+  for (let i = 0; i < 40 && !document.querySelector('#signin-code'); i++) await wait(250);
+  set('#signin-code', document.body.innerText.match(/The code is ([0-9]{6})/)?.[1] ?? '');
+  document.querySelector('form button[type=submit]').click();
+})()`;
+
 /**
  * Each route, with optional setup before load and an action after it (to put the page into the
  * state worth checking, e.g. a form with errors showing).
@@ -103,7 +119,29 @@ const ROUTES = [
             [...document.querySelectorAll('section[aria-labelledby=demo-title] button')].find((x) => x.textContent.includes('Paybill payment of')),
           ))`,
   },
+  {
+    path: '/order/new?product=poster-design',
+    name: 'proof review',
+    action: placeOrder,
+    // Pay, then have the demo staff upload a proof; done when the proof review is up.
+    waitFor: `!!document.querySelector('#proof-title') ||
+      ((buttons) => {
+        const pay = buttons.find((x) => x.textContent.includes('Paybill payment of'));
+        const proof = buttons.find((x) => x.textContent.includes('upload a proof'));
+        if (pay && !window.__paid) { window.__paid = true; pay.click(); }
+        else if (proof && !window.__proof) { window.__proof = true; proof.click(); }
+        return false;
+      })([...document.querySelectorAll('section[aria-labelledby=demo-title] button')])`,
+  },
   { path: '/order/NB-000000', name: 'find your order' },
+  { path: '/account', name: 'account sign-in' },
+  {
+    path: '/account',
+    name: 'account (signed in)',
+    // Phone, then the demo code the mock shows; done when the account has loaded.
+    action: signIn,
+    waitFor: `!!document.querySelector('#orders-title')`,
+  },
   { path: '/about' },
   { path: '/contact' },
   { path: '/contact', name: 'contact with errors', action: `document.querySelector('form button[type=submit]').click()` },

@@ -3,6 +3,7 @@ import { orderProducts } from './api/data/order-catalogue';
 import {
   coerceOrderDraft,
   describeBrief,
+  draftBriefFrom,
   emptyOrderDraft,
   stepOfField,
   toOrderInput,
@@ -150,5 +151,18 @@ describe('describeBrief', () => {
       { label: 'Printing method', value: 'Screen print' },
       { label: 'Colours in the design', value: '2' },
     ]);
+  });
+});
+
+describe('draftBriefFrom', () => {
+  it('turns saved answers back into the form’s text, and round-trips', () => {
+    const tees = orderProducts.find((p) => p.slug === 't-shirt-printing')!;
+    const answers = { garmentColour: 'White', sizes: { S: 10, M: 0, L: 40, XL: 0, XXL: 0 }, positions: ['front'], method: 'heat', printColours: 1, stray: 'x' };
+    const brief = draftBriefFrom(tees, answers);
+    expect(brief.sizes).toEqual({ S: '10', M: '', L: '40', XL: '', XXL: '' });
+    expect(brief.printColours).toBe('1');
+    expect(brief).not.toHaveProperty('stray');
+    const draft: OrderDraft = { ...emptyOrderDraft(tees), quantity: '50', brief };
+    expect(toPriceRequest(draft, tees).brief).toMatchObject({ sizes: { S: 10, L: 40 }, printColours: 1 });
   });
 });

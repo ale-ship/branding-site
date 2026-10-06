@@ -79,6 +79,8 @@ export function FilePicker({
   files,
   onChange,
   error,
+  onPick,
+  notes,
 }: {
   id: string;
   label: ReactNode;
@@ -86,9 +88,14 @@ export function FilePicker({
   files: ArtworkFile[];
   onChange: (files: ArtworkFile[]) => void;
   error?: string;
+  /** The picked files themselves, for checks that read them (only names travel to the server). */
+  onPick?: (files: File[]) => void;
+  /** Shown under each listed file, by name. */
+  notes?: Record<string, ReactNode>;
 }) {
   const [dragging, setDragging] = useState(false);
   const add = (list: FileList | null) => {
+    if (list?.length) onPick?.(Array.from(list));
     const picked = Array.from(list ?? []).map((f) => ({ name: f.name, size: f.size, type: f.type }));
     if (picked.length) onChange([...files, ...picked.filter((p) => !files.some((f) => f.name === p.name && f.size === p.size))]);
   };
@@ -133,7 +140,7 @@ export function FilePicker({
       {files.length > 0 && (
         <ul className="mt-3 border-t border-border">
           {files.map((file, i) => (
-            <li key={`${file.name}-${file.size}`} className="flex items-center gap-3 border-b border-border py-1.5">
+            <li key={`${file.name}-${file.size}`} className="flex flex-wrap items-center gap-x-3 border-b border-border py-1.5">
               <FileText aria-hidden className="size-4 shrink-0 text-muted" />
               <span className="min-w-0 flex-1 truncate text-heading">{file.name}</span>
               <span className="text-sm text-muted tabular-nums">{formatBytes(file.size)}</span>
@@ -145,6 +152,7 @@ export function FilePicker({
               >
                 <X aria-hidden className="size-4" />
               </button>
+              {notes?.[file.name] && <div className="basis-full pb-1.5 pl-7">{notes[file.name]}</div>}
             </li>
           ))}
         </ul>

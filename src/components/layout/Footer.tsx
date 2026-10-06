@@ -94,6 +94,9 @@ export async function Footer() {
             <Link href="/terms" className="inline-flex min-h-11 items-center hover:text-heading">
               Terms
             </Link>
+            <Link href="/account" className="inline-flex min-h-11 items-center hover:text-heading">
+              Your account
+            </Link>
           </p>
           <p className="flex items-center gap-3">
             <CmykDots />

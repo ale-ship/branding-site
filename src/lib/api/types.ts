@@ -1,9 +1,16 @@
+import type { CapacityCalendar } from '../capacity';
+
 /**
  * The site's data contract. Pages and components talk to `api` (src/lib/api/index.ts) only,
  * never to the files in ./data. Today the mock serves it; our own backend will later.
  */
 
 import type {
+  Account,
+  AccountSession,
+  ApprovalChecklist,
+  BrandKit,
+  CompanyMember,
   Order,
   OrderAccess,
   OrderCategory,
@@ -12,6 +19,10 @@ import type {
   OrderProduct,
   PriceEstimate,
   PriceRequest,
+  ProofPin,
+  ReorderDraft,
+  SavedAddress,
+  Statement,
 } from './order-types';
 
 
@@ -167,6 +178,8 @@ export interface SiteApi {
   listOrderCategories(): Promise<OrderCategory[]>;
   listOrderProducts(): Promise<OrderProduct[]>;
   getOrderProduct(slug: string): Promise<OrderProduct | null>;
+  /** Pieces booked per machine per day, so the order form only offers deadlines the workshop can meet. */
+  getCapacity(): Promise<CapacityCalendar>;
   /** The live price for a brief, quantity, deadline tier and handover. */
   priceEstimate(request: PriceRequest): Promise<PriceEstimate>;
   /** Prices the order again (the browser's price is never trusted) and opens it, awaiting payment. */
@@ -174,9 +187,40 @@ export interface SiteApi {
   /** Sends an M-Pesa STK Push for what's due now. The order moves on only when the callback confirms. */
   startPayment(ref: string, access: OrderAccess, phone: string): Promise<OrderPayment>;
   getOrder(ref: string, access: OrderAccess): Promise<Order | null>;
-  approveProof(ref: string, access: OrderAccess, version: number): Promise<Order>;
-  requestChanges(ref: string, access: OrderAccess, version: number, comments: string): Promise<Order>;
+  /** Approves one proof version; every checklist item must be confirmed. Locks the artwork. */
+  approveProof(ref: string, access: OrderAccess, version: number, checklist: ApprovalChecklist): Promise<Order>;
+  /** Sends a proof back with notes and pins; uses a revision round. */
+  requestChanges(ref: string, access: OrderAccess, version: number, comments: string, pins: ProofPin[]): Promise<Order>;
+  /** Approves the pre-production sample (the full run starts) or asks for changes to it. */
+  reviewSample(ref: string, access: OrderAccess, decision: 'approve' | 'changes', comments: string): Promise<Order>;
+  /** Asks for finished pieces to be delivered early, as their own delivery. */
+  requestPartialDelivery(ref: string, access: OrderAccess, pieces: number): Promise<Order>;
   bookSurvey(ref: string, access: OrderAccess, date: string): Promise<Order>;
+  /** Site jobs: accepts the firm quote after the survey; the deposit then falls due. */
+  acceptSiteQuote(ref: string, access: OrderAccess): Promise<Order>;
+  /** Site jobs: books (or moves) the installation date while the job is in production. */
+  bookInstall(ref: string, access: OrderAccess, date: string): Promise<Order>;
+
+  // Accounts (spec, "Accounts"): phone + a one-time code on WhatsApp. Orders placed with the phone
+  // belong to the account, guest orders included. Methods taking a session throw OrderError when
+  // it has expired.
+  /** Sends a sign-in code on WhatsApp. `demoCode` is filled by the mock only, never by the backend. */
+  requestSignInCode(phone: string): Promise<{ sentTo: string; demoCode?: string }>;
+  verifySignInCode(phone: string, code: string): Promise<AccountSession>;
+  getAccount(session: string): Promise<Account | null>;
+  updateAccount(session: string, details: { name: string; email: string; company: string }): Promise<Account>;
+  saveBrandKit(session: string, kit: BrandKit): Promise<Account>;
+  saveAddress(session: string, address: Omit<SavedAddress, 'id'> & { id?: string }): Promise<Account>;
+  removeAddress(session: string, id: string): Promise<Account>;
+  /** The past order's choices for a new order, with its approved artwork (no design fee). */
+  reorderDraft(session: string, ref: string): Promise<ReorderDraft>;
+  signOut(session: string): Promise<void>;
+  /** Invoices and payments for the account's own orders, with a running balance. */
+  getStatement(session: string): Promise<Statement>;
+  createCompany(session: string, details: { name: string; kraPin: string }): Promise<Account>;
+  /** Owners only. Adding a phone that already belongs to a company is refused. */
+  addCompanyMember(session: string, member: CompanyMember): Promise<Account>;
+  removeCompanyMember(session: string, phone: string): Promise<Account>;
 }
 
 export type * from './order-types';

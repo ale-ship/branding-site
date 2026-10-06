@@ -1,7 +1,9 @@
 'use client';
 
 import { Plus, X } from 'lucide-react';
+import { useState } from 'react';
 import type { CommonBrief, Mechanism } from '@/lib/api/order-types';
+import { checkArtwork, READ_BYTES, type ArtworkWarning } from '@/lib/artwork-check';
 import { formatKes } from '@/lib/format';
 import { MAX_COLOURS, STYLE_TAGS } from '@/lib/order';
 import { ChoiceGroup, FieldError, Hint, inputClass, TextArea, TextField } from '../quote/fields';
@@ -17,11 +19,43 @@ type Props = {
   errors: Record<string, string | undefined>;
   mechanism: Mechanism;
   designFee: number;
+  /** The product, for the artwork file check's print size. */
+  productSlug: string;
 };
 
 /** The brief every order shares (spec, "Common brief block"). Error keys are `common.<key>`. */
-export function CommonBriefFields({ value, onChange, errors, mechanism, designFee }: Props) {
+export function CommonBriefFields({ value, onChange, errors, mechanism, designFee, productSlug }: Props) {
   const set = <K extends keyof CommonBrief>(key: K, v: CommonBrief[K]) => onChange({ ...value, [key]: v });
+  // Print-ready files are checked in the browser as they're picked (resolution, RGB, bleed).
+  const [warnings, setWarnings] = useState<Record<string, ArtworkWarning[]>>({});
+  const checking = value.artwork === 'print-ready' && mechanism === 'A';
+  const check = async (files: File[]) => {
+    const found: Record<string, ArtworkWarning[]> = {};
+    for (const f of files) {
+      try {
+        found[f.name] = checkArtwork({ name: f.name, bytes: new Uint8Array(await f.slice(0, READ_BYTES).arrayBuffer()) }, { slug: productSlug });
+      } catch {
+        found[f.name] = [];
+      }
+    }
+    setWarnings((w) => ({ ...w, ...found }));
+  };
+  const notes = checking
+    ? Object.fromEntries(
+        Object.entries(warnings)
+          .filter(([, list]) => list.length)
+          .map(([name, list]) => [
+            name,
+            <ul key={name} className="flex flex-col gap-1 text-sm">
+              {list.map((w) => (
+                <li key={w.kind} className="border-l-2 border-accent pl-2 text-heading">
+                  {w.text}
+                </li>
+              ))}
+            </ul>,
+          ]),
+      )
+    : undefined;
 
   return (
     <>
@@ -45,7 +79,14 @@ export function CommonBriefFields({ value, onChange, errors, mechanism, designFe
         files={value.assets}
         onChange={(files) => set('assets', files)}
         error={errors['common.assets']}
+        onPick={check}
+        notes={notes}
       />
+      {checking && Object.values(warnings).some((l) => l.length) && (
+        <p role="status" className="-mt-4 text-sm text-body">
+          We found things to fix in your files. You can still order: we check every file again before printing and call you if it needs work.
+        </p>
+      )}
 
       <fieldset aria-describedby={`common-colours-hint${errors['common.colours'] ? ' common-colours-error' : ''}`}>
         <legend className="font-semibold text-heading">Brand colours (optional)</legend>

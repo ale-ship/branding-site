@@ -3,7 +3,9 @@
 import { cookies } from 'next/headers';
 import { api, demo, OrderError, type Order, type OrderAccess, type OrderPayment } from '@/lib/api';
 import { coerceOrderDraft, toOrderInput, validateOrderDraft, type OrderErrors } from '@/lib/order';
+import { changeRequestError, checklistComplete, coerceChecklist, coercePins, MAX_CHANGE_NOTES } from '@/lib/proof';
 import { normaliseKenyanPhone } from '@/lib/quote';
+import { SESSION_COOKIE } from '@/lib/account';
 import { accessCookie, parseAccess } from './access';
 
 /**
@@ -19,10 +21,18 @@ async function remember(ref: string, value: OrderAccess) {
   (await cookies()).set(accessCookie(ref), 'token' in value ? `t:${value.token}` : `p:${value.phone}`, COOKIE_OPTIONS);
 }
 
-/** The token from the link if there is one, else what this browser remembers for the order. */
+/**
+ * The token from the link if there is one, else what this browser remembers for the order, else the
+ * signed-in account's verified phone (orders placed with it are the account's).
+ */
 async function resolveAccess(ref: string, token: string): Promise<OrderAccess> {
   if (token) return { token: String(token) };
-  return parseAccess((await cookies()).get(accessCookie(String(ref)))?.value) ?? { token: '' };
+  const jar = await cookies();
+  const remembered = parseAccess(jar.get(accessCookie(String(ref)))?.value);
+  if (remembered) return remembered;
+  const session = jar.get(SESSION_COOKIE)?.value;
+  const account = session ? await api.getAccount(session) : null;
+  return account ? { phone: account.phone } : { token: '' };
 }
 
 const failure = (e: unknown, fallback: string): Fail =>
@@ -35,7 +45,12 @@ export async function createOrderAction(productSlug: string, input: unknown): Pr
   const errors = validateOrderDraft(draft, product);
   if (Object.keys(errors).length) return { ok: false, message: 'Some details need another look.', errors };
   try {
-    const { ref, token } = await api.createOrder(toOrderInput(draft, product));
+    const input = toOrderInput(draft, product);
+    const session = (await cookies()).get(SESSION_COOKIE)?.value;
+    const account = session ? await api.getAccount(session) : null;
+    // A company order only when the signed-in member orders with their own phone.
+    if (account?.companyAccount && account.phone === input.customer.phone) input.company = { id: account.companyAccount.id, poNumber: draft.poNumber.trim() };
+    const { ref, token } = await api.createOrder(input);
     await remember(ref, { token });
     return { ok: true, ref, token };
   } catch (e) {
@@ -70,7 +85,95 @@ export async function lookupOrderAction(ref: string, phone: string): Promise<{ o
   return { ok: true, ref: clean };
 }
 
-export type DemoAction = 'paybill-full' | 'paybill-part' | 'paybill-no-ref' | 'repeat-callback' | 'upload-proof' | 'approve-proof' | 'request-changes' | 'log-progress' | 'hand-over' | 'skip-wait';
+/** The customer approves a proof version; every checklist item must be ticked (checked again here and by the API). */
+export async function approveProofAction(ref: string, token: string, version: number, checklist: unknown): Promise<{ ok: true } | Fail> {
+  const ticks = coerceChecklist(checklist);
+  if (!checklistComplete(ticks)) return { ok: false, message: 'Tick every item on the checklist to approve.' };
+  try {
+    // A signed-in company approver may hold another member's link in this browser: their own
+    // account is tried first, so the approval counts as theirs.
+    const session = (await cookies()).get(SESSION_COOKIE)?.value;
+    const account = session ? await api.getAccount(session) : null;
+    if (account) {
+      try {
+        await api.approveProof(String(ref), { phone: account.phone }, Number(version), ticks);
+        return { ok: true };
+      } catch (e) {
+        if (!(e instanceof OrderError && e.code === 'not_found')) throw e;
+      }
+    }
+    await api.approveProof(String(ref), await resolveAccess(ref, token), Number(version), ticks);
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t record your approval. Please try again.');
+  }
+}
+
+/** The customer sends a proof back with notes and pinned comments. */
+export async function requestChangesAction(ref: string, token: string, version: number, comments: unknown, pins: unknown): Promise<{ ok: true } | Fail> {
+  const text = typeof comments === 'string' ? comments.trim().slice(0, MAX_CHANGE_NOTES) : '';
+  const cleanPins = coercePins(pins);
+  const problem = changeRequestError(text, cleanPins);
+  if (problem) return { ok: false, message: problem };
+  try {
+    await api.requestChanges(String(ref), await resolveAccess(ref, token), Number(version), text, cleanPins);
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t send your changes. Please try again.');
+  }
+}
+
+export async function reviewSampleAction(ref: string, token: string, decision: unknown, comments: unknown): Promise<{ ok: true } | Fail> {
+  const d = decision === 'approve' ? 'approve' : 'changes';
+  const text = typeof comments === 'string' ? comments.trim().slice(0, MAX_CHANGE_NOTES) : '';
+  if (d === 'changes' && text.length < 5) return { ok: false, message: 'Tell us what to change on the sample.' };
+  try {
+    await api.reviewSample(String(ref), await resolveAccess(ref, token), d, text);
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t record that. Please try again.');
+  }
+}
+
+export async function requestPartialDeliveryAction(ref: string, token: string, pieces: unknown): Promise<{ ok: true } | Fail> {
+  const n = typeof pieces === 'number' ? pieces : Number(String(pieces).trim());
+  if (!Number.isInteger(n) || n < 1) return { ok: false, message: 'Enter how many finished pieces you want early.' };
+  try {
+    await api.requestPartialDelivery(String(ref), await resolveAccess(ref, token), n);
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t ask for that delivery. Please try again.');
+  }
+}
+
+export async function bookSurveyAction(ref: string, token: string, date: unknown): Promise<{ ok: true } | Fail> {
+  try {
+    await api.bookSurvey(String(ref), await resolveAccess(ref, token), String(date ?? '').trim());
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t book that date. Please try again.');
+  }
+}
+
+export async function acceptSiteQuoteAction(ref: string, token: string): Promise<{ ok: true } | Fail> {
+  try {
+    await api.acceptSiteQuote(String(ref), await resolveAccess(ref, token));
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t record that. Please try again.');
+  }
+}
+
+export async function bookInstallAction(ref: string, token: string, date: unknown): Promise<{ ok: true } | Fail> {
+  try {
+    await api.bookInstall(String(ref), await resolveAccess(ref, token), String(date ?? '').trim());
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t book that date. Please try again.');
+  }
+}
+
+export type DemoAction = 'paybill-full' | 'paybill-part' | 'paybill-no-ref' | 'repeat-callback' | 'upload-proof' | 'approve-proof' | 'request-changes' | 'complete-survey' | 'upload-sample' | 'log-progress' | 'early-delivery' | 'hand-over' | 'skip-wait';
 
 /** Mock only: plays the parts of M-Pesa and the staff, so the flow can be tried end to end. */
 export async function demoAction(ref: string, token: string, action: DemoAction): Promise<{ ok: true; message: string } | Fail> {
@@ -106,17 +209,26 @@ export async function demoAction(ref: string, token: string, action: DemoAction)
       case 'approve-proof': {
         const proof = order.proofs.at(-1);
         if (!proof) return { ok: false, message: 'No proof yet.' };
-        await api.approveProof(order.ref, access, proof.version);
+        await api.approveProof(order.ref, access, proof.version, { spelling: true, colours: true, size: true, quantity: true, colourVariance: true });
         return { ok: true, message: `Proof v${proof.version} approved.` };
       }
       case 'request-changes': {
         const proof = order.proofs.at(-1);
         if (!proof) return { ok: false, message: 'No proof yet.' };
-        await api.requestChanges(order.ref, access, proof.version, 'Please make the logo bigger.');
+        await api.requestChanges(order.ref, access, proof.version, 'Please make the logo bigger.', [{ x: 0.2, y: 0.25, text: 'Bigger here' }]);
         return { ok: true, message: 'Changes requested.' };
       }
+      case 'complete-survey':
+        demo.completeSurvey(order.ref);
+        return { ok: true, message: 'Survey done; the firm quote is sent.' };
+      case 'upload-sample':
+        demo.uploadSample(order.ref);
+        return { ok: true, message: 'Sample photographed and sent.' };
+      case 'early-delivery':
+        demo.advanceEarlyDelivery(order.ref);
+        return { ok: true, message: 'Early delivery moved on.' };
       case 'log-progress':
-        demo.logProgress(order.ref, Math.max(1, Math.ceil(order.quantity / 3)));
+        demo.logProgress(order.ref, order.progress.kind === 'pieces' ? Math.max(1, Math.ceil(order.progress.total / 3)) : 1);
         return { ok: true, message: 'Production logged.' };
       case 'hand-over':
         demo.handOver(order.ref);

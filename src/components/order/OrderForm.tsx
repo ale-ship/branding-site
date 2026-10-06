@@ -9,6 +9,7 @@ import type { OrderProduct } from '@/lib/api/order-types';
 import { formatDay } from '@/lib/calendar';
 import { formatKes, pad2 } from '@/lib/format';
 import { emptyOrderDraft, ORDER_STEPS, stepOfField, toPriceRequest, validateOrderDraft, type DraftBriefValue, type OrderDraft, type OrderErrors } from '@/lib/order';
+import type { CapacityCalendar } from '@/lib/capacity';
 import { DELIVERY_ZONES, estimatePrice } from '@/lib/pricing';
 import { nairobiToday } from '@/lib/quote';
 import { ChoiceGroup, FieldError, TextField } from '../quote/fields';
@@ -17,7 +18,16 @@ import { CommonBriefFields } from './CommonBriefFields';
 import { fieldId } from './controls';
 import { PriceSummary } from './PriceSummary';
 
-type Props = { product: OrderProduct; prefill?: { quantity?: string; brief?: Record<string, string> } };
+type Props = {
+  product: OrderProduct;
+  prefill?: { quantity?: string; brief?: Record<string, string> };
+  /** A whole starting draft: from the account (brand kit, details, address) or a reorder. */
+  initial?: OrderDraft;
+  /** The workshop's bookings, so the deadlines offered are ones it can meet (the server checks again). */
+  calendar?: CapacityCalendar;
+  /** Set when the signed-in customer orders for a company: the order asks for a PO number. */
+  companyName?: string;
+};
 
 const MECHANISM_NOTE: Record<OrderProduct['mechanism'], string> = {
   A: 'Priced now. Pay a deposit (or in full under KES 5,000), approve a proof, pay the balance, and we print.',
@@ -30,10 +40,10 @@ const MECHANISM_NOTE: Record<OrderProduct['mechanism'], string> = {
  * the order sends everything to the server, which checks and prices it again, then the order page
  * takes the payment (docs/ORDER_WORKFLOW_SPEC.md).
  */
-export function OrderForm({ product, prefill }: Props) {
+export function OrderForm({ product, prefill, initial, calendar, companyName }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState<OrderDraft>(() => {
-    const d = emptyOrderDraft(product);
+    const d = initial ? structuredClone(initial) : emptyOrderDraft(product);
     if (prefill?.quantity && product.mechanism === 'A') d.quantity = prefill.quantity;
     if (prefill?.brief) Object.assign(d.brief, prefill.brief);
     return d;
@@ -48,7 +58,7 @@ export function OrderForm({ product, prefill }: Props) {
 
   const current = ORDER_STEPS[step]!;
   const isLast = step === ORDER_STEPS.length - 1;
-  const estimate = useMemo(() => estimatePrice(product, toPriceRequest(draft, product), nairobiToday()), [draft, product]);
+  const estimate = useMemo(() => estimatePrice(product, toPriceRequest(draft, product), nairobiToday(), calendar), [draft, product, calendar]);
   const quantity = Number(toPriceRequest(draft, product).quantity);
 
   const clear = (key: string) => errors[key] && setErrors((e) => ({ ...e, [key]: undefined }));
@@ -175,6 +185,7 @@ export function OrderForm({ product, prefill }: Props) {
               errors={errors}
               mechanism={product.mechanism}
               designFee={designFee}
+              productSlug={product.slug}
             />
           )}
 
@@ -271,6 +282,16 @@ export function OrderForm({ product, prefill }: Props) {
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
                 <TextField name="name" label="Your name" autoComplete="name" value={draft.name} onChange={(v) => update('name', v)} error={errors.name} />
                 <TextField name="company" label="Company" optional autoComplete="organization" value={draft.company} onChange={(v) => update('company', v)} />
+                {companyName && (
+                  <TextField
+                    name="poNumber"
+                    label="PO or LPO number"
+                    optional
+                    hint={`For ${companyName}: it goes on the invoice. Proofs are approved by your company’s approver.`}
+                    value={draft.poNumber}
+                    onChange={(v) => update('poNumber', v)}
+                  />
+                )}
                 <TextField
                   name="phone"
                   type="tel"

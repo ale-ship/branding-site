@@ -20,10 +20,21 @@ next. Update it at the end of every task.
   backend can plug in later without page changes.
 - **Pages:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`, `/shop/[slug]`,
   `/quote`, `/order`, `/order/new`, `/order/[ref]`, `/order/[ref]/invoice`, `/order/[ref]/receipt/[no]`,
-  `/about`, `/contact`,
+  `/account`, `/account/statement` (+ `.csv`), `/about`, `/contact`,
   `/privacy`, `/terms`, plus the 404 and error pages,
   `/sitemap.xml`, `/robots.txt`, `/opengraph-image`, icons.
-- **Next:** spec Phase 2 (proofs and production) on the site, and backend step B0 (`docs/BACKEND_RUNBOOK.md`).
+- **6 Oct 2026, online ordering Phase 2 (proofs and production) built**, mocked: proof review with
+  pinned notes and an approval checklist, every version kept, the pre-production sample, the
+  production log with a calculated ETA, pickup codes, deliveries and early (partial) deliveries.
+- **6 Oct 2026, online ordering Phase 3 (accounts and site jobs) built**, mocked: sign-in with a
+  WhatsApp code, `/account` with every order, brand kit, saved addresses and "Order again"; site jobs
+  run survey booking → firm quote → deposit → design → installation date → sign-off → balance.
+- **6 Oct 2026, online ordering Phase 4 (polish) built**, mocked: the capacity calendar drives the
+  deadlines offered, proofs show a mockup on the item, print-ready files are checked in the browser
+  (resolution, RGB, bleed), accounts get a statement (page and CSV), and company accounts (members,
+  approvers, PO numbers on invoices). **All four spec phases are now on the site.**
+- **Next:** backend step B0 (`docs/BACKEND_RUNBOOK.md`). Staff reports and the staff dashboard come
+  with the backend (B4).
   Ask Absa for the items in its section 14. Also: deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
 
 ## Start here on a new machine
@@ -574,6 +585,106 @@ sideways scroll. `npm run a11y`, `menu` and `devices` include the new pages.
 - Cart for several items in one order: one item per order for now. The quote list stays for "ask
   us first" requests.
 
+## Online ordering, Phase 4: polish (6 Oct 2026)
+
+Still mocked. With this the order workflow spec's four phases are all on the site.
+
+- **Capacity calendar** (`src/lib/capacity.ts`): each quantity run goes through one machine
+  (`machineFor`: screen press, DTF, embroidery, sublimation, engraving, digital press, binding,
+  wide-format), each with pieces a day (`MACHINES`, TODO(business)). `allocate` fills free capacity
+  day by day. `estimatePrice(…, calendar)` switches off express and rush when the workshop can't
+  finish in time ("Fully booked: the earliest we can finish is …") and moves economy and standard
+  dates later. The order form gets the calendar from `api.getCapacity()`; the API prices against it
+  again, refuses a deadline that has filled up, and reserves the order's slot (released when an
+  unpaid order expires). The mock seeds four busy days on the presses so the effect shows. The
+  production ETA uses the same machine figures.
+- **Mockups:** each proof can carry `mockup`, the design on the item (a tee, a mug, cards, a banner
+  stand, a page), shown under the flat proof. The mock draws them (`mockupImage` in `mock-art.ts`); the
+  backend will store the designer's.
+- **Artwork file check** (`src/lib/artwork-check.ts`): when "print-ready artwork" is chosen, each
+  picked file is read in the browser (first 4 MB) and checked against the product's finished size
+  (`PRINT_SIZES`, TODO(business)): under 150 dpi, RGB (PNG, JPEG channels, PDF colour spaces) and no
+  bleed (image proportions, PDF BleedBox). Warnings never block the order. The backend runs the same
+  check on the real upload.
+- **Reports for customers:** `/account/statement`, a printable statement of account (invoices as
+  debits, confirmed payments as credits, running balance, `src/lib/statement.ts`), and
+  `/account/statement.csv` (signed-in only, formula-safe CSV). Staff reports belong to the back office.
+- **Company accounts** (`/account`, "Ordering for a company?"): the owner sets up the company (name,
+  KRA PIN), adds colleagues by phone as "orders" or "orders and approves proofs" and removes them.
+  Members' orders carry the company and a PO or LPO number (asked on the order form; the server takes
+  the company from the session, never from the browser) and print them on the invoice. Proofs on a
+  company order are approved only by the owner or an approver, who see colleagues' orders in their
+  account and open them without the link. `approveProofAction` tries the signed-in account first.
+- **Mock state** lives on `globalThis` (`mock-store.ts`), because Next.js bundles route handlers apart
+  from pages and each bundle would otherwise keep its own maps.
+- **New SiteApi methods:** `getCapacity`, `getStatement`, `createCompany`, `addCompanyMember`,
+  `removeCompanyMember`; `estimatePrice` takes the calendar; `OrderInput.company`, `Order.company`.
+- Checks: 203 tests.
+
+## Online ordering, Phase 3: accounts and site jobs (6 Oct 2026)
+
+Still mocked (`src/lib/api/mock-accounts.ts`, `mock-orders.ts`).
+
+- **Sign-in** (`/account`, `components/account/SignInForm.tsx`): phone, then a six-digit code on
+  WhatsApp; no passwords. Codes last 10 minutes, allow 5 tries and can be resent after a minute; the
+  session is an httpOnly cookie (`nb-session`) for 30 days (`src/lib/account.ts`). The mock shows the
+  code on the page ("Demo: …"); the server action passes it on only in mock mode, and the backend
+  must never return it.
+- **The account is its verified phone**: every order placed with that phone is listed, guest orders
+  included, so there is nothing to claim. Its orders also open without the secret link
+  (`loadOrder` and `resolveAccess` fall back to the session). Missing name and email come from the
+  latest order.
+- **Brand kit** (colours, fonts, logo file names, notes) and up to five **delivery addresses**. A new
+  order starts with the account's details, brand kit and first address (`startingDraft` in
+  `src/app/order/new/page.tsx`; the server still checks and prices everything).
+- **Order again**: quantity runs with an approved proof show "Order again", which opens the form with
+  the past order's choices and the approved artwork (`artwork: print-ready`, so no design fee) and a
+  note naming the order (`reorderDraft`, `draftBriefFrom`).
+- **Site jobs (Mechanism B)**, end to end on the order page (`components/order/SiteJobPanels.tsx`):
+  survey fee → choose the survey date (preferred dates are one tap) → staff send the **firm quote**
+  from the quote builder (`src/lib/site-quote.ts`: price per m² per material with a minimum per item,
+  fitting by area, extras such as a county permit; valid 14 days) → the customer accepts and pays
+  half → design proof → **installation date** (two working days' notice, working days only) →
+  stages logged → signed off on site → balance (the survey fee comes off it) → completed. The
+  tracker follows the quote, not just the status (`orderTrackIndex`). The invoice lists the quote's
+  lines once accepted.
+- **New SiteApi methods:** `acceptSiteQuote`, `bookInstall`, `requestSignInCode`, `verifySignInCode`,
+  `getAccount`, `updateAccount`, `saveBrandKit`, `saveAddress`, `removeAddress`, `reorderDraft`,
+  `signOut`. Demo control: "survey done, send the firm quote".
+- Links: "Your account" in the footer and on `/order`. Checks: 188 tests; `npm run a11y` signs in.
+
+## Online ordering, Phase 2: proofs and production (6 Oct 2026)
+
+Still mocked (`src/lib/api/mock-orders.ts`); the contract in `src/lib/api/order-types.ts` grew so the
+backend can serve the same shapes.
+
+- **Proof review** (`components/order/ProofReview.tsx`, on `/order/[ref]` while a proof waits): the
+  proof is watermarked PROOF; tapping it pins a numbered note there (keyboard: Enter pins the
+  middle; "Add a note about the whole proof" pins none). Approving needs every checklist item
+  ticked, including "printed colours may vary"; it is refused while notes are pinned. Sending
+  changes needs a note or a pin and uses a revision round. The server action and the API both
+  check again (`src/lib/proof.ts`: `coerceChecklist`, `coercePins`, `changeRequestError`).
+- **Every version is kept** with its pins and notes ("Earlier versions" / "Proofs", `ProofFigure.tsx`).
+  The mock draws proofs as SVG from the brief (`mock-art.ts`: colours, company, words; no people);
+  the backend will return signed links to the designer's files.
+- **Balance gate:** approval asks for the balance; production starts only on its confirmed callback.
+  The promised date counts from that day (`production.startedOn`, `promisedBy`).
+- **Pre-production sample** for runs of 200 pieces or more (`SAMPLE_THRESHOLD`): staff photograph
+  one piece, the customer approves it or asks for a new one; production can't be logged before.
+- **Production log and ETA** (`src/lib/production.ts`): each log is "N printed"; the ETA divides the
+  pieces left by the recent rate (once logs span two working days) or the product's daily capacity
+  (`DAILY_CAPACITY`, TODO(business)), and the order shows "On track" or "At risk".
+- **Handover:** pickup orders get a six-digit pickup code when ready; the order completes only when
+  staff enter the matching code (the collector's name is recorded). Delivery orders get a delivery
+  record with the rider and phone (or a courier waybill countrywide) and the recipient. While
+  printing, a delivery customer can ask for finished pieces early: each early batch is its own
+  delivery record (`partialDeliveryError` sets the limits).
+- **New SiteApi methods:** `approveProof(ref, access, version, checklist)`,
+  `requestChanges(ref, access, version, comments, pins)`, `reviewSample`, `requestPartialDelivery`.
+- **Demo controls** add "photograph a sample" and "move the early delivery on"; "hand over" now
+  gives the pickup code, then checks it.
+- Checks: 172 tests; `npm run a11y` has a "proof review" state.
+
 ### 6 Oct 2026: colours, receipts, Absa C2B
 
 - **The logo's colours across the site.** The accent is now the logo's red (#D7000F, a shade deeper
@@ -609,6 +720,9 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 6 Oct 2026 | Company orders are approved only by the company's owner or an approver; PO numbers print on invoices | Spec "company accounts" |
+| 6 Oct 2026 | Deadlines offered come from the capacity calendar; a tier the workshop can't meet is switched off, not sold | Spec "capacity calendar" |
+| 6 Oct 2026 | Accounts sign in with the phone and a WhatsApp code only; an account is its verified phone, so guest orders join it without claiming | Spec "Accounts"; no passwords to leak |
 | 6 Oct 2026 | **Paybill payments go through Absa C2B on 303030**; the order number travels in the account reference (`2055268420#NB123456`, format to confirm) and is matched automatically, with phone + amount as the fallback and an unmatched queue for staff | Owner's decision |
 | 6 Oct 2026 | Invoices and receipts use the main number and info@ (confirmed) and **start afresh**: INV00001, RCT00001; a receipt for every confirmed payment | Owner's decision |
 | 6 Oct 2026 | **The site's colours follow the logo**: red accent with white text on it, black type, a black dark section, black underlined links | Owner's decision |
@@ -651,6 +765,15 @@ Online ordering (5 Oct 2026; the full list is in `docs/ORDER_WORKFLOW_SPEC.md`, 
    (`TODO(business)` in `order-catalogue.ts`, `pricing.ts`, `calendar.ts`).
 5. From Absa: the items in `docs/BACKEND_RUNBOOK.md`, section 14, above all the Paybill account
    format that carries the order number.
+6. Production: the sample threshold (200 pieces proposed), pieces a day per machine
+   (`DAILY_CAPACITY` in `src/lib/production.ts`), and whether an early (partial) delivery costs
+   an extra delivery fee (the site says we confirm it on WhatsApp first).
+7. Site jobs: the rates per m² per material, the fitting rate and minimum, the county permit
+   estimate and how long a firm quote stays valid (`src/lib/site-quote.ts`, all TODO(business)).
+8. The workshop: pieces a day per machine (`MACHINES` in `src/lib/capacity.ts`) and the finished
+   size of each product's artwork (`PRINT_SIZES` in `src/lib/artwork-check.ts`).
+9. Company accounts: whether companies get invoice terms (pay within 30 days against an LPO)
+   instead of paying up front; today they pay like everyone else.
 
 Answered 6 Oct 2026: accent colour (the logo's red), Paybill (Absa C2B on 303030), invoice contacts
 (main number and info@), invoice numbers (start afresh at INV00001; receipts RCT00001).

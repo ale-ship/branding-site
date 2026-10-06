@@ -56,6 +56,7 @@ const ROUTES = [
   '/order/new?product=outdoor-branding-job',
   '/order/new?product=logo-package',
   '/order/NB-000000',
+  '/account',
   '/about',
   '/contact',
   '/privacy',
