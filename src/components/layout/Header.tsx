@@ -115,7 +115,7 @@ export function Header() {
               className="relative grid size-12 place-items-center text-heading sm:hidden"
             >
               <ClipboardList aria-hidden className="size-6" />
-              <span aria-hidden className="absolute top-1.5 right-1 grid min-w-5 place-items-center rounded-pill bg-accent px-1 text-xs font-bold text-ink">
+              <span aria-hidden className="absolute top-1.5 right-1 grid min-w-5 place-items-center rounded-pill bg-accent px-1 text-xs font-bold text-on-accent">
                 {quoteCount}
               </span>
             </Link>

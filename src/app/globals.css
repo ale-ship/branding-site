@@ -4,13 +4,13 @@
  * Design tokens. Every colour in the app comes from here; components use the Tailwind
  * utilities mapped in @theme below (bg-paper, text-heading, bg-accent...).
  *
- * Direction (RUNBOOK.md section 4): a studio with a print shop. White and warm paper pages,
- * navy-black type, the logo's orange as the one accent (fills, never small text), the logo's
- * blue for links, square corners, real photography. At most one navy section per page.
- * Print-production details (crop marks, registration marks, CMYK dots) are the signature.
+ * Direction: a studio with a print shop, in the logo's colours (red and black, 6 Oct 2026). White
+ * and warm paper pages, black type, the logo's red as the one accent, black underlined links,
+ * square corners, real photography. At most one dark section per page. Print-production details
+ * (crop marks, CMYK dots) are the signature.
  *
- * Contrast: orange fails AA as text on white, so orange text uses --accent-ink. Text on an
- * orange fill is --ink.
+ * Contrast: text on a red fill is white (--on-accent); red text on white uses --accent-ink. The
+ * accent is a shade deeper than the logo's pure red so white text on it passes AA (5.3:1).
  */
 :root {
   --bg: #ffffff;
@@ -19,28 +19,30 @@
   --border: #e2ddd3;
   --border-strong: #b9b2a5;
 
-  --ink: #0f1a2e;
-  --ink-hover: #24324d;
-  --heading: #0f1a2e;
-  --body: #3a4254;
-  --muted: #5c6475;
+  --ink: #111111;
+  --ink-hover: #2e2e2e;
+  --heading: #111111;
+  --body: #3b3b3b;
+  --muted: #5e5e5e;
 
-  --navy: #16244a;
-  --on-navy: #f5f2ec;
-  --on-navy-muted: #b4bdd0;
+  /* The one dark section per page: the logo's black. */
+  --dark: #141414;
+  --on-dark: #f5f2ec;
+  --on-dark-muted: #b8b8b8;
 
-  --accent: #f07f22;
-  --accent-hover: #e06f12;
-  --accent-ink: #a94c08;
+  --accent: #d7000f;
+  --accent-hover: #b3000c;
+  --accent-ink: #c8000f;
+  --on-accent: #ffffff;
 
   /* The logo's red (5 Oct 2026). `brand-red` (pure, 4:1 on white) only for decoration: bars and
      edges. `brand-red-ink` (AA, 5.9:1) for any red text or white text on red, the wordmark included. */
   --brand-red: #ff0001;
   --brand-red-ink: #c8000f;
 
-  --link: #1c6fb8;
-  --link-on-navy: #7cc0f5;
-  --focus: #1c6fb8;
+  --link: #111111;
+  --link-on-dark: #ffffff;
+  --focus: #d7000f;
 
   /* Process colours, for decoration only (registration marks, swatch dots). */
   --cmyk-c: #00a3e0;
@@ -68,16 +70,17 @@
   --color-heading: var(--heading);
   --color-body: var(--body);
   --color-muted: var(--muted);
-  --color-navy: var(--navy);
-  --color-on-navy: var(--on-navy);
-  --color-on-navy-muted: var(--on-navy-muted);
+  --color-dark: var(--dark);
+  --color-on-dark: var(--on-dark);
+  --color-on-dark-muted: var(--on-dark-muted);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
   --color-brand-red: var(--brand-red);
   --color-brand-red-ink: var(--brand-red-ink);
   --color-link: var(--link);
-  --color-link-on-navy: var(--link-on-navy);
+  --color-link-on-dark: var(--link-on-dark);
   --color-focus: var(--focus);
   --color-cmyk-c: var(--cmyk-c);
   --color-cmyk-m: var(--cmyk-m);
@@ -134,7 +137,7 @@
   }
   ::selection {
     background: var(--accent);
-    color: var(--ink);
+    color: var(--on-accent);
   }
   :focus-visible {
     outline: 2px solid var(--focus);

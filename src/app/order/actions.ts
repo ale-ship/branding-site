@@ -70,7 +70,7 @@ export async function lookupOrderAction(ref: string, phone: string): Promise<{ o
   return { ok: true, ref: clean };
 }
 
-export type DemoAction = 'paybill-full' | 'paybill-part' | 'repeat-callback' | 'upload-proof' | 'approve-proof' | 'request-changes' | 'log-progress' | 'hand-over' | 'skip-wait';
+export type DemoAction = 'paybill-full' | 'paybill-part' | 'paybill-no-ref' | 'repeat-callback' | 'upload-proof' | 'approve-proof' | 'request-changes' | 'log-progress' | 'hand-over' | 'skip-wait';
 
 /** Mock only: plays the parts of M-Pesa and the staff, so the flow can be tried end to end. */
 export async function demoAction(ref: string, token: string, action: DemoAction): Promise<{ ok: true; message: string } | Fail> {
@@ -83,6 +83,16 @@ export async function demoAction(ref: string, token: string, action: DemoAction)
       case 'paybill-full':
         demo.paybill(order.ref, order.dueNow || 1000);
         return { ok: true, message: `Paybill payment of KES ${(order.dueNow || 1000).toLocaleString('en-KE')} received.` };
+      case 'paybill-no-ref': {
+        const route = demo.paybillWithoutReference(order.ref, order.dueNow || 1000);
+        return {
+          ok: true,
+          message:
+            route.kind === 'matched'
+              ? 'Paybill payment without the order number: matched by phone and amount.'
+              : `Paybill payment without the order number: not matched (${route.reason}); held for staff.`,
+        };
+      }
       case 'paybill-part': {
         const part = Math.max(100, Math.floor(order.dueNow / 2));
         demo.paybill(order.ref, part);

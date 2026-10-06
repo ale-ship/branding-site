@@ -2,13 +2,14 @@ import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-type Variant = 'primary' | 'accent' | 'outline' | 'on-navy';
+type Variant = 'primary' | 'accent' | 'outline' | 'on-dark';
 
 const variants: Record<Variant, string> = {
   primary: 'bg-ink text-bg hover:bg-ink-hover',
-  accent: 'bg-accent text-ink hover:bg-accent-hover',
+  accent: 'bg-accent text-on-accent hover:bg-accent-hover',
   outline: 'border border-ink text-ink hover:bg-ink hover:text-bg',
-  'on-navy': 'border border-on-navy text-on-navy hover:bg-on-navy hover:text-navy',
+  /** Light outline, for dark or red backgrounds. */
+  'on-dark': 'border border-on-dark text-on-dark hover:bg-on-dark hover:text-dark',
 };
 
 type Props = {

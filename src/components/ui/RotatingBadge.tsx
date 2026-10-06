@@ -23,7 +23,7 @@ export function RotatingBadge({
     <Link
       href={href}
       aria-label={label}
-      className={`group relative grid size-28 place-items-center rounded-pill bg-accent text-ink shadow-[0_10px_30px_-10px_rgba(15,26,46,0.45)] transition-transform duration-500 ease-out hover:scale-105 sm:size-36 ${className}`}
+      className={`group relative grid size-28 place-items-center rounded-pill bg-accent text-on-accent shadow-[0_10px_30px_-10px_rgba(15,26,46,0.45)] transition-transform duration-500 ease-out hover:scale-105 sm:size-36 ${className}`}
     >
       <svg aria-hidden viewBox="0 0 100 100" className="absolute inset-0 size-full animate-spin-slow">
         <defs>

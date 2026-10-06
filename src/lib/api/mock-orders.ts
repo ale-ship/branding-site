@@ -1,5 +1,7 @@
 import { nairobiToday, normaliseKenyanPhone } from '../quote';
+import { routeC2B, type C2BConfirmation, type C2BRoute } from '../payments/c2b';
 import { estimatePrice, tierAvailability, UNPAID_EXPIRY_HOURS } from '../pricing';
+import { invoiceIssuer } from '../site';
 import { orderProducts } from './data/order-catalogue';
 import {
   OrderError,
@@ -34,7 +36,13 @@ type Simulation = { ref: string; paymentId: string; resolveAt: number; outcome: 
 export const orders = new Map<string, Stored>();
 const simulations = new Map<string, Simulation>();
 const usedReceipts = new Set<string>();
-let invoiceSeq = 870;
+/** Invoices and receipts start afresh on the new system (owner, 6 Oct 2026): INV00001, RCT00001. */
+let invoiceSeq = 0;
+let receiptSeq = 0;
+const nextReceiptNo = () => `RCT${String(++receiptSeq).padStart(5, '0')}`;
+
+/** Paybill payments that couldn't be matched to an order, for staff to assign by hand. */
+export const unmatchedPayments: (C2BConfirmation & { reason: string; receivedAt: string })[] = [];
 
 /** The clock, replaceable in tests. */
 export const clock = { now: () => Date.now() };
@@ -112,10 +120,10 @@ function advanceAfterPayment(order: Stored) {
     if (order.mechanism === 'B') setStatus(order, 'in_design', 'Survey fee paid. We’ll confirm your survey date.');
     else if (order.mechanism === 'A' && !order.needsDesign) setStatus(order, 'in_design', `${purpose === 'full' ? 'Paid in full' : 'Deposit paid'}. We’re checking your artwork.`);
     else setStatus(order, 'in_design', `${purpose === 'full' ? 'Paid in full' : 'Deposit paid'}. A designer is on your brief.`);
-    notify(order, `Payment received for ${order.ref}. We’ve started on your order.`);
+    notify(order, `Payment received for ${order.ref}, receipt ${order.payments.filter((p) => p.status === 'confirmed').at(-1)?.receiptNo ?? ''}. We’ve started on your order.`);
   } else if (order.status === 'awaiting_balance') {
     setStatus(order, 'in_production', 'Balance paid. Your order is in production.');
-    notify(order, `Balance received for ${order.ref}. Printing has started.`);
+    notify(order, `Balance received for ${order.ref}, receipt ${order.payments.filter((p) => p.status === 'confirmed').at(-1)?.receiptNo ?? ''}. Printing has started.`);
   }
 }
 
@@ -131,6 +139,7 @@ function applyCallback(order: Stored, cb: { receipt: string; amount: number; met
   if (payment) {
     payment.status = 'confirmed';
     payment.mpesaReceipt = cb.receipt;
+    payment.receiptNo = nextReceiptNo();
     payment.settledAt = iso();
     payment.amount = cb.amount;
   } else {
@@ -142,6 +151,7 @@ function applyCallback(order: Stored, cb: { receipt: string; amount: number; met
       amount: cb.amount,
       status: 'confirmed',
       mpesaReceipt: cb.receipt,
+      receiptNo: nextReceiptNo(),
       requestedAt: iso(),
       settledAt: iso(),
       message: null,
@@ -277,6 +287,7 @@ export function startPayment(ref: string, access: OrderAccess, phone: string): O
     amount: order.dueNow,
     status: 'pending',
     mpesaReceipt: null,
+    receiptNo: null,
     requestedAt: iso(),
     settledAt: null,
     message: null,
@@ -338,16 +349,73 @@ export function bookSurvey(ref: string, access: OrderAccess, date: string): Orde
   return publicCopy(order);
 }
 
+// ── Paybill (C2B) ───────────────────────────────────────────────────────────
+
+const c2b = (p: Pick<C2BConfirmation, 'receipt' | 'amount' | 'msisdn' | 'billRef'>): C2BConfirmation => ({
+  ...p,
+  shortCode: invoiceIssuer.paybill,
+  paidAt: iso(),
+  payerName: '',
+});
+
+/**
+ * What the backend's C2B confirmation endpoint does: route the payment to an order, then record it.
+ * A receipt seen before is ignored; a payment to a closed order is kept as credit and flagged; one
+ * that matches nothing waits in `unmatchedPayments` for staff.
+ */
+export function receiveC2B(c: C2BConfirmation): { route: C2BRoute; credited: boolean } {
+  if (usedReceipts.has(c.receipt)) return { route: { kind: 'unmatched', reason: 'no-match' }, credited: false };
+  for (const o of orders.values()) settle(o);
+  const candidates = [...orders.values()].map((o) => ({ ref: o.ref, status: o.status, dueNow: o.dueNow, customerPhone: o.customer.phone }));
+  const route = routeC2B(c, candidates, invoiceIssuer.paybill);
+  if (route.kind === 'unmatched') {
+    unmatchedPayments.push({ ...c, reason: route.reason, receivedAt: iso() });
+    return { route, credited: false };
+  }
+  const order = orders.get(route.ref)!;
+  if (order.status === 'expired' || order.status === 'cancelled') {
+    usedReceipts.add(c.receipt);
+    order.payments.push({
+      id: `PAY-${randomDigits(8)}`,
+      purpose: 'balance',
+      method: 'paybill',
+      phone: c.msisdn,
+      amount: c.amount,
+      status: 'confirmed',
+      mpesaReceipt: c.receipt,
+      receiptNo: nextReceiptNo(),
+      requestedAt: iso(),
+      settledAt: iso(),
+      message: 'Paid after the order closed: flagged for a refund or to reopen it.',
+    });
+    order.amountPaid += c.amount;
+    order.credit += c.amount;
+    event(order, `KES ${c.amount.toLocaleString('en-KE')} paid after the order closed; kept as credit and flagged for staff.`);
+    return { route, credited: true };
+  }
+  const credited = applyCallback(order, { receipt: c.receipt, amount: c.amount, method: 'paybill', phone: c.msisdn });
+  if (credited && route.by === 'phone-and-amount') event(order, 'Paybill payment matched by your phone number and the amount.');
+  return { route, credited };
+}
+
 // ── Demo controls: what staff and M-Pesa would do (mock only) ───────────────
 
 export const mockStaff = {
-  /** M-Pesa Paybill (C2B) payment, matched by the order number as account reference. */
+  /**
+   * A Paybill payment typed the way the site tells customers to (`2055268420#NB123456`), sent through
+   * the same C2B routing the backend will use. Returns whether it credited the order.
+   */
   paybill(ref: string, amount: number, receipt = newReceipt()): boolean {
     const order = orders.get(ref);
     if (!order) throw new OrderError('not_found', 'No such order.');
-    settle(order);
-    if (order.status === 'expired' || order.status === 'cancelled') throw new OrderError('invalid_state', 'This order is closed.');
-    return applyCallback(order, { receipt, amount, method: 'paybill', phone: order.customer.phone });
+    const { route, credited } = receiveC2B(c2b({ receipt, amount, msisdn: order.customer.phone, billRef: invoiceIssuer.paybillAccount(ref) }));
+    return route.kind === 'matched' && credited;
+  },
+  /** A Paybill payment with only the bank account typed: routed by phone and exact amount, if it can be. */
+  paybillWithoutReference(ref: string, amount: number): C2BRoute {
+    const order = orders.get(ref);
+    if (!order) throw new OrderError('not_found', 'No such order.');
+    return receiveC2B(c2b({ receipt: newReceipt(), amount, msisdn: order.customer.phone, billRef: invoiceIssuer.accountNo })).route;
   },
   /** Sends the last confirmed payment's callback again, to show it can't credit twice. */
   repeatLastCallback(ref: string): boolean {

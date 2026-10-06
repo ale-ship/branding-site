@@ -40,7 +40,7 @@ export default function ContactPage() {
                   {...(way.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                   className="group grid grid-cols-[auto_1fr_auto] items-center gap-5 py-6"
                 >
-                  <span aria-hidden className="grid size-12 place-items-center bg-paper text-heading transition-colors group-hover:bg-accent">
+                  <span aria-hidden className="grid size-12 place-items-center bg-paper text-heading transition-colors group-hover:bg-accent group-hover:text-on-accent">
                     <way.icon className="size-5" />
                   </span>
                   <span className="min-w-0">

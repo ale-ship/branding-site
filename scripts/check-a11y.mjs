@@ -91,6 +91,18 @@ const ROUTES = [
     // Once the order page is up, follow its invoice link; done when the invoice has loaded.
     waitFor: `(location.pathname.endsWith('/invoice') && !!document.querySelector('article h1')) || (!!document.querySelector('a[href*="/invoice"]') && (document.querySelector('a[href*="/invoice"]').click(), false))`,
   },
+  {
+    path: '/order/new?product=poster-design',
+    name: 'receipt',
+    action: placeOrder,
+    // Pay through the demo Paybill, then open the receipt it produces.
+    waitFor: `(location.pathname.includes('/receipt/') && !!document.querySelector('article h1')) ||
+      (document.querySelector('a[href*="/receipt/"]')
+        ? (document.querySelector('a[href*="/receipt/"]').click(), false)
+        : ((b) => (b && !window.__paid && ((window.__paid = true), b.click()), false))(
+            [...document.querySelectorAll('section[aria-labelledby=demo-title] button')].find((x) => x.textContent.includes('Paybill payment of')),
+          ))`,
+  },
   { path: '/order/NB-000000', name: 'find your order' },
   { path: '/about' },
   { path: '/contact' },

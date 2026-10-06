@@ -195,6 +195,8 @@ export type OrderPayment = {
   status: PaymentStatus;
   /** M-Pesa receipt, unique: a repeated callback can never credit twice. */
   mpesaReceipt: string | null;
+  /** Noorcom's own receipt number (RCT00001…), given when the payment is confirmed. */
+  receiptNo: string | null;
   requestedAt: string;
   settledAt: string | null;
   /** Why it failed, for the customer. */

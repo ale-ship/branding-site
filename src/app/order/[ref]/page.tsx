@@ -1,6 +1,5 @@
 import { FileText, MessageCircle } from 'lucide-react';
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { DemoControls } from '@/components/order/DemoControls';
 import { OrderLookup } from '@/components/order/OrderLookup';
@@ -8,14 +7,14 @@ import { PaymentPanel } from '@/components/order/PaymentPanel';
 import { PriceSummary } from '@/components/order/PriceSummary';
 import { Container } from '@/components/ui/Container';
 import { Eyebrow } from '@/components/ui/PrintMarks';
-import { api, apiMode, type Order, type OrderAccess } from '@/lib/api';
+import { api, apiMode, type Order } from '@/lib/api';
 import { formatDay } from '@/lib/calendar';
 import { formatKes } from '@/lib/format';
 import { describeBrief } from '@/lib/order';
 import { CLOSED, localPhone, PAYMENT_STATUS_LABEL, PURPOSE_LABEL, STATUS_LABEL, TRACKS, trackIndex } from '@/lib/order-status';
 import { DELIVERY_ZONES } from '@/lib/pricing';
 import { invoiceIssuer, site } from '@/lib/site';
-import { accessCookie, parseAccess } from '../access';
+import { loadOrder, tokenFrom, withToken } from '../load';
 
 export const metadata: Metadata = { title: 'Your order', robots: { index: false, follow: false } };
 
@@ -63,12 +62,8 @@ function handoverText(order: Order): string {
 }
 
 export default async function OrderPage({ params, searchParams }: Props) {
-  const { ref: rawRef } = await params;
-  const ref = decodeURIComponent(rawRef).toUpperCase();
-  const query = await searchParams;
-  const token = typeof query.t === 'string' ? query.t : '';
-  const access: OrderAccess | null = token ? { token } : parseAccess((await cookies()).get(accessCookie(ref))?.value);
-  const order = access ? await api.getOrder(ref, access) : null;
+  const token = tokenFrom(await searchParams);
+  const { order, ref } = await loadOrder((await params).ref, token);
 
   if (!order) {
     return (
@@ -120,7 +115,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
               label={order.duePurpose ? PURPOSE_LABEL[order.duePurpose] : 'Payment'}
               defaultPhone={localPhone(order.customer.phone)}
               pending={pendingPayment}
-              paybill={{ number: invoiceIssuer.paybill, account: invoiceIssuer.accountNo }}
+              paybill={{ number: invoiceIssuer.paybill, account: invoiceIssuer.paybillAccount(order.ref) }}
               isMock={apiMode === 'mock'}
             />
           )}
@@ -147,7 +142,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
                   <li key={step.label} aria-current={current ? 'step' : undefined} className={`flex items-center gap-3 px-4 py-3 ${current ? 'bg-paper' : 'bg-bg'}`}>
                     <span
                       aria-hidden
-                      className={`grid size-6 shrink-0 place-items-center rounded-pill text-xs font-bold ${done ? 'bg-ink text-bg' : current ? 'bg-accent text-ink' : 'border border-border-strong text-muted'}`}
+                      className={`grid size-6 shrink-0 place-items-center rounded-pill text-xs font-bold ${done ? 'bg-ink text-bg' : current ? 'bg-accent text-on-accent' : 'border border-border-strong text-muted'}`}
                     >
                       {done ? '✓' : i + 1}
                     </span>
@@ -213,8 +208,9 @@ export default async function OrderPage({ params, searchParams }: Props) {
                       <th scope="col" className="py-2 pr-4 font-semibold">For</th>
                       <th scope="col" className="py-2 pr-4 font-semibold">How</th>
                       <th scope="col" className="py-2 pr-4 font-semibold">Status</th>
-                      <th scope="col" className="py-2 pr-4 font-semibold">Receipt</th>
-                      <th scope="col" className="py-2 text-right font-semibold">Amount</th>
+                      <th scope="col" className="py-2 pr-4 font-semibold">M-Pesa ref.</th>
+                      <th scope="col" className="py-2 pr-4 text-right font-semibold">Amount</th>
+                      <th scope="col" className="py-2 font-semibold">Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -224,7 +220,16 @@ export default async function OrderPage({ params, searchParams }: Props) {
                         <td className="py-3 pr-4 text-body">{pay.method === 'stk' ? 'M-Pesa prompt' : 'Paybill'}</td>
                         <td className="py-3 pr-4 text-body">{PAYMENT_STATUS_LABEL[pay.status]}</td>
                         <td className="py-3 pr-4 font-mono text-body">{pay.mpesaReceipt ?? '—'}</td>
-                        <td className="py-3 text-right text-heading tabular-nums">{formatKes(pay.amount)}</td>
+                        <td className="py-3 pr-4 text-right text-heading tabular-nums">{formatKes(pay.amount)}</td>
+                        <td className="py-1">
+                          {pay.receiptNo ? (
+                            <Link href={withToken(`/order/${order.ref}/receipt/${pay.receiptNo}`, token)} className="inline-flex min-h-11 items-center font-semibold text-link underline underline-offset-4">
+                              {pay.receiptNo}
+                            </Link>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -305,7 +310,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
             <PriceSummary estimate={order.estimate} heading="Price agreed" />
           </div>
           <Link
-            href={`/order/${order.ref}/invoice${token ? `?t=${token}` : ''}`}
+            href={withToken(`/order/${order.ref}/invoice`, token)}
             className="inline-flex min-h-12 items-center justify-center gap-2 border border-ink px-6 font-semibold text-ink transition-colors hover:bg-ink hover:text-bg"
           >
             <FileText aria-hidden className="size-4" />

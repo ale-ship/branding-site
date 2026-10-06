@@ -8,6 +8,7 @@ import type { OrderStatus } from '@/lib/api/order-types';
 const ACTIONS: { action: DemoAction; label: string; when: (s: OrderStatus) => boolean }[] = [
   { action: 'paybill-full', label: 'M-Pesa: Paybill payment of what’s due', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
   { action: 'paybill-part', label: 'M-Pesa: Paybill part payment', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
+  { action: 'paybill-no-ref', label: 'M-Pesa: Paybill without the order number', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
   { action: 'skip-wait', label: 'Skip the 60 s phone wait', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
   { action: 'repeat-callback', label: 'M-Pesa: send the last callback again', when: () => true },
   { action: 'upload-proof', label: 'Staff: upload a proof', when: (s) => s === 'in_design' },

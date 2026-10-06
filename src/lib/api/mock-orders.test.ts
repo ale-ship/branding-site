@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { orderProducts } from './data/order-catalogue';
 import { products } from './data/products';
 import { mockApi } from './mock';
-import { clock, mockStaff } from './mock-orders';
+import { clock, mockStaff, unmatchedPayments } from './mock-orders';
 import type { OrderInput } from './order-types';
 
 const T0 = Date.parse('2026-10-05T07:00:00Z'); // Monday 10:00 in Nairobi
@@ -169,6 +169,47 @@ describe('Paybill (C2B) and the payment rules', () => {
     const order = (await mockApi.getOrder(ref, access))!;
     expect(order.status).toBe('in_design');
     expect(order.credit).toBe(70000 - 62000);
+  });
+});
+
+describe('Absa C2B routing and receipts', () => {
+  it('gives each confirmed payment its own receipt number, and only confirmed ones', async () => {
+    const { ref, access } = await place();
+    await mockApi.startPayment(ref, access, '0722530300'); // cancelled on the phone
+    later(7_000);
+    mockStaff.paybill(ref, 10000);
+    mockStaff.paybill(ref, 21000);
+    const order = (await mockApi.getOrder(ref, access))!;
+    const numbers = order.payments.map((p) => p.receiptNo);
+    expect(numbers[0]).toBeNull();
+    expect(numbers[1]).toMatch(/^RCT\d{5}$/);
+    expect(numbers[2]).toMatch(/^RCT\d{5}$/);
+    expect(numbers[1]).not.toBe(numbers[2]);
+  });
+
+  it('matches a Paybill payment without the order number by phone and exact amount', async () => {
+    // Its own phone: other waiting orders with the same phone and amount would (rightly) be ambiguous.
+    const { ref, access } = await place({ ...teesInput(), customer: { ...customer, phone: '+254722530388' } });
+    expect(mockStaff.paybillWithoutReference(ref, 31000)).toEqual({ kind: 'matched', ref, by: 'phone-and-amount' });
+    expect((await mockApi.getOrder(ref, access))!.status).toBe('in_design');
+  });
+
+  it('holds a payment it can’t match for staff', async () => {
+    const { ref, access } = await place();
+    const before = unmatchedPayments.length;
+    expect(mockStaff.paybillWithoutReference(ref, 12345)).toEqual({ kind: 'unmatched', reason: 'no-match' });
+    expect(unmatchedPayments.length).toBe(before + 1);
+    expect((await mockApi.getOrder(ref, access))!.amountPaid).toBe(0);
+  });
+
+  it('keeps money paid after the order expired as credit, flagged', async () => {
+    const { ref, access } = await place();
+    later(49 * 3_600_000);
+    expect(mockStaff.paybill(ref, 31000)).toBe(true);
+    const order = (await mockApi.getOrder(ref, access))!;
+    expect(order.status).toBe('expired');
+    expect(order.credit).toBe(31000);
+    expect(order.payments[0]!.message).toMatch(/flagged/);
   });
 });
 

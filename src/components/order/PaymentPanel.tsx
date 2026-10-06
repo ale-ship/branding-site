@@ -150,16 +150,17 @@ export function PaymentPanel({ orderRef, token, amount, label, defaultPhone, pen
           <summary className="flex min-h-11 cursor-pointer list-none items-center font-semibold text-heading [&::-webkit-details-marker]:hidden">
             Or pay by Paybill
           </summary>
-          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-body">
+          <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-body">
             <dt className="text-muted">Paybill</dt>
             <dd className="font-semibold text-heading tabular-nums">{paybill.number}</dd>
             <dt className="text-muted">Account number</dt>
-            <dd className="font-semibold text-heading tabular-nums">{paybill.account}</dd>
+            <dd className="font-semibold break-all text-heading tabular-nums">{paybill.account}</dd>
             <dt className="text-muted">Amount</dt>
             <dd className="font-semibold text-heading tabular-nums">{formatKes(amount)}</dd>
           </dl>
           <p className="mt-3 text-sm text-muted">
-            Then send us the M-Pesa message with your order number, {orderRef}, on WhatsApp so we can match it. Your order moves on as soon as the payment is confirmed.
+            Type the account number exactly as shown: the part after # tells us the payment is for {orderRef}. Your order moves on as soon as M-Pesa confirms
+            it, and your receipt appears below.
           </p>
         </details>
       </div>

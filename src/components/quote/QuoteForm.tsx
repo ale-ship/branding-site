@@ -184,7 +184,7 @@ export function QuoteForm({ services, products, initialService, whatsappHref, em
       draft.preferredContact === 'email' ? 'by email' : draft.preferredContact === 'phone' ? 'with a call' : 'on WhatsApp';
     return (
       <div className="bg-paper p-6 sm:p-10">
-        <span aria-hidden className="grid size-12 place-items-center rounded-pill bg-accent text-ink">
+        <span aria-hidden className="grid size-12 place-items-center rounded-pill bg-accent text-on-accent">
           <Check className="size-6" />
         </span>
         <h2 ref={headingRef} tabIndex={-1} className="mt-6 scroll-mt-28 text-[clamp(2rem,4vw,3rem)] leading-tight font-bold outline-none">

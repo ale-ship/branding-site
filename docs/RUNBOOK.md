@@ -12,15 +12,19 @@ next. Update it at the end of every task.
 - **Online ordering, Phase 1 is built (5 Oct 2026), mocked, and waiting for review**: order catalogue, the
   4-step order form with a live price, M-Pesa STK Push and Paybill (simulated), the order page and the
   invoice. See "Online ordering, Phase 1" below and `docs/ORDER_WORKFLOW_SPEC.md`.
+- **6 Oct 2026:** the site now uses the logo's red and black; payments get numbered receipts (RCT); Paybill
+  payments route through Absa C2B (built and tested against the mock, ready for Absa's details); invoices
+  start afresh at INV00001. The backend is designed in `docs/BACKEND_RUNBOOK.md` (no code yet).
 - **Scope for now is design and frontend only.** No backend, no Supabase, nothing from Lovable.
   Data comes from local typed content behind one data interface (`SiteApi`, mock only), so our own
   backend can plug in later without page changes.
 - **Pages:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`, `/shop/[slug]`,
-  `/quote`, `/order`, `/order/new`, `/order/[ref]`, `/order/[ref]/invoice`, `/about`, `/contact`,
+  `/quote`, `/order`, `/order/new`, `/order/[ref]`, `/order/[ref]/invoice`, `/order/[ref]/receipt/[no]`,
+  `/about`, `/contact`,
   `/privacy`, `/terms`, plus the 404 and error pages,
   `/sitemap.xml`, `/robots.txt`, `/opengraph-image`, icons.
-- **Next:** the owner reviews online ordering Phase 1 (open questions 4 to 8 below); then spec Phase 2
-  (proofs and production). Also: deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
+- **Next:** spec Phase 2 (proofs and production) on the site, and backend step B0 (`docs/BACKEND_RUNBOOK.md`).
+  Ask Absa for the items in its section 14. Also: deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
 
 ## Start here on a new machine
 
@@ -570,12 +574,45 @@ sideways scroll. `npm run a11y`, `menu` and `devices` include the new pages.
 - Cart for several items in one order: one item per order for now. The quote list stays for "ask
   us first" requests.
 
+### 6 Oct 2026: colours, receipts, Absa C2B
+
+- **The logo's colours across the site.** The accent is now the logo's red (#D7000F, a shade deeper
+  than the logo's pure red so white text on it passes AA); text on red is white (`text-on-accent`);
+  red text uses `accent-ink` (#C8000F). Type is the logo's black (#111111). The one dark section is
+  black (`dark`, renamed from `navy`). Links are black and underlined; focus rings are red. The
+  link-preview image follows.
+- **Receipts.** Every confirmed payment gets a receipt number (RCT00001…), shown in the payments
+  table with a link to `/order/[ref]/receipt/[no]`: a printable receipt in the invoice's frame
+  (received from, M-Pesa reference, against which invoice, paid to date, balance remaining, amount
+  in words, PAID). Invoices and receipts share `components/order/BrandDocument.tsx`.
+- **Invoices start afresh** at INV00001 (INV00870 was one of Noorcom's old invoices, not a sequence
+  to continue).
+- **Absa C2B routing** (`src/lib/payments/c2b.ts`, 18 tests): adapts a Daraja-style confirmation,
+  finds the order number anywhere in the account reference, else matches by phone and the exact
+  amount when exactly one waiting order fits, else holds the payment as unmatched with a reason. The
+  mock now routes every Paybill payment through it; payments to closed orders become flagged credit.
+  The site tells customers to type `2055268420#NB123456` (`invoiceIssuer.paybillAccount` in
+  `src/lib/site.ts`; format to confirm with Absa). New demo control: "Paybill without the order number".
+- **The backend design** is in `docs/BACKEND_RUNBOOK.md`: JavaScript (Node 22, Express, Knex,
+  PostgreSQL, BullMQ), the site staying in `src/`, the backend in its own `backend/` folder (file
+  by file), code both use in `shared/`, the database migrations, the STK and C2B flows and the
+  ledger, numbering, endpoints, security, deployment and build steps B0 to B5. It follows Noorcom
+  Computers' backend: the four code layers and money rules, **Redis** (our own user `nb`, keys `nb:*`:
+  BullMQ queues, rate limits, the one-prompt-per-order lock, catalogue cache, live order updates),
+  fakes for Absa, WhatsApp, email and storage until each goes live, rate limits per endpoint, and the
+  VPS pieces (Postgres role, Redis ACL, units, backups, Cloudflare at cutover). Its section 12 lists
+  what the site itself gains (`live.ts`, `/revalidate`, live order updates).
+
 ## 9. Decisions log
 
 Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 6 Oct 2026 | **Paybill payments go through Absa C2B on 303030**; the order number travels in the account reference (`2055268420#NB123456`, format to confirm) and is matched automatically, with phone + amount as the fallback and an unmatched queue for staff | Owner's decision |
+| 6 Oct 2026 | Invoices and receipts use the main number and info@ (confirmed) and **start afresh**: INV00001, RCT00001; a receipt for every confirmed payment | Owner's decision |
+| 6 Oct 2026 | **The site's colours follow the logo**: red accent with white text on it, black type, a black dark section, black underlined links | Owner's decision |
+| 6 Oct 2026 | The backend is JavaScript, designed in `docs/BACKEND_RUNBOOK.md` before any code, in its own `backend/` folder; `src/` stays the frontend; code both use goes in `shared/` | Owner's decision: each side easy to debug |
 | 5 Oct 2026 | **Online ordering with M-Pesa is approved to build** (docs/ORDER_WORKFLOW_SPEC.md): self-serve orders with a live price, a deposit by M-Pesa STK Push or Paybill, and an order tracker. Payments are mocked until our backend exists. This replaces the 3 Oct "add to quote only" decision for orders; the quote form and quote list stay for "ask us first" requests | Owner's instruction to start Phase 1 of the spec |
 | 5 Oct 2026 | The real logo is in (`public/brand/nb-logo.png`, `nb-mark.png`), replacing the stand-in wordmark | Owner supplied it |
 | 3 Oct 2026 | **The shop is "add to quote" only**: no cart payment or M-Pesa. Products go into a quote list; the quote form sends it with artwork, quantities and deadline | Owner's decision; most branding jobs need artwork and a proof first |
@@ -610,14 +647,10 @@ prices per piece; hosting on our VPS; the logo arrived (5 Oct 2026); online paym
 
 Online ordering (5 Oct 2026; the full list is in `docs/ORDER_WORKFLOW_SPEC.md`, "Open questions"):
 
-4. **Accent colour:** the new logo is red and black, but the site's accent is the old logo's orange.
-   Switch the accent (buttons, highlights, the quote block) to the logo's red?
-5. **Paybill:** the invoice template's Paybill (Absa 303030) takes the bank account as the account
-   number, so a payment can't carry the order number and can't be matched automatically. Get a
-   dedicated Paybill or till, or Absa C2B with the order number as the reference?
-6. **Invoice contacts:** the template shows 0722723352 and a staff email; generated invoices use the
-   main number and info@ (as the spec says). Keep that?
-7. **Invoice numbers:** the mock numbers invoices from INV00871. Real numbers must come from Noorcom's
-   accounting, so the backend needs to take them from there (and eTIMS, if VAT-registered).
-8. Every price tier, fee, lead time, deposit rule, delivery zone and survey fee is a proposal
+4. Every price tier, fee, lead time, deposit rule, delivery zone and survey fee is a proposal
    (`TODO(business)` in `order-catalogue.ts`, `pricing.ts`, `calendar.ts`).
+5. From Absa: the items in `docs/BACKEND_RUNBOOK.md`, section 14, above all the Paybill account
+   format that carries the order number.
+
+Answered 6 Oct 2026: accent colour (the logo's red), Paybill (Absa C2B on 303030), invoice contacts
+(main number and info@), invoice numbers (start afresh at INV00001; receipts RCT00001).

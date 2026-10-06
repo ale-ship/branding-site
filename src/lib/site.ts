@@ -26,16 +26,11 @@ export const site = {
 } as const;
 
 /**
- * Who issues invoices and how to pay, from Noorcom's invoice template (5 Oct 2026).
- *
- * The template shows 0722723352 and a staff email; the spec routes all contact through the main
- * number, so invoices use `site.phone` and `site.email`. TODO(business): confirm.
- *
- * TODO(business): Absa's Paybill 303030 takes the bank account number as the M-Pesa account
- * number, so a Paybill payment can't carry the order number. Matching payments to orders
- * automatically (spec, "Payments") needs a dedicated Paybill or till, or Absa C2B with the order
- * number as the account reference.
+ * Who issues invoices and receipts, and how to pay (Noorcom's template, 5 Oct 2026; confirmed 6 Oct):
+ * the main number and info@ on every document; Absa's Paybill 303030 into the Absa account.
  */
+const ABSA_ACCOUNT = '2055268420';
+
 export const invoiceIssuer = {
   legalName: 'Noorcom Branding Limited',
   addressLine: 'Nairobi 50750, Kenya',
@@ -43,7 +38,15 @@ export const invoiceIssuer = {
   bank: 'ABSA Bank PLC',
   accountName: 'Noorcom Branding Limited',
   paybill: '303030',
-  accountNo: '2055268420',
+  accountNo: ABSA_ACCOUNT,
+  /**
+   * What the customer types as the M-Pesa "Account number" on Absa's Paybill: the bank account,
+   * then `#` and the order number, so Absa's C2B confirmation carries it in BillRefNumber and the
+   * payment is matched to the order automatically (src/lib/payments/c2b.ts).
+   * TODO(business): confirm with Absa the exact account format their C2B accepts; the matcher
+   * finds the order number anywhere in the reference, so only this line would change.
+   */
+  paybillAccount: (orderRef: string) => `${ABSA_ACCOUNT}#${orderRef.replace('-', '')}`,
 } as const;
 
 export type NavItem = { label: string; href: string };
