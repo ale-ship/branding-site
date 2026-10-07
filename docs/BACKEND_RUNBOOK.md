@@ -436,7 +436,9 @@ link), never the phone number.
 ## 10. Deployment (same VPS as the site and Noorcom Computers)
 
 The box itself (updates, firewall, fail2ban, Postgres, Redis, nginx, certbot, Node) is already set
-up for Noorcom Hosting and Noorcom Computers. We add only our own pieces, the same way.
+up for Noorcom Hosting and Noorcom Computers. We add only our own pieces, the same way. The steps
+for the site, the database and Redis are in `docs/VPS_BRANDING.md`; this section is what the backend
+adds from B1.
 
 | Resource | Value |
 | --- | --- |

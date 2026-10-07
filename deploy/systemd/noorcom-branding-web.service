@@ -1,5 +1,5 @@
 # Noorcom Branding website: the Next.js standalone server on 127.0.0.1:4301 (nginx in front).
-# docs/RUNBOOK.md, "Deploying to the VPS". Port 4301 keeps clear of Noorcom Computers (4200, 4201).
+# docs/VPS_BRANDING.md. Port 4301 keeps clear of Noorcom Computers (4200, 4201).
 [Unit]
 Description=Noorcom Branding website
 After=network.target

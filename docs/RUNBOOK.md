@@ -43,11 +43,14 @@ next. Update it at the end of every task.
 - **7 Oct 2026, new machine:** the project now lives in `C:\noorcom-branding` on the office machine;
   `npm install` and every check (lint, typecheck, 203 tests, build, `a11y`, `devices`, `menu`) pass
   there. PostgreSQL 18 is installed and `psql` is on the PATH; Redis will be Memurai.
-- **Next:** the database and Redis ("Setting up Postgres and Redis" in the backend runbook: mostly on
-  the VPS, with a local copy for the tests), then step B1: catalogue and pricing from the database,
-  and `live.ts` for those methods. Staff reports and the staff dashboard come with B4.
-  Ask Absa for the items in its section 14. Also: deploy to the VPS ("Deploying to the VPS" below),
-  then the launch checklist.
+- **7 Oct 2026, the VPS plan:** `docs/VPS_BRANDING.md` puts the site on the shared Contabo box
+  beside Noorcom Computers, the same way, at `staging.noorcombranding.co.ke` first. The deploy files
+  took electronics' lessons from the box (see "7 Oct 2026: the VPS plan" below). Nothing is on the
+  box yet.
+- **Next:** on the box, sections 1.1 to 5 of `docs/VPS_BRANDING.md` (staging DNS record, deploy key,
+  first deploy), then section 8 (Postgres and Redis), then step B1: catalogue and pricing from the
+  database, and `live.ts` for those methods. Staff reports and the staff dashboard come with B4.
+  Ask Absa for the items in its section 14. Then the launch checklist.
 
 ## Start here on a new machine
 
@@ -465,23 +468,12 @@ out: they add weight on phones on mobile data for little gain.
 
 ### Deploying to the VPS
 
-The same VPS and layout as Noorcom Computers (`/var/www/<site>/releases`, a `current` link, env
-files in `/etc/<site>/`). As root:
-
-1. `git clone https://github.com/Noorcom-Network-NNL/noorcom-branding.git /var/www/noorcom-branding/repo`
-2. `bash /var/www/noorcom-branding/repo/deploy/scripts/deploy-branding.sh --install`. The first run
-   writes `/etc/noorcom-branding/web.env` and `hosts.env` from the examples and stops: fill them in
-   (staging host names first), then run `--install` again.
-3. Point the staging name's DNS at the VPS, then get the certificate:
-   `certbot certonly --webroot -w /var/www/letsencrypt -d <SITE_HOST> -d <WWW_HOST>`, then
-   `nginx -t && systemctl reload nginx`.
-4. `bash /var/www/noorcom-branding/repo/deploy/scripts/deploy-branding.sh`, and wait for
-   `[deploy] live: <release>`.
-5. `bash /var/www/noorcom-branding/repo/deploy/scripts/smoke-branding.sh https://<SITE_HOST>`
-6. Every later deploy: steps 4 and 5. To go back: `deploy-branding.sh --rollback`.
-
-Node.js 22 or newer must be on the VPS (it already is for Noorcom Computers). The build needs about
-1 GB of free memory.
+**The full steps are in `docs/VPS_BRANDING.md`** (7 Oct 2026): the box (Contabo, 144.91.76.57,
+shared with Noorcom Hosting and Noorcom Computers), the staging name
+`staging.noorcombranding.co.ke`, the read-only deploy key, the first deploy (certificate before the
+nginx site), every later deploy, Postgres and Redis for B1, the cutover and the gate. In short, as
+root on the box: `bash /var/www/noorcom-branding/repo/deploy/scripts/deploy-branding.sh`, then
+`smoke-branding.sh https://<host>`; `--rollback` goes back one release.
 
 ### Launch checklist
 
@@ -760,12 +752,31 @@ backend can serve the same shapes.
   could land in between. The check now also waits for the title before running axe.
 - On the office machine `npm run devices` takes about 25 minutes; `a11y` and `menu` a few each.
 
+### 7 Oct 2026: the VPS plan
+
+`docs/VPS_BRANDING.md`, modelled on Noorcom Computers' own VPS document for the same box. The deploy
+files changed to match what electronics learned there on 1 Oct 2026:
+
+- `deploy-branding.sh` fetches `origin/main` and runs that version of itself from a private copy
+  (the newest deploy logic, never a file changed underneath bash); builds in `/var/tmp`; loads
+  `web.env` for the build; refuses a release missing `server.js`, `.next/static` or `public`;
+  releases are `root:noorcom-branding` and read only to the service except `.next/cache`.
+- `--install` gets the certificate before enabling the nginx site, and if `nginx -t` fails it puts
+  the previous site back: on a shared box a broken site stops every project's nginx reload.
+- `hosts.env`: `WWW_HOST` only on the live site (staging has no www name), and `NOINDEX=yes` on
+  staging adds `X-Robots-Tag: noindex, nofollow`. The examples carry the staging name.
+- nginx repeats HSTS in the `/_next/static` location (a location's own `add_header` drops the
+  server's).
+- The standalone build was started locally and answers 200 on `/`, `/robots.txt`, `/order` and a
+  shop page; the nginx template renders correctly for staging and for live.
+
 ## 9. Decisions log
 
 Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 7 Oct 2026 | **The site goes on the shared Contabo VPS like Noorcom Computers** (`docs/VPS_BRANDING.md`): staging at `staging.noorcombranding.co.ke` (one A record; the live name stays on Lovable until cutover), cloned with a read-only deploy key, port 4301; the database and Redis on the box | Owner's request: same arrangement as electronics |
 | 7 Oct 2026 | Work moves to the office machine (`C:\noorcom-branding`). Development Redis on Windows is **Memurai** (no Docker); the database work is done mostly on the VPS, with a local Postgres 18 and Memurai for the tests | Owner's decision |
 | 7 Oct 2026 | Speed and fixes: the scroll reveal is a plain inline script (not a React effect), the home hero's first column doesn't fade in, images use `preload` + `fetchPriority` (Next 16 deprecated `priority`), the header has no backdrop-blur and the menu sits outside it, hover styles use `any-hover` | The hero was invisible until React hydrated (seconds on a phone); the blur trapped the phone menu at 72px; touchscreen laptops lost every hover. Lighthouse desktop 87 → 95–99 |
 | 6 Oct 2026 | Backend B0: the shared code is JavaScript + JSDoc in `shared/` (npm workspace), its types in a `.d.ts` both sides read; the site keeps its imports through re-exports | One copy of every rule, checked by both type checkers |
