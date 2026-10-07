@@ -36,6 +36,9 @@ next. Update it at the end of every task.
 - **6 Oct 2026, backend step B0 done** (`docs/BACKEND_RUNBOOK.md`, "Step B0"): `shared/` holds the
   order contract and the pure rules (the site re-exports them), and `backend/` is an Express API
   skeleton with config, logging, Postgres, Redis, rate limits and `/api/health`.
+- **7 Oct 2026, menu, hover and speed fixes** ("7 Oct 2026: menu, hover and speed" below): the phone
+  menu opens full screen again, touchscreen laptops get hover effects, and the top of every page
+  shows without waiting for React (Lighthouse on the home page, desktop 87 → 95–99).
 - **Next:** create the development database and Redis ("Setting up Postgres and Redis" in the backend
   runbook), then step B1: catalogue and pricing from the database, and `live.ts` for those methods.
   Staff reports and the staff dashboard come with B4.
@@ -54,7 +57,8 @@ next. Update it at the end of every task.
      skip link, no sideways scroll, 44 px targets, and motion stopping under reduced motion.
    - `npm run devices`: every route on 11 devices (phones, landscape, tablets, laptop, desktops):
      sideways scroll, JavaScript errors, failed requests, broken images, sections that never appear.
-   - `npm run menu`: the header and full-screen menu at 8 widths with real key presses.
+   - `npm run menu`: the header and full-screen menu at 8 widths with real key presses, including that
+     the open menu covers the whole screen.
 
 The placeholder photos are committed in `public/images/placeholder` (`npm run photos` re-downloads them).
 Project rules for Claude are in `AGENTS.md` (loaded through `CLAUDE.md`).
@@ -267,7 +271,7 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | `src/lib/api/` | `SiteApi` contract (`types.ts`), the mock (`mock.ts`), content (`data/services.ts`, `products.ts`, `projects.ts`) |
 | `src/components/ui/PrintMarks.tsx` | The signature details: crop marks, CMYK dots, swatches, eyebrow labels |
 | `src/components/ui/` | `ButtonLink`, `Container`, `Reveal` (scroll reveal), `Marquee`, `RotatingBadge` |
-| `src/components/layout/` | `Header` (sticky; full-screen menu below 1024 px, a modal with focus trap and Escape), `Footer`, `Logo` (stand-in wordmark), `WhatsAppButton` |
+| `src/components/layout/` | `Header` (sticky and solid; full-screen menu below 1024 px, a modal with focus trap and Escape, rendered next to `<header>`, not inside it), `Footer`, `Logo` (the N mark and name), `WhatsAppButton` |
 | `src/components/home/` | The home page sections, in page order below |
 | `scripts/fetch-placeholder-photos.mjs` | Downloads the placeholder photos and writes `CREDITS.md` |
 
@@ -435,6 +439,8 @@ position mid-page) now shows at once instead of waiting to be scrolled past agai
   with two fonts of 89 KB and the scripts); layout shift 0. This machine is slow for Lighthouse
   (benchmark index about 600, against 1,000 to 1,500 that its 4× CPU slowdown assumes); with 2×
   the home page scores 70. Re-measure on the VPS at launch, and with real photos.
+- Updated 7 Oct 2026: the reveal observer is now an inline script and the home LCP is faster; see
+  "7 Oct 2026: menu, hover and speed".
 - On Windows Git Bash, prefix `MSYS_NO_PATHCONV=1` when passing paths to the checks
   (`ONLY=/shop`), or Git Bash turns them into Windows paths.
 
@@ -717,6 +723,37 @@ backend can serve the same shapes.
   fakes for Absa, WhatsApp, email and storage until each goes live, rate limits per endpoint, and the
   VPS pieces (Postgres role, Redis ACL, units, backups, Cloudflare at cutover). Its section 12 lists
   what the site itself gains (`live.ts`, `/revalidate`, live order updates).
+
+### 7 Oct 2026: menu, hover and speed
+
+- **Phone menu.** Tapping Menu seemed to do nothing: the menu opened, but only 72 px tall. The
+  header's `backdrop-blur` made the header the containing block for the menu's `position: fixed`,
+  so `inset-0` filled the header, not the screen. The menu is now rendered next to `<header>`, not
+  inside it, and the header is solid (`bg-bg`, no blur). Any `filter`, `transform` or
+  `backdrop-filter` on an ancestor does the same to a fixed overlay, so keep overlays outside such
+  elements. `npm run menu` now checks the open menu covers the whole screen (it passed before only
+  because it checked the menu had *some* size).
+- **Hover on touchscreen laptops.** Tailwind v4 wraps every `hover:` in `@media (hover: hover)`,
+  which asks about the *primary* pointer. Windows touchscreen laptops report touch, even with the
+  touchscreen switched off, so every hover effect disappeared. `globals.css` redefines the variant
+  with `@custom-variant hover` on `(any-hover: hover)`: on whenever a trackpad or mouse exists,
+  still off on phones (no sticky hover after a tap). `group-hover:` follows it.
+- **Speed.** The scroll reveals hid content until React had loaded and hydrated (seconds on a phone),
+  including the home hero. Now:
+  - `components/ui/RevealObserver.tsx` renders a plain inline script at the end of `<body>`: it
+    runs as soon as the HTML is parsed, shows anything already on screen at once, and watches the
+    DOM for later sections. `Reveal` has `suppressHydrationWarning` because the script may set
+    `data-visible` before React hydrates. The `js` class (which hides reveals) is only set when
+    `IntersectionObserver` exists.
+  - The home hero's first column (heading and the big photo, the page's largest paint) isn't
+    wrapped in `Reveal`. Don't wrap the first thing on a page in `Reveal`.
+  - Next 16 deprecated `<Image priority>`, which no longer raised the fetch priority. The main image
+    on each page uses `preload fetchPriority="high"`; the logo uses `loading="eager"`.
+  - Lighthouse 12 on the home page: desktop **87 → 95–99**; phone (simulated) 48 → 61–71, page mostly
+    drawn by 2–4.6 s instead of 6.3 s. What remains on phones is React starting up; the HTML is
+    20 KB compressed and the images are already sized and AVIF/WebP. Phone scores swing by 10 points
+    between runs on this machine: never run Lighthouse while `npm run devices` is running, and
+    re-measure on the VPS at launch.
 
 ## 9. Decisions log
 
