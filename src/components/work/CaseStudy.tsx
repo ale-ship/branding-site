@@ -62,7 +62,7 @@ export function CaseStudy({ project, services, next }: { project: Project; servi
       <Container>
         <Reveal className="relative">
           <div className="relative aspect-[4/3] overflow-hidden bg-panel sm:aspect-[16/9]">
-            <Image src={project.cover.src} alt={project.cover.alt} fill priority sizes="(min-width: 1680px) 1600px, 100vw" className="object-cover" />
+            <Image src={project.cover.src} alt={project.cover.alt} fill preload fetchPriority="high" sizes="(min-width: 1680px) 1600px, 100vw" className="object-cover" />
           </div>
           <CropMarks />
         </Reveal>

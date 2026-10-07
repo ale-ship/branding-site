@@ -84,7 +84,7 @@ export default async function ProductPage({ params }: Props) {
       <Container className="grid grid-cols-1 gap-10 pt-6 pb-20 sm:pt-8 sm:pb-28 lg:grid-cols-2 lg:gap-16">
         <div className="relative self-start lg:sticky lg:top-28">
           <div className="relative aspect-square overflow-hidden bg-panel">
-            <Image src={product.image.src} alt={product.image.alt} fill priority sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
+            <Image src={product.image.src} alt={product.image.alt} fill preload fetchPriority="high" sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
           </div>
           <CropMarks />
         </div>

@@ -16,7 +16,7 @@ export function Logo({ variant = 'compact', className = '' }: { variant?: 'compa
   }
   return (
     <Link href="/" aria-label="Noorcom Branding, home" className={`inline-flex min-h-11 items-center gap-2.5 ${className}`}>
-      <Image src="/brand/nb-mark.png" alt="" width={308} height={308} priority className="size-10" />
+      <Image src="/brand/nb-mark.png" alt="" width={308} height={308} loading="eager" className="size-10" />
       <span aria-hidden className="flex flex-col leading-none">
         <span className="text-[1.15rem] font-semibold tracking-[-0.01em] text-ink">
           Noorcom <span className="font-extrabold text-brand-red-ink">Branding</span>

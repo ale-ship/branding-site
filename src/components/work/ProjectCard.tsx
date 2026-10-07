@@ -20,6 +20,7 @@ const imageSizes: Record<Size, string> = {
 type Props = {
   project: Project;
   size: Size;
+  /** The page's main image: preloaded and fetched first. Only for the first card(s) on screen. */
   priority?: boolean;
   /** Heading level for the title, so each page keeps a correct outline. */
   as?: 'h2' | 'h3';
@@ -37,7 +38,8 @@ export function ProjectCard({ project, size, priority, as: Heading = 'h3' }: Pro
           src={project.cover.src}
           alt={project.cover.alt}
           fill
-          priority={priority}
+          preload={priority}
+          fetchPriority={priority ? 'high' : undefined}
           sizes={imageSizes[size]}
           className="object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.04]"
         />

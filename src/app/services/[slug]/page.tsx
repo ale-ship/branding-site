@@ -119,7 +119,7 @@ export default async function ServicePage({ params }: Props) {
       <Container>
         <Reveal className="relative">
           <div className="relative aspect-[4/3] overflow-hidden bg-panel sm:aspect-[21/9]">
-            <Image src={service.image.src} alt={service.image.alt} fill priority sizes="(min-width: 1680px) 1600px, 100vw" className="object-cover" />
+            <Image src={service.image.src} alt={service.image.alt} fill preload fetchPriority="high" sizes="(min-width: 1680px) 1600px, 100vw" className="object-cover" />
           </div>
           <CropMarks />
         </Reveal>

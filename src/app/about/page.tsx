@@ -58,7 +58,8 @@ export default async function AboutPage() {
               src="/images/placeholder/print-wide-format.jpg"
               alt="Our wide-format printer feeding out a printed banner"
               fill
-              priority
+              preload
+              fetchPriority="high"
               sizes="(min-width: 1680px) 1600px, 100vw"
               className="object-cover"
             />

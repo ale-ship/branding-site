@@ -77,12 +77,14 @@ export function Header() {
 
   const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
-  // The menu is a sibling of <header>, not inside it: the header's backdrop-blur makes it the
-  // containing block for fixed children, which squeezed the "full-screen" menu to 72px.
+  // The menu is a sibling of <header>, not inside it, so nothing on the header (a filter, a
+  // transform, backdrop-blur) can become the containing block that squeezed it to 72px.
+  // The header is solid, without backdrop-blur: at 95% opacity the blur barely showed and cost a
+  // repaint on every scroll frame.
   return (
     <>
       <header
-        className={`sticky top-0 z-40 bg-bg/95 backdrop-blur transition-[border-color,box-shadow] duration-300 print:hidden ${
+        className={`sticky top-0 z-40 bg-bg transition-[border-color,box-shadow] duration-300 print:hidden ${
           scrolled ? 'border-b border-border' : 'border-b border-transparent'
         }`}
       >

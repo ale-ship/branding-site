@@ -21,16 +21,16 @@ export function Hero({ projects }: { projects: Project[] }) {
       </h1>
       <Container className="grid grid-cols-1 lg:grid-cols-2">
         <div className="py-10 sm:py-14 lg:border-r lg:border-border lg:pr-10">
-          <Reveal>
-            <ColumnHeading id="latest-title" title="Latest" subtitle="Fresh off the press" />
-          </Reveal>
-          <Reveal delay={80} className="relative mt-8 sm:mt-10">
+          {/* No Reveal here: this column is the first thing on screen, and the big photo is the
+              page's largest paint, so it shows at once instead of fading in. */}
+          <ColumnHeading id="latest-title" title="Latest" subtitle="Fresh off the press" />
+          <div className="relative mt-8 sm:mt-10">
             <ProjectCard project={latest} size="large" priority />
             {/* Inside the photo on phones and tablets; over its corner on desktop, where the column has room. */}
             <div className="absolute top-3 right-3 lg:top-0 lg:right-0 lg:translate-x-1/4 lg:-translate-y-1/3">
               <RotatingBadge href={quoteHref} label="Get a quote" id="hero-badge" />
             </div>
-          </Reveal>
+          </div>
         </div>
 
         <div className="border-t border-border py-10 sm:py-14 lg:border-t-0 lg:pl-10">

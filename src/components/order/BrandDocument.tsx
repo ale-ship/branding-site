@@ -40,7 +40,7 @@ export function BrandDocument({
         <div className="h-2 bg-brand-red" />
         <div className="flex flex-1 flex-col px-[8mm] pt-[10mm] pb-[8mm] sm:px-[14mm]">
           <header className="flex flex-wrap items-start justify-between gap-6 border-b border-border pb-6">
-            <Image src="/brand/nb-logo.png" alt="Noorcom Branding: Design, Print, Brand" width={578} height={440} priority className="h-28 w-auto" />
+            <Image src="/brand/nb-logo.png" alt="Noorcom Branding: Design, Print, Brand" width={578} height={440} loading="eager" className="h-28 w-auto" />
             <div className="text-right">
               <h1 className="font-sans text-4xl font-extrabold tracking-tight text-heading sm:text-5xl">{title}</h1>
               <p className="mt-1 text-lg text-muted"># {number}</p>

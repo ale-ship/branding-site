@@ -16,7 +16,8 @@ type Props = {
  */
 export function Reveal({ children, as: Tag = 'div', delay = 0, className }: Props) {
   return (
-    <Tag data-reveal="" className={className} style={delay ? ({ '--reveal-delay': `${delay}ms` } as CSSProperties) : undefined}>
+    // The reveal script may set data-visible before React hydrates; that's expected.
+    <Tag data-reveal="" suppressHydrationWarning className={className} style={delay ? ({ '--reveal-delay': `${delay}ms` } as CSSProperties) : undefined}>
       {children}
     </Tag>
   );

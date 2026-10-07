@@ -37,8 +37,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-KE" className={`${inter.variable} ${bricolage.variable}`} suppressHydrationWarning>
       <head>
-        {/* Marks JavaScript as available so scroll reveals start hidden; without it content just shows. */}
-        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+        {/* Marks JavaScript as available so scroll reveals start hidden; without it (or without
+            IntersectionObserver, which the reveal script needs) content just shows. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: "if ('IntersectionObserver' in window) document.documentElement.classList.add('js')" }}
+        />
       </head>
       <body className="flex min-h-dvh flex-col">
         <a

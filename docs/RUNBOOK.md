@@ -724,6 +724,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 7 Oct 2026 | Speed and fixes: the scroll reveal is a plain inline script (not a React effect), the home hero's first column doesn't fade in, images use `preload` + `fetchPriority` (Next 16 deprecated `priority`), the header has no backdrop-blur and the menu sits outside it, hover styles use `any-hover` | The hero was invisible until React hydrated (seconds on a phone); the blur trapped the phone menu at 72px; touchscreen laptops lost every hover. Lighthouse desktop 87 → 95–99 |
 | 6 Oct 2026 | Backend B0: the shared code is JavaScript + JSDoc in `shared/` (npm workspace), its types in a `.d.ts` both sides read; the site keeps its imports through re-exports | One copy of every rule, checked by both type checkers |
 | 6 Oct 2026 | Company orders are approved only by the company's owner or an approver; PO numbers print on invoices | Spec "company accounts" |
 | 6 Oct 2026 | Deadlines offered come from the capacity calendar; a tier the workshop can't meet is switched off, not sold | Spec "capacity calendar" |
