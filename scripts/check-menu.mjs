@@ -84,6 +84,9 @@ for (const width of WIDTHS) {
     await key('Enter');
     await sleep(300);
     check(`Enter opens the menu ${at}`, await ev(visible('#site-menu')));
+    // A parent with backdrop-filter or transform would trap the fixed menu inside the header.
+    const box = await ev(`(() => { const r = document.getElementById('site-menu')?.getBoundingClientRect(); return r ? Math.round(r.width) + 'x' + Math.round(r.height) : 'none'; })()`);
+    check(`menu covers the whole screen ${at}`, box === `${width}x800`, `menu is ${box}`);
     check(`menu says it is expanded ${at}`, (await ev(`document.querySelector('${menuButton}').getAttribute('aria-expanded')`)) === 'true');
     check(`focus moves into the menu ${at}`, await ev(focusInDialog));
     check(`page behind is locked ${at}`, (await ev(`document.documentElement.style.overflow`)) === 'hidden');

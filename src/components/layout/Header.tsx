@@ -77,81 +77,85 @@ export function Header() {
 
   const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
+  // The menu is a sibling of <header>, not inside it: the header's backdrop-blur makes it the
+  // containing block for fixed children, which squeezed the "full-screen" menu to 72px.
   return (
-    <header
-      className={`sticky top-0 z-40 bg-bg/95 backdrop-blur transition-[border-color,box-shadow] duration-300 print:hidden ${
-        scrolled ? 'border-b border-border' : 'border-b border-transparent'
-      }`}
-    >
-      <Container className="flex h-18 items-center justify-between gap-6">
-        <Logo />
+    <>
+      <header
+        className={`sticky top-0 z-40 bg-bg/95 backdrop-blur transition-[border-color,box-shadow] duration-300 print:hidden ${
+          scrolled ? 'border-b border-border' : 'border-b border-transparent'
+        }`}
+      >
+        <Container className="flex h-18 items-center justify-between gap-6">
+          <Logo />
 
-        <nav aria-label="Main" className="hidden lg:block">
-          <ul className="flex items-center gap-9">
-            {mainNav.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  aria-current={isCurrent(item.href) ? 'page' : undefined}
-                  className="group relative inline-flex min-h-11 items-center text-[0.95rem] font-medium text-heading"
-                >
-                  {item.label}
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-0 bottom-1.5 h-0.5 origin-left scale-x-0 bg-accent transition-transform duration-300 ease-out group-hover:scale-x-100 group-aria-[current=page]:scale-x-100"
-                  />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+          <nav aria-label="Main" className="hidden lg:block">
+            <ul className="flex items-center gap-9">
+              {mainNav.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={isCurrent(item.href) ? 'page' : undefined}
+                    className="group relative inline-flex min-h-11 items-center text-[0.95rem] font-medium text-heading"
+                  >
+                    {item.label}
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-0 bottom-1.5 h-0.5 origin-left scale-x-0 bg-accent transition-transform duration-300 ease-out group-hover:scale-x-100 group-aria-[current=page]:scale-x-100"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Phones: a compact link once the quote list has items. */}
-          {quoteCount > 0 && (
-            <Link
-              href={quoteHref}
-              aria-label={quoteLabel}
-              className="relative grid size-12 place-items-center text-heading sm:hidden"
-            >
-              <ClipboardList aria-hidden className="size-6" />
-              <span aria-hidden className="absolute top-1.5 right-1 grid min-w-5 place-items-center rounded-pill bg-accent px-1 text-xs font-bold text-on-accent">
-                {quoteCount}
-              </span>
-            </Link>
-          )}
-          {/* Wrapped: ButtonLink's own inline-flex would beat a `hidden` passed to it. */}
-          <div className="hidden sm:block">
-            <ButtonLink href={quoteHref} variant="accent" arrow={!quoteCount}>
-              {quoteCount ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="sr-only">{quoteLabel}</span>
-                  <span aria-hidden>Your quote</span>
-                  <span aria-hidden className="grid min-w-6 place-items-center rounded-pill bg-ink px-1.5 text-xs font-bold text-bg">
-                    {quoteCount}
-                  </span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Phones: a compact link once the quote list has items. */}
+            {quoteCount > 0 && (
+              <Link
+                href={quoteHref}
+                aria-label={quoteLabel}
+                className="relative grid size-12 place-items-center text-heading sm:hidden"
+              >
+                <ClipboardList aria-hidden className="size-6" />
+                <span aria-hidden className="absolute top-1.5 right-1 grid min-w-5 place-items-center rounded-pill bg-accent px-1 text-xs font-bold text-on-accent">
+                  {quoteCount}
                 </span>
-              ) : (
-                'Get a quote'
-              )}
-            </ButtonLink>
+              </Link>
+            )}
+            {/* Wrapped: ButtonLink's own inline-flex would beat a `hidden` passed to it. */}
+            <div className="hidden sm:block">
+              <ButtonLink href={quoteHref} variant="accent" arrow={!quoteCount}>
+                {quoteCount ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="sr-only">{quoteLabel}</span>
+                    <span aria-hidden>Your quote</span>
+                    <span aria-hidden className="grid min-w-6 place-items-center rounded-pill bg-ink px-1.5 text-xs font-bold text-bg">
+                      {quoteCount}
+                    </span>
+                  </span>
+                ) : (
+                  'Get a quote'
+                )}
+              </ButtonLink>
+            </div>
+            <button
+              ref={menuButton}
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-expanded={open}
+              aria-controls="site-menu"
+              className="group inline-flex min-h-12 items-center gap-3 px-3 text-[0.95rem] font-semibold text-heading lg:hidden"
+            >
+              Menu
+              <span aria-hidden className="flex w-6 flex-col gap-1.5">
+                <span className="h-0.5 w-full bg-current transition-transform duration-300 group-hover:translate-x-1" />
+                <span className="h-0.5 w-full bg-current" />
+              </span>
+            </button>
           </div>
-          <button
-            ref={menuButton}
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-expanded={open}
-            aria-controls="site-menu"
-            className="group inline-flex min-h-12 items-center gap-3 px-3 text-[0.95rem] font-semibold text-heading lg:hidden"
-          >
-            Menu
-            <span aria-hidden className="flex w-6 flex-col gap-1.5">
-              <span className="h-0.5 w-full bg-current transition-transform duration-300 group-hover:translate-x-1" />
-              <span className="h-0.5 w-full bg-current" />
-            </span>
-          </button>
-        </div>
-      </Container>
+        </Container>
+      </header>
 
       {open && (
         <div
@@ -160,7 +164,7 @@ export function Header() {
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
-          className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-paper"
+          className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-paper print:hidden"
         >
           <Container className="flex h-18 shrink-0 items-center justify-between">
             <Logo />
@@ -224,6 +228,6 @@ export function Header() {
           </Container>
         </div>
       )}
-    </header>
+    </>
   );
 }

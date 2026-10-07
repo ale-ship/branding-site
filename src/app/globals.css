@@ -1,6 +1,20 @@
 @import 'tailwindcss';
 
 /*
+ * Hover styles whenever any pointer can hover (a trackpad or mouse), not only when the primary one
+ * can. Tailwind's default, (hover: hover), switches every hover off on touchscreen laptops, which
+ * report touch as primary even with the touchscreen disabled. Phones still get none, so nothing
+ * sticks after a tap.
+ */
+@custom-variant hover {
+  @media (any-hover: hover) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/*
  * Design tokens. Every colour in the app comes from here; components use the Tailwind
  * utilities mapped in @theme below (bg-paper, text-heading, bg-accent...).
  *
