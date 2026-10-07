@@ -18,7 +18,8 @@
     "migrate": "knex migrate:latest",
     "migrate:rollback": "knex migrate:rollback --all",
     "migrate:status": "knex migrate:list",
-    "migrate:make": "knex migrate:make"
+    "migrate:make": "knex migrate:make",
+    "seed": "knex seed:run"
   },
   "dependencies": {
     "@noorcom-branding/shared": "0.1.0",

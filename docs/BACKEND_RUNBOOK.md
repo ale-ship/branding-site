@@ -32,7 +32,7 @@ one team can work on both.
 | Types without TypeScript | JSDoc annotations + `// @ts-check`, checked by `tsc --noEmit` (`checkJs`) in CI | Catches mistakes while staying JavaScript |
 | HTTP | Express 5 | What Noorcom Computers uses; plain and well known |
 | Validation | zod | One schema for runtime checks and for the types the site reads |
-| Database | PostgreSQL (the VPS runs 17) through `pg` (node-postgres) in the repos; Knex for migrations only | Transactions and row locks for payments; the same split as Noorcom Computers |
+| Database | PostgreSQL (the VPS runs 17) through `pg` (node-postgres) in the repos; Knex for migrations and seeds only | Transactions and row locks for payments; the same split as Noorcom Computers |
 | Redis | Redis 7 through `ioredis`, our own ACL user `nb`, every key `nb:*` (section 2.2) | Queues, rate limits, short locks, cache, the fakes' state |
 | Jobs | BullMQ on that Redis (`prefix: 'nb:bull'`), a separate worker process | Callbacks are acknowledged fast; work happens after commit |
 | Files | S3-compatible storage (Cloudflare R2), `@aws-sdk/client-s3` presigned URLs | Proofs and logos never public |
@@ -497,7 +497,7 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 | Step | What | Done when |
 | --- | --- | --- |
 | B0 ✓ | Folders: create `backend/` (skeleton: config with zod, health, pino with phone masking, Postgres, Redis user `nb`, the rate limiter, ESLint layer rule, Vitest with a test database) and `shared/` (move pricing, calendar, c2b and order rules out of `src/lib` into `shared/rules` as JavaScript + JSDoc; `shared/contract`); the site keeps `src/` and imports `@shared/*`; the site's `eslint.config.mjs` ignores and `tsconfig.json` excludes `backend/` and `admin/`, which have their own checks | The site builds and passes every check; `backend/` answers `/api/health` |
-| B1 | Catalogue and pricing in the database; `GET /api/catalogue`, `POST /api/quotes/price`; `live.ts` for those methods | The order form prices from the API |
+| B1 ✓ | Catalogue and pricing in the database; `GET /api/catalogue`, `POST /api/quotes/price`; `live.ts` for those methods | The order form prices from the API |
 | B2 | Orders: create, read, lookup, expiry; invoices (INV); WhatsApp and email outbox with "order placed" | An order placed on staging appears in the database with its invoice |
 | B3 | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; receipt and invoice PDFs | A real KES 1 payment on staging confirms the order and sends the receipt, by both STK and Paybill |
 | B4 | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger | Staff run an order through without the demo controls |
@@ -521,6 +521,48 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   typecheck, tests), or inside `backend/`: `npm run dev | test | lint | typecheck | migrate`.
 - Without `DATABASE_URL` and `REDIS_URL` the API still starts in development and `/api/health` answers
   503 `degraded` with `db: down`, `redis: down`; production refuses to start without them.
+
+### Step B1, done 7 Oct 2026
+
+- **The catalogue moved to `shared/catalogue/order-catalogue.js`** (JavaScript + JSDoc, unchanged
+  data: 10 categories, 20 products); `src/lib/api/data/order-catalogue.ts` re-exports it, so the
+  mock and the site's tests didn't change. It is now the **seed**; the database is the record.
+- **Migration `001_catalogue`**: `categories`, `products` (the brief as `brief_schema` JSONB, read
+  whole; a CHECK that each mechanism has its columns: A `min_qty`, `setup_fee`, `design_fee`; B
+  `survey_fee`, `stages`; C `package_price`, `revision_rounds`; money in integer shillings) and
+  `price_tiers` (`product_id`, `min_qty`, `unit_price`). Inactive rows are left out of the catalogue.
+- **Seed `01-catalogue`** adds what is missing and never changes what is there, so a deploy can't
+  undo a price staff set in the back office (B4). Reload on a development machine:
+  `npm run migrate:rollback && npm run migrate && npm run seed` in `backend/`.
+- **`GET /api/catalogue`** (`modules/catalogue`: repo → service → controller → routes) answers
+  `{ categories, products }` in the contract's shapes; cached in Redis for 10 minutes
+  (`nb:cache:catalogue`), straight from Postgres when Redis is down; 503 `unavailable` without a
+  database.
+- **`POST /api/quotes/price`** (`modules/pricing`, 120 a minute per IP): the body is checked with
+  `priceRequestSchema` (`shared/contract/schemas.js`, zod), then priced with the same
+  `estimatePrice` the order form runs in the browser, against the database's product. Unknown
+  products and runs under the minimum are 400 `invalid` with a customer message. The capacity
+  calendar is empty until orders book machine time (B2).
+- **The site** (`src/lib/api/live.ts`): with `NEXT_PUBLIC_API_MODE=live` those four methods
+  (`listOrderCategories`, `listOrderProducts`, `getOrderProduct`, `priceEstimate`) go to the API
+  from the site's server (`API_INTERNAL_URL`, default `http://127.0.0.1:4300`; the catalogue is
+  cached a minute), everything else stays on the mock. `apiMode` stays `mock` (orders, payments,
+  accounts and the demo controls) until B2 and B3. **A live build needs the API running**: pages
+  built ahead (`/order`, shop pages) read the catalogue at build time.
+- **Decisions.** The deadline tiers, delivery zones and deposit rule stay in
+  `shared/rules/pricing.js` until the price manager (B4) makes them editable; migration 002
+  (settings) comes with it, so site and API can't disagree meanwhile. Until B2, orders are still
+  placed and priced by the mock from `shared/catalogue`: **don't change prices in the database
+  before orders move to the API.** The error handler recognises zod errors by name as well as
+  class, because `shared/` and `backend/` can load different copies of zod (the root has zod 4
+  for the site's lint tools).
+- **Tests:** `backend/test/integration/catalogue.test.js` against the test database: the
+  catalogue comes back exactly as `shared/catalogue` holds it; the Redis cache; inactive rows
+  left out; the seed keeps edits; the API's price equals the browser's for each mechanism; a tier
+  changed in the database changes the price; unknown products, short runs and malformed bodies
+  are 400 with the fields; 503 without a database. `src/lib/api/live.test.ts` for the site side.
+- **Run it locally:** in `backend/`, `npm run migrate && npm run seed`, then `npm run backend` at
+  the root; build and start the site with `NEXT_PUBLIC_API_MODE=live`.
 
 ### Setting up Postgres and Redis on a development machine
 

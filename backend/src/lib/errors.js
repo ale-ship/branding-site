@@ -37,13 +37,23 @@ export const invalid = (message, details) => new AppError(400, 'invalid', messag
 const ORDER_STATUS = { not_found: 404, invalid: 400, invalid_state: 409 };
 
 /**
+ * A zod validation error, from any copy of zod: shared/contract's schemas and the backend can load
+ * different copies (npm can't hoist one zod 3 beside the root's zod 4), so `instanceof` isn't enough.
+ * @param {unknown} err
+ * @returns {err is ZodError}
+ */
+function isZodError(err) {
+  return err instanceof ZodError || (err instanceof Error && err.name === 'ZodError' && Array.isArray(/** @type {any} */ (err).issues));
+}
+
+/**
  * @param {unknown} err
  * @returns {AppError}
  */
 function normalise(err) {
   if (err instanceof AppError) return err;
   if (err instanceof OrderError) return new AppError(ORDER_STATUS[err.code] ?? 400, err.code, err.message);
-  if (err instanceof ZodError) {
+  if (isZodError(err)) {
     const fields = err.issues.map((i) => ({ path: i.path.join('.'), message: i.message }));
     return invalid('Some of the details are not valid.', { fields });
   }

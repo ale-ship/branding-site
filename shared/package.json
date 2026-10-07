@@ -5,7 +5,11 @@
   "description": "Code the site and the backend share: the order contract and the pure rules (pricing, dates, C2B routing, capacity, …).",
   "type": "module",
   "exports": {
+    "./catalogue/*": "./catalogue/*",
     "./contract/*": "./contract/*",
     "./rules/*": "./rules/*"
+  },
+  "dependencies": {
+    "zod": "^3.25.0"
   }
 }

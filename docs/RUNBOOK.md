@@ -47,9 +47,14 @@ next. Update it at the end of every task.
   beside Noorcom Computers, the same way, at `staging.noorcombranding.co.ke` first. The deploy files
   took electronics' lessons from the box (see "7 Oct 2026: the VPS plan" below). Nothing is on the
   box yet.
-- **Next (owner, 7 Oct 2026: the VPS waits):** the local database (`scripts\setup-dev-db.ps1`),
-  then step B1: catalogue and pricing from the database, and `live.ts` for those methods. Memurai
-  (local Redis) before B2. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
+- **7 Oct 2026, backend step B1 done** (`docs/BACKEND_RUNBOOK.md`, "Step B1"): the order catalogue
+  is in Postgres (migration and seed from `shared/catalogue`), the API serves `GET /api/catalogue`
+  and `POST /api/quotes/price`, and with `NEXT_PUBLIC_API_MODE=live` the site's order pages read
+  the catalogue and prices from it (`src/lib/api/live.ts`; a price changed in the database reached
+  the order page within a minute). Orders, payments and accounts stay on the mock until B2 and B3.
+  The local database comes from `scripts\setup-dev-db.ps1`.
+- **Next (owner, 7 Oct 2026: the VPS waits):** Memurai (local Redis), then step B2: orders (create,
+  read, lookup, expiry), invoices (INV) and the WhatsApp and email outbox. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
   record, deploy key, first deploy) and section 8 (Postgres and Redis). Staff reports and the staff
   dashboard come with B4. Ask Absa for the items in its section 14. Then the launch checklist.
 
@@ -516,7 +521,7 @@ money moves and nothing is sent. Stopped here for review.
 
 | Route | What it does |
 | --- | --- |
-| `/order` | The order catalogue: 10 categories, 21 products, each tagged by mechanism (A "Priced instantly", B "Survey first", C "Design files"), with "from" prices; "Find your order" (order number + phone) |
+| `/order` | The order catalogue: 10 categories, 20 products, each tagged by mechanism (A "Priced instantly", B "Survey first", C "Design files"), with "from" prices; "Find your order" (order number + phone) |
 | `/order/new?product=<slug>` | The order form in 4 steps: **What you need** (quantity with price tiers, then the product's own brief), **Your brief** (artwork status, logo and assets, brand colours with a picker, fonts, exact wording, style tags, inspiration images and links, notes), **Deadline and delivery** (Economy, Standard, Express, Rush, each with its ready date and total; pickup or delivery by zone), **Your details and payment** (name, company, phone, email, Terms). The price updates live beside the form (folded at the top on phones). `?qty=` and `?opt=Name:Value` prefill from a shop page |
 | `/order/NB-123456?t=<token>` | The order page: pay panel (M-Pesa STK Push with "Check your phone", a 60 s countdown and live status; Paybill as the fallback), progress along the order's track, pieces / stages / revision rounds, survey dates for site jobs, payments with receipts, the order in plain words, history, messages sent (WhatsApp and email), the price agreed, the invoice and "Ask about this order" on WhatsApp. Without the token it asks for the order number and phone |
 | `/order/NB-123456/invoice` | The invoice, laid out after Noorcom's template (INV00870): print or save as PDF |
@@ -777,6 +782,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 7 Oct 2026 | Backend B1: the order catalogue lives in Postgres, seeded from `shared/catalogue` (the seed adds what's missing and never overwrites, so staff edits survive deploys); the deadline tiers, delivery zones and deposit rule stay in `shared/rules/pricing.js` until the price manager (B4); the site moves to the API method by method with `NEXT_PUBLIC_API_MODE=live` | The site and the API price with the same code from the same data; a deploy can never undo a staff price |
 | 7 Oct 2026 | **The site goes on the shared Contabo VPS like Noorcom Computers** (`docs/VPS_BRANDING.md`): staging at `staging.noorcombranding.co.ke` (one A record; the live name stays on Lovable until cutover), cloned with a read-only deploy key, port 4301; the database and Redis on the box | Owner's request: same arrangement as electronics |
 | 7 Oct 2026 | Work moves to the office machine (`C:\noorcom-branding`). Development Redis on Windows is **Memurai** (no Docker); the database work is done mostly on the VPS, with a local Postgres 18 and Memurai for the tests | Owner's decision |
 | 7 Oct 2026 | Speed and fixes: the scroll reveal is a plain inline script (not a React effect), the home hero's first column doesn't fade in, images use `preload` + `fetchPriority` (Next 16 deprecated `priority`), the header has no backdrop-blur and the menu sits outside it, hover styles use `any-hover` | The hero was invisible until React hydrated (seconds on a phone); the blur trapped the phone menu at 72px; touchscreen laptops lost every hover. Lighthouse desktop 87 → 95–99 |
