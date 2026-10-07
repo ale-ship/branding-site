@@ -529,6 +529,10 @@ backend and its tests on this machine. Once per machine: the office machine
 (`C:\noorcom-branding`) has PostgreSQL 18 as a Windows service with `psql` on the PATH, and Redis
 runs as **Memurai** (Redis 7 compatible, a Windows service; no Docker).
 
+On Windows, `scripts\setup-dev-db.ps1` does the Postgres part and writes the two database lines
+into `backend\.env`; it asks for the postgres password and makes the role's password itself
+(`powershell -ExecutionPolicy Bypass -File scripts\setup-dev-db.ps1`, safe to run again). By hand:
+
 ```bash
 # Postgres: a role and two databases (psql asks for the postgres password)
 psql -U postgres -h 127.0.0.1 -c "CREATE ROLE noorcom_branding LOGIN PASSWORD '<choose one>'"

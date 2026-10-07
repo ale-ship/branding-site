@@ -47,10 +47,11 @@ next. Update it at the end of every task.
   beside Noorcom Computers, the same way, at `staging.noorcombranding.co.ke` first. The deploy files
   took electronics' lessons from the box (see "7 Oct 2026: the VPS plan" below). Nothing is on the
   box yet.
-- **Next:** on the box, sections 1.1 to 5 of `docs/VPS_BRANDING.md` (staging DNS record, deploy key,
-  first deploy), then section 8 (Postgres and Redis), then step B1: catalogue and pricing from the
-  database, and `live.ts` for those methods. Staff reports and the staff dashboard come with B4.
-  Ask Absa for the items in its section 14. Then the launch checklist.
+- **Next (owner, 7 Oct 2026: the VPS waits):** the local database (`scripts\setup-dev-db.ps1`),
+  then step B1: catalogue and pricing from the database, and `live.ts` for those methods. Memurai
+  (local Redis) before B2. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
+  record, deploy key, first deploy) and section 8 (Postgres and Redis). Staff reports and the staff
+  dashboard come with B4. Ask Absa for the items in its section 14. Then the launch checklist.
 
 ## Start here on a new machine
 
