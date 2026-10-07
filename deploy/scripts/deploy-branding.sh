@@ -75,9 +75,12 @@ healthy() {
 
 install_system() {
   log "install"
-  id -u "$RUN_AS" >/dev/null 2>&1 || useradd --system --home "$BASE" --shell /usr/sbin/nologin "$RUN_AS"
-  mkdir -p "$RELEASES" /var/www/letsencrypt
-  install -d -m 750 -g "$RUN_AS" "$ENV_DIR"
+  # The user and folders as VPS_LAYOUT.md (Noorcom Hosting) section 4 makes them for every project.
+  id -u "$RUN_AS" >/dev/null 2>&1 || adduser --system --group --no-create-home --home "/var/lib/$RUN_AS" "$RUN_AS"
+  install -d -o root -g root -m 755 "$BASE" "$RELEASES"
+  install -d -o root -g "$RUN_AS" -m 750 "$ENV_DIR"
+  install -d -o "$RUN_AS" -g "$RUN_AS" -m 750 "/var/lib/$RUN_AS" "/var/backups/$RUN_AS"
+  [[ -d /var/www/letsencrypt ]] || install -d -o root -g root -m 755 /var/www/letsencrypt
   [[ -d $REPO/.git ]] || die "clone the repository into $REPO first (docs/VPS_BRANDING.md section 5)"
   local missing=0
   [[ -e $ENV_WEB ]] || { install -m 640 -g "$RUN_AS" "$REPO/deploy/env/web.env.example" "$ENV_WEB"; missing=1; }

@@ -1,16 +1,21 @@
 # Noorcom Branding on the Contabo VPS
 
-Written 7 Oct 2026. The branding part of the shared Contabo box, done the same way as Noorcom
-Computers (the electronics website) on the same box: its own system user, database, Redis user
-and port, releases with a `current` link and rollback, and secrets only on the box. Read
-`docs/RUNBOOK.md` first; the backend's design is `docs/BACKEND_RUNBOOK.md`.
+Written 7 Oct 2026. The branding part of the shared Contabo box, done the same way as the two
+projects already on it: its own system user, database, Redis user and port, releases with a
+`current` link and rollback, and secrets only on the box. Read `docs/RUNBOOK.md` first; the
+backend's design is `docs/BACKEND_RUNBOOK.md`.
 
-The box itself (updates, firewall, fail2ban, Postgres, Redis, nginx, certbot, Node) was set up
-once for Noorcom Hosting and is already shared by Noorcom Computers. **Do not redo any of it.**
-This document covers only what branding adds.
+The box itself (updates, firewall, fail2ban, the catch-all nginx site, Postgres, Redis, nginx,
+certbot, Node) was set up once by Noorcom Hosting's `docs/runbook/VPS_LAYOUT.md` (repository
+`Noorcom-Network-NNL/noorcom-networks`) and is shared by Noorcom Computers (`VPS_ELECTRONICS.md` in
+its repository). **Do not redo any of it.** This document covers only what branding adds, with the
+same commands and rules as those two.
 
-Every block runs as `root` in an SSH session, tag `[VPS]`. Anything written `<LIKE_THIS>` is a
-placeholder. Never paste a password, key or token into chat, a ticket or this repository.
+Every `[VPS]` block runs as `root` in an SSH session (root logs in with its password), one block at
+a time; Wayne runs them. `[GITHUB]` blocks need an admin of the Noorcom-Network-NNL organisation
+(Abdi). `[DNS]` blocks are in the cPanel Zone Editor of the Namecheap reseller hosting account on
+host38. Anything written `<LIKE_THIS>` is a placeholder. Never paste a password, key or token into
+chat, a ticket or this repository.
 
 ---
 
@@ -19,7 +24,7 @@ placeholder. Never paste a password, key or token into chat, a ticket or this re
 | Resource | Value |
 |---|---|
 | The box | Contabo `vmi3615768`, **144.91.76.57**. 11 GiB memory, 6 CPUs; Node 24, PostgreSQL 17, Redis 7.0, nginx 1.24 (1 Oct 2026) |
-| Neighbours | Noorcom Hosting (Redis `nn`), Noorcom Computers: API `4200`, storefront `4201`, Redis `ne` |
+| Neighbours | Noorcom Hosting: API `4100`, Redis `nn`, `noorcomnetwork.co.ke` and `app.` (nginx `noorcom-network.conf`, `noorcom-apex.conf`). Noorcom Computers: API `4200`, storefront `4201`, Redis `ne`, `staging.noorcom.co.ke`. The catch-all `00-catch-all.conf` answers unknown names (and serves certificate challenges on port 80) |
 | Domains | Staging: `staging.noorcombranding.co.ke`. Live: `noorcombranding.co.ke`, `www.noorcombranding.co.ke` (redirects to the bare name) |
 | System user | `noorcom-branding` |
 | Site (Next.js) | `127.0.0.1:4301`, unit `noorcom-branding-web` |
@@ -27,22 +32,35 @@ placeholder. Never paste a password, key or token into chat, a ticket or this re
 | Postgres | role and database `noorcom_branding` |
 | Redis | user `nb`, keys `nb:*`, BullMQ prefix `nb:bull` |
 | Env files | `/etc/noorcom-branding/web.env` (site), `hosts.env` (names), `api.env` (API and worker, from B1); `root:noorcom-branding` 640 (`hosts.env` 644) |
-| Files | `/var/lib/noorcom-branding/` (from B1) |
-| Backups | `/var/backups/noorcom-branding/` (from B1) |
+| Files | `/var/lib/noorcom-branding/` (made by `--install`; used from B1) |
+| Backups | `/var/backups/noorcom-branding/` (made by `--install`; nightly dumps from B1) |
 | nginx | `/etc/nginx/sites-available/noorcom-branding.conf` |
 | Repository on the box | `/var/www/noorcom-branding/repo`, cloned from `Noorcom-Network-NNL/noorcom-branding` with a read-only deploy key |
 
 ### 1.1 The staging name
 
-The domain's DNS is on Namecheap (nameservers `rs38a`/`rs38b.registrar-servers.com`). Today `@`
-points at Lovable (199.36.158.100), which still serves the old site. Add **one A record**:
+The zone is served by `rs38a`/`rs38b.registrar-servers.com`, like `noorcom.co.ke` and
+`noorcomnetwork.co.ke`: records are edited in the **cPanel Zone Editor on host38** (Namecheap
+reseller hosting), not in Namecheap's Advanced DNS. Read from DNS on 7 Oct 2026:
 
-| Host | Type | Value |
-|---|---|---|
-| `staging` | A | `144.91.76.57` |
+| Name | Type | Value | Note |
+|---|---|---|---|
+| `@` | A | `199.36.158.100` | Firebase Hosting: the old Lovable site. Rollback value at cutover |
+| `www` | CNAME | `noorcom-branding.web.app` | Firebase. Rollback value at cutover |
+| `@` | MX | 5 `mx1-hosting.jellyfish.systems`, 10 `mx2-…`, 20 `mx3-…` | Email (Namecheap). Never touched |
+| `@` | TXT | `v=spf1 +a +mx +ip4:68.65.122.182 +ip4:68.65.122.183 include:spf.web-hosting.com ~all` | SPF. `+a` authorises whatever `@` points to: review at cutover |
+| `@` | TXT | `hosting-site=noorcom-branding` | Firebase's ownership check |
 
-Leave `@`, `www`, `mail`, MX and every TXT record alone: they carry the live site and email.
-Check from anywhere: `nslookup staging.noorcombranding.co.ke` answers `144.91.76.57`.
+`[DNS]` First copy the whole zone as it is in the Zone Editor into
+`docs/DNS_ZONE_SNAPSHOT_<date>.md` (as Noorcom Hosting did for its domain: the editor shows records
+DNS lookups don't, and a zone rebuilt from memory misses some). Then add **one record** and change
+nothing else:
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| A | `staging` | `144.91.76.57` | 5 min |
+
+Check from the office machine: `nslookup staging.noorcombranding.co.ke` answers `144.91.76.57`.
 
 Staging sends `X-Robots-Tag: noindex` (`NOINDEX=yes` in `hosts.env`), so search engines don't
 index it as a copy of the future live site.
@@ -76,25 +94,31 @@ Releases belong to `root:noorcom-branding` and are read only to the service; it 
 
 ## 3. Access to the repository: a deploy key
 
-The repository is private. The box gets its own **read-only deploy key**, never copied off it
-(the same way electronics clones its repository).
+The repository is private. The box gets its own **read-only deploy key**, never copied off it.
+A deploy key belongs to one repository, so each project on the box has its own: root's
+`/root/.ssh/config` already sends `Host github.com` to Noorcom Hosting's key, and electronics uses
+the alias `github-ale-ship-noorcom`. Branding gets the alias `github-noorcom-branding`. GitHub's
+host key is already in root's `known_hosts` (checked against GitHub's published fingerprint when
+the box was set up), and the alias uses it because its `HostName` is `github.com`.
 
 `[VPS]`
 ```bash
-ssh-keygen -t ed25519 -N "" -C "vps deploy noorcom-branding" -f /root/.ssh/noorcom_branding_deploy
-cat >> /root/.ssh/config <<'EOF'
-
-Host github-noorcom-branding
-  HostName github.com
-  User git
-  IdentityFile /root/.ssh/noorcom_branding_deploy
-  IdentitiesOnly yes
-EOF
-cat /root/.ssh/noorcom_branding_deploy.pub
+ssh-keygen -t ed25519 -N '' -C 'noorcom-branding deploy key' -f /root/.ssh/noorcom-branding-deploy
 ```
 
-On GitHub: `Noorcom-Network-NNL/noorcom-branding`, Settings, Deploy keys, Add deploy key: title
-"VPS 144.91.76.57", paste the `.pub` line, **leave "Allow write access" off**. Then:
+`[VPS]`
+```bash
+printf '\nHost github-noorcom-branding\n  HostName github.com\n  User git\n  IdentityFile /root/.ssh/noorcom-branding-deploy\n  IdentitiesOnly yes\n' >> /root/.ssh/config && chmod 600 /root/.ssh/config
+```
+
+`[VPS]`
+```bash
+cat /root/.ssh/noorcom-branding-deploy.pub
+```
+
+`[GITHUB]` Send that one line (the public half) to Abdi, who adds it under
+`Noorcom-Network-NNL/noorcom-branding`, Settings, Deploy keys, Add deploy key, title
+`app server`, and leaves **Allow write access** unticked. Then:
 
 `[VPS]`
 ```bash
@@ -216,10 +240,49 @@ sudo -u postgres psql -c "ALTER ROLE noorcom_branding SET statement_timeout = '1
 sudo -u postgres psql -c "ALTER ROLE noorcom_branding SET idle_in_transaction_session_timeout = '30s'"
 ```
 
-For Redis, add the user `nb` exactly as `ne` was added (Noorcom Hosting's `VPS_LAYOUT.md`, section
-6): the same rules as `nn` and `ne`, key pattern `~nb:*`, `<NB_REDIS_PASSWORD>` from
-`openssl rand -hex 24`; applied live with `ACL SETUSER` **and** written into `redis.conf` (back it
-up first, e.g. `redis.conf.bak-before-nb`), so it survives a restart without restarting Redis now.
+`pg_trgm` and `pg_stat_statements` are not needed by branding (both are already on the box for
+the others).
+
+**Redis**: the user `nb` with exactly the rule `nn` and `ne` have (`VPS_LAYOUT.md` section 6), on
+the running server first, then in `redis.conf`, so nothing restarts. The box's Redis is 7.0, so the
+channel rule `&nb:*` applies. The `default` user is the admin login with `<REDIS_ADMIN_PASSWORD>`
+(in the password manager).
+
+`[VPS]`
+```bash
+openssl rand -hex 24    # keep it as <NB_REDIS_PASSWORD>
+```
+
+`[VPS]`
+```bash
+redis-cli -a '<REDIS_ADMIN_PASSWORD>' --no-auth-warning ACL SETUSER nb on '><NB_REDIS_PASSWORD>' '~nb:*' '&nb:*' +@all -@admin -@dangerous +info +client\|setname +client\|getname +client\|id
+```
+
+EXPECT `OK`. Then:
+
+`[VPS]`
+```bash
+redis-cli --user nb --pass '<NB_REDIS_PASSWORD>' --no-auth-warning set nb:probe 1
+redis-cli --user nb --pass '<NB_REDIS_PASSWORD>' --no-auth-warning set ne:probe 1
+```
+
+EXPECT `OK`, then `NOPERM`: that refusal is the isolation working. Make it survive a restart:
+back up the file, then append the same rule (or to the file an `aclfile` line names, if there is
+one):
+
+`[VPS]`
+```bash
+cp /etc/redis/redis.conf /etc/redis/redis.conf.bak-before-nb && grep -n '^aclfile' /etc/redis/redis.conf
+```
+
+```text
+# /etc/redis/redis.conf (append)
+user nb on ><NB_REDIS_PASSWORD> ~nb:* &nb:* +@all -@admin -@dangerous +info +client|setname +client|getname +client|id
+```
+
+The API connects with `REDIS_URL=redis://nb:<NB_REDIS_PASSWORD>@127.0.0.1:6379/0`, names every
+key `nb:...` and gives BullMQ `prefix: 'nb:bull'`. When the worker first runs (B2 or B3),
+`redis-cli -a '<REDIS_ADMIN_PASSWORD>' --no-auth-warning ACL LOG` should be empty.
 
 From B1: the API and worker units, `api.env`, migrations in the deploy, and a nightly backup
 (`pg_dump -Fc` to `/var/backups/noorcom-branding/`, 14 days, a timer at 02:30 like
@@ -231,16 +294,25 @@ electronics') with a restore check. `docs/BACKEND_RUNBOOK.md` section 10 has the
 
 After the launch checklist in `docs/RUNBOOK.md`:
 
-1. A day before: TTL 300 on the `@` and `www` records.
-2. On the day, **DNS first** (the certificate is issued over HTTP): `@` and `www` A records to
-   `144.91.76.57`. Leave `mail`, MX, SPF, DKIM, DMARC and `staging` alone. Wait until
-   `nslookup noorcombranding.co.ke` and `www.` both answer `144.91.76.57`.
+1. A day before: re-read the zone and compare it with the snapshot (section 1.1); TTL 300 on the
+   `@` A record and the `www` CNAME, then wait at least the old TTL.
+2. On the day, **DNS first** (the certificate is issued over HTTP): `@` A to `144.91.76.57`;
+   delete the `www` CNAME and add `www` as an A record to `144.91.76.57`. Leave MX, the TXT records
+   and `staging` alone. Wait until `nslookup noorcombranding.co.ke rs38a.registrar-servers.com`
+   and the same for `www.` both answer `144.91.76.57`.
 3. `certbot certonly --webroot -w /var/www/letsencrypt -d noorcombranding.co.ke -d www.noorcombranding.co.ke`.
 4. `hosts.env`: `SITE_HOST=noorcombranding.co.ke`, `WWW_HOST=www.noorcombranding.co.ke`, remove
    `NOINDEX`. `web.env`: `NEXT_PUBLIC_SITE_URL=https://noorcombranding.co.ke`. Then `--install`
    and a deploy (the site bakes its address in). Keep the gap between steps 2 and 4 short.
 5. `smoke-branding.sh https://noorcombranding.co.ke`, then the rest of the launch checklist (Search
-   Console, Google Business Profile, a WhatsApp link preview). Keep the Lovable project a week.
+   Console, Google Business Profile, a WhatsApp link preview). Keep the Lovable project and its
+   Firebase site a week.
+6. SPF's `+a` now authorises `144.91.76.57` instead of Firebase. Nothing sends mail from the box
+   yet; when the backend does, it sends through the mailbox's SMTP (as electronics does), and the
+   SPF record is reviewed then. Check mail to and from `info@noorcombranding.co.ke` still works.
+
+**Rollback** (minutes, the TTL is 300): `@` A back to `199.36.158.100`; delete the `www` A record
+and put back the CNAME to `noorcom-branding.web.app`.
 
 ---
 
@@ -257,6 +329,7 @@ After the launch checklist in `docs/RUNBOOK.md`:
 | `curl -sI https://staging.noorcombranding.co.ke` shows `X-Robots-Tag: noindex, nofollow` | |
 | `npm run a11y`, `devices`, `menu` with `BASE=https://staging.noorcombranding.co.ke` pass | |
 | A deploy, then `--rollback`, then a deploy again all complete | |
-| Electronics still answers: `https://staging.noorcom.co.ke` and its admin load | |
-| (B1) `psql` as `noorcom_branding` connects to its own database, refused on `noorcom_electronics` | |
+| The neighbours still answer: `https://staging.noorcom.co.ke` and its admin, `https://app.noorcomnetwork.co.ke` | |
+| `ufw status` still lists 22, 80 and 443 only (nothing to open for branding) | |
+| (B1) `psql` as `noorcom_branding` connects to its own database, refused on `noorcom_network` and `noorcom_electronics` | |
 | (B1) Redis user `nb` gets `OK` on `nb:probe` and `NOPERM` on `ne:probe` | |
