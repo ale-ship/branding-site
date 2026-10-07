@@ -1,6 +1,6 @@
 # Noorcom Branding Website Runbook
 
-Last updated 3 Oct 2026. This is the handover document: read it first in a new chat or on a new
+Last updated 7 Oct 2026. This is the handover document: read it first in a new chat or on a new
 machine. It records what the project is, what we found, every decision and why, and what comes
 next. Update it at the end of every task.
 
@@ -14,10 +14,11 @@ next. Update it at the end of every task.
   invoice. See "Online ordering, Phase 1" below and `docs/ORDER_WORKFLOW_SPEC.md`.
 - **6 Oct 2026:** the site now uses the logo's red and black; payments get numbered receipts (RCT); Paybill
   payments route through Absa C2B (built and tested against the mock, ready for Absa's details); invoices
-  start afresh at INV00001. The backend is designed in `docs/BACKEND_RUNBOOK.md` (no code yet).
-- **Scope for now is design and frontend only.** No backend, no Supabase, nothing from Lovable.
-  Data comes from local typed content behind one data interface (`SiteApi`, mock only), so our own
-  backend can plug in later without page changes.
+  start afresh at INV00001. The backend is designed in `docs/BACKEND_RUNBOOK.md`.
+- **The site still runs on the mock.** Every page and form works, but no payment, message or upload
+  is real yet. Data comes through one interface (`SiteApi`); our own backend, in `backend/` in this
+  repo, will implement it step by step (B0 to B5) without page changes. No Supabase, nothing from
+  Lovable.
 - **Pages:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`, `/shop/[slug]`,
   `/quote`, `/order`, `/order/new`, `/order/[ref]`, `/order/[ref]/invoice`, `/order/[ref]/receipt/[no]`,
   `/account`, `/account/statement` (+ `.csv`), `/about`, `/contact`,
@@ -39,10 +40,14 @@ next. Update it at the end of every task.
 - **7 Oct 2026, menu, hover and speed fixes** ("7 Oct 2026: menu, hover and speed" below): the phone
   menu opens full screen again, touchscreen laptops get hover effects, and the top of every page
   shows without waiting for React (Lighthouse on the home page, desktop 87 → 95–99).
-- **Next:** create the development database and Redis ("Setting up Postgres and Redis" in the backend
-  runbook), then step B1: catalogue and pricing from the database, and `live.ts` for those methods.
-  Staff reports and the staff dashboard come with B4.
-  Ask Absa for the items in its section 14. Also: deploy to the VPS ("Deploying to the VPS" below), then the launch checklist. After that, our own backend (separate project) so quote requests and messages are actually delivered.
+- **7 Oct 2026, new machine:** the project now lives in `C:\noorcom-branding` on the office machine;
+  `npm install` and every check (lint, typecheck, 203 tests, build, `a11y`, `devices`, `menu`) pass
+  there. PostgreSQL 18 is installed and `psql` is on the PATH; Redis will be Memurai.
+- **Next:** the database and Redis ("Setting up Postgres and Redis" in the backend runbook: mostly on
+  the VPS, with a local copy for the tests), then step B1: catalogue and pricing from the database,
+  and `live.ts` for those methods. Staff reports and the staff dashboard come with B4.
+  Ask Absa for the items in its section 14. Also: deploy to the VPS ("Deploying to the VPS" below),
+  then the launch checklist.
 
 ## Start here on a new machine
 
@@ -67,15 +72,11 @@ Project rules for Claude are in `AGENTS.md` (loaded through `CLAUDE.md`).
 
 Claude does not know this file exists unless told. This runbook and the order workflow spec (`docs/ORDER_WORKFLOW_SPEC.md`) live in `docs/`. Start a new chat with something like:
 
-> Read docs\RUNBOOK.md in C:\Users\USER\Downloads\Noorcom-branding first. We are rebuilding
-> noorcombranding.co.ke from scratch. Continue with the next unfinished phase, then stop for review.
+> Read docs\RUNBOOK.md in C:\noorcom-branding first. We are rebuilding noorcombranding.co.ke
+> from scratch. Continue with the next unfinished step, then stop for review.
 
 When Claude finishes a task it should update this runbook (what changed, decisions, open items),
 and stop so the owner can review it in the browser.
-
-Our sister project, the **Noorcom Computers** store, lives in `C:\ne` (monorepo; storefront in
-`apps/website-frontend`, its own `RUNBOOK.md`). We reuse its working method, stack and quality bar,
-but **this site is a separate project and never imports from it.**
 
 ---
 
@@ -241,7 +242,7 @@ Each phase: build, run the checks, update this runbook, commit, stop for review.
 | 3 Services and quote | Service pages; `/quote` form (mock: the request is checked and given a reference; sending to email and WhatsApp needs our backend) | **Built 3 Oct 2026** |
 | 4 Shop | Product catalogue and product pages; quote list that feeds `/quote` | **Built 3 Oct 2026** |
 | 5 Content and polish | About, contact, legal, 404; SEO, social images, JSON-LD; motion pass; accessibility and performance pass | **Done 3 Oct 2026** |
-| 6 Launch | VPS deploy files, redirects from the old site, launch checklist | **Prepared 3 Oct 2026**; deploy and DNS cutover still to do. Our own backend and back office: separate project, later |
+| 6 Launch | VPS deploy files, redirects from the old site, launch checklist | **Prepared 3 Oct 2026**; deploy and DNS cutover still to do. The backend and back office: `backend/` and `admin/` in this repo, steps B0 to B5 in `docs/BACKEND_RUNBOOK.md` |
 
 ## 8. Assets we need from Noorcom
 
@@ -495,7 +496,7 @@ Content (the site says "Sample" and "Draft" until this is done):
 - [ ] Privacy and Terms reviewed by a lawyer; then remove the draft notice in
       `components/legal/LegalPage.tsx`.
 
-Backend (separate project; until then the forms work but nothing is delivered):
+Backend (`backend/`, `docs/BACKEND_RUNBOOK.md`; until then the forms work but nothing is delivered):
 - [ ] Our own API implementing `SiteApi` (`submitQuote`, `sendMessage`): storing requests, emailing
       Noorcom and the customer, artwork upload. Swap it in at `src/lib/api/index.ts`.
 - [ ] Then a strict Content-Security-Policy (see the TODO in `next.config.ts`).
@@ -754,6 +755,10 @@ backend can serve the same shapes.
     20 KB compressed and the images are already sized and AVIF/WebP. Phone scores swing by 10 points
     between runs on this machine: never run Lighthouse while `npm run devices` is running, and
     re-measure on the VPS at launch.
+- **`npm run a11y` flake.** "proof review @ 390" sometimes failed with a missing `<title>`: the demo
+  buttons refresh the page through a server action, which swaps the `<head>` for a moment, and axe
+  could land in between. The check now also waits for the title before running axe.
+- On the office machine `npm run devices` takes about 25 minutes; `a11y` and `menu` a few each.
 
 ## 9. Decisions log
 
@@ -761,6 +766,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 7 Oct 2026 | Work moves to the office machine (`C:\noorcom-branding`). Development Redis on Windows is **Memurai** (no Docker); the database work is done mostly on the VPS, with a local Postgres 18 and Memurai for the tests | Owner's decision |
 | 7 Oct 2026 | Speed and fixes: the scroll reveal is a plain inline script (not a React effect), the home hero's first column doesn't fade in, images use `preload` + `fetchPriority` (Next 16 deprecated `priority`), the header has no backdrop-blur and the menu sits outside it, hover styles use `any-hover` | The hero was invisible until React hydrated (seconds on a phone); the blur trapped the phone menu at 72px; touchscreen laptops lost every hover. Lighthouse desktop 87 → 95–99 |
 | 6 Oct 2026 | Backend B0: the shared code is JavaScript + JSDoc in `shared/` (npm workspace), its types in a `.d.ts` both sides read; the site keeps its imports through re-exports | One copy of every rule, checked by both type checkers |
 | 6 Oct 2026 | Company orders are approved only by the company's owner or an approver; PO numbers print on invoices | Spec "company accounts" |

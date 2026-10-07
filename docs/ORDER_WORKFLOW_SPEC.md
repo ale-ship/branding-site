@@ -1,6 +1,6 @@
 # Noorcom Branding: Order Workflow Spec
 
-Last updated 5 Oct 2026.
+Last updated 7 Oct 2026.
 
 > **For Claude Code:** read `docs/RUNBOOK.md` and `AGENTS.md` first, then this spec. This spec changes an existing owner decision (see "Fit with the current codebase"). Do not write payment or checkout code until `AGENTS.md` and the RUNBOOK decisions log have been updated to allow it. Follow the existing architecture rules: pages get data only through `api` from `@/lib/api`, new behaviour is added to the `SiteApi` interface and mocked first, and all checks (`lint`, `typecheck`, `test`, `build`, `a11y`, `devices`, `menu`) must pass before handover. All numbers marked as proposals are placeholders for Noorcom to confirm.
 
@@ -22,12 +22,12 @@ Many orders mix two: "design my poster and print 200" is C then A on the same or
 
 ## Fit with the current codebase
 
-The repo ([ale-ship/branding-site](https://github.com/ale-ship/branding-site), Next.js 16, TypeScript strict, Tailwind v4, Vitest) already has most of the front half of this workflow; the order system slots in behind the existing `SiteApi` interface rather than beside it.
+The repo (Next.js 16, TypeScript strict, Tailwind v4, Vitest) already has most of the front half of this workflow; the order system slots in behind the existing `SiteApi` interface rather than beside it.
 
-**Decisions this workflow changes (owner sign-off needed first)**
+**Decisions this workflow changes (signed off 5 and 6 Oct 2026)**
 
-- The decisions log (3 Oct 2026) says the shop is add-to-quote only, with no cart, payment or M-Pesa, and `AGENTS.md` says never add a cart or checkout. This spec adds M-Pesa payment, so that decision, the `AGENTS.md` rule and the decisions log must be updated before any code lands.
-- The RUNBOOK keeps the backend and back office as a separate project, built later. The order system is that backend; the staff dashboard in this spec is the back office.
+- The decisions log (3 Oct 2026) said the shop is add-to-quote only, with no cart, payment or M-Pesa, and `AGENTS.md` said never add a cart or checkout. This spec adds M-Pesa payment; the owner approved it on 5 Oct 2026 and `AGENTS.md` and the decisions log were updated.
+- The RUNBOOK kept the backend and back office as a separate project, built later. The order system is that backend; the staff dashboard in this spec is the back office. Both now live in this repo (`backend/`, later `admin/`; owner, 6 Oct 2026; see `docs/BACKEND_RUNBOOK.md`).
 
 **What already exists and gets reused**
 
@@ -49,8 +49,6 @@ The repo ([ale-ship/branding-site](https://github.com/ale-ship/branding-site), N
 - New routes: `/order/[ref]` (tracker, proofs, payments), `/account` (orders, brand kit). The staff dashboard stays out of the public site, as the RUNBOOK already decided.
 - M-Pesa callbacks need a public HTTPS URL. They belong in the backend, not in the Vercel preview; production is the VPS (port 4301 for the site, nginx in `deploy/`).
 - Keep the house rules: no people in any photo, so proof mockups show products and walls only; no registration (crosshair) marks; colour tokens from `globals.css`; all checks pass before handover.
-
-**Repo question:** the RUNBOOK names `Noorcom-Network-NNL/noorcom-branding` as the repo, while this one is `ale-ship/branding-site`. Confirm which one is canonical before branching.
 
 ## Order mechanisms
 
@@ -417,7 +415,7 @@ In this repo these endpoints belong to the separate backend; the Next.js site ne
 
 **Open questions for Noorcom**
 
-- [ ] Owner signs off on taking payment online (reverses the 3 Oct 2026 add-to-quote-only decision); then update `AGENTS.md` and the RUNBOOK decisions log.
+- [x] Owner signs off on taking payment online (reverses the 3 Oct 2026 add-to-quote-only decision); then update `AGENTS.md` and the RUNBOOK decisions log. Done 5 Oct 2026.
 - [ ] Confirm the deposit percentage and the threshold for paying in full.
 - [ ] Confirm the urgency multipliers and which products can be rushed at all.
 - [ ] Standard lead times per product and daily capacity per machine.
@@ -427,8 +425,6 @@ In this repo these endpoints belong to the separate backend; the Next.js site ne
 - [ ] Will the Absa STK Push go live in time, or start on Daraja?
 - [ ] Can +254 722 530 301 run on the WhatsApp Business Platform alongside the app (coexistence), or is a second number needed?
 - [ ] How many revision rounds per design package.
-- [ ] Which repo is canonical: `ale-ship/branding-site` or `Noorcom-Network-NNL/noorcom-branding`?
-
 **Build phases**
 
 Status: all four phases built on the site (Phase 1 on 5 Oct 2026, Phases 2 to 4 on 6 Oct 2026), with payments, messages and sign-in codes mocked; see `docs/RUNBOOK.md`, "Online ordering". The staff dashboard and staff reports come with the backend. The staff order board waits for the backend.

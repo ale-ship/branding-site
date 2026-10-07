@@ -1,8 +1,8 @@
 # Noorcom Branding Backend Runbook
 
-Last updated 6 Oct 2026. The design of the backend behind the website: the stack, the file layout,
-the database, the API, the payment flows and the order to build it in. **No backend code exists
-yet**: this is the plan to build from. Read `docs/RUNBOOK.md` (the site) and
+Last updated 7 Oct 2026. The design of the backend behind the website: the stack, the file layout,
+the database, the API, the payment flows and the order to build it in. **Step B0 is built** (the
+`backend/` skeleton and `shared/`); the rest is the plan to build from. Read `docs/RUNBOOK.md` (the site) and
 `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow) first.
 
 ## 1. What the backend does
@@ -44,8 +44,7 @@ one team can work on both.
 | Tests | Vitest; supertest for HTTP; a separate test database and Redis database | |
 | Lint | ESLint with an import rule for the layers (section 2.1) and `max-lines: 250` | Keeps files small and the layers honest | |
 
-These choices follow Noorcom Computers' backend (`C:\ne\docs\runbook\BACKEND_RUNBOOK.md`,
-`VPS_ELECTRONICS.md`, `API_CONTRACT.md`), so one team works the same way on both.
+These choices follow Noorcom Computers' backend, so one team works the same way on both.
 
 ### 2.1 Code rules
 
@@ -437,8 +436,7 @@ link), never the phone number.
 ## 10. Deployment (same VPS as the site and Noorcom Computers)
 
 The box itself (updates, firewall, fail2ban, Postgres, Redis, nginx, certbot, Node) is already set
-up for Noorcom Hosting and Noorcom Computers (`VPS_LAYOUT.md` in the hosting project, followed by
-`C:\ne\docs\runbook\VPS_ELECTRONICS.md`). We add only our own pieces, the same way.
+up for Noorcom Hosting and Noorcom Computers. We add only our own pieces, the same way.
 
 | Resource | Value |
 | --- | --- |
@@ -524,8 +522,10 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 
 ### Setting up Postgres and Redis on a development machine
 
-Once per machine (the VPS has its own steps in section 10). Postgres 18 is installed on the office
-machine; Redis is not, so it runs in Docker.
+Most of the database work happens on the VPS (section 10). A local copy is only for running the
+backend and its tests on this machine. Once per machine: the office machine
+(`C:\noorcom-branding`) has PostgreSQL 18 as a Windows service with `psql` on the PATH, and Redis
+runs as **Memurai** (Redis 7 compatible, a Windows service; no Docker).
 
 ```bash
 # Postgres: a role and two databases (psql asks for the postgres password)
@@ -533,10 +533,19 @@ psql -U postgres -h 127.0.0.1 -c "CREATE ROLE noorcom_branding LOGIN PASSWORD '<
 psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE noorcom_branding OWNER noorcom_branding"
 psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE noorcom_branding_test OWNER noorcom_branding"
 
-# Redis 7 with the ACL user nb, allowed only keys nb:*
-docker run -d --name nb-redis -p 127.0.0.1:6379:6379 redis:7 \
-  redis-server --user default off --user nb on '><choose one>' '~nb:*' '&*' '+@all' '-@dangerous' '+info' '+flushdb'
+# Memurai: the ACL user nb, allowed only keys nb:*; the default user gets a password,
+# and CONFIG REWRITE saves both to memurai.conf so they survive a restart
+memurai-cli ACL SETUSER nb on '><choose one>' '~nb:*' '&*' '+@all' '-@dangerous' '+info' '+flushdb'
+memurai-cli ACL SETUSER default on '><admin password>'
+memurai-cli --pass '<admin password>' CONFIG REWRITE
+
+# Check: OK for nb:probe, NOPERM for ne:probe
+memurai-cli --user nb --pass '<nb password>' SET nb:probe ok
+memurai-cli --user nb --pass '<nb password>' SET ne:probe ok
 ```
+
+The Memurai steps have not been run yet (7 Oct 2026): correct them here if anything differs on the
+first setup.
 
 Then copy `backend/.env.example` to `backend/.env` (never committed) and fill in `DATABASE_URL`,
 `TEST_DATABASE_URL`, `REDIS_URL` (database 0) and `TEST_REDIS_URL` (database 15). `npm run backend:check`

@@ -290,6 +290,8 @@ try {
         await sleep(700);
       }
       if (route.waitFor) await browser.waitFor(route.waitFor);
+      // A server action's refresh swaps the <head> for a moment; don't let axe land in between.
+      await browser.waitFor(`document.title.length > 0`, 5000).catch(() => {});
 
       debug(label, 'axe');
       await browser.evaluate(AXE_SOURCE);
