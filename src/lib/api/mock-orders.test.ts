@@ -92,7 +92,7 @@ describe('createOrder and getOrder', () => {
   });
 
   it('refuses orders under the minimum or with an unavailable deadline', async () => {
-    await expect(mockApi.createOrder(teesInput(10))).rejects.toThrow('The minimum is 50 pieces.');
+    await expect(mockApi.createOrder(teesInput(9))).rejects.toThrow('The minimum is 10 pieces.');
     await expect(mockApi.createOrder({ ...teesInput(300), urgency: 'rush' })).rejects.toThrow(/deadline/);
   });
 

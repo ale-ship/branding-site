@@ -91,11 +91,11 @@ describe.skipIf(!dbUrl)('catalogue and pricing (B1)', () => {
   });
 
   it('seeds only what is missing, so staff edits survive a deploy', async () => {
-    await knex('price_tiers').where({ min_qty: 50 }).whereIn('product_id', knex('products').select('id').where({ slug: 'business-cards' })).update({ unit_price: 20 });
+    await knex('price_tiers').where({ min_qty: 10 }).whereIn('product_id', knex('products').select('id').where({ slug: 'business-cards' })).update({ unit_price: 20 });
     await knex('products').where({ slug: 'banner-stands' }).del();
     await knex.seed.run();
     const { body: catalogue } = await request(app()).get('/api/catalogue');
-    expect(catalogue.products.find((p) => p.slug === 'business-cards').priceTiers[0]).toEqual({ minQty: 50, unitPrice: 20 });
+    expect(catalogue.products.find((p) => p.slug === 'business-cards').priceTiers[0]).toEqual({ minQty: 10, unitPrice: 20 });
     expect(catalogue.products.find((p) => p.slug === 'banner-stands')).toEqual(orderProducts.find((p) => p.slug === 'banner-stands'));
     expect(catalogue.products).toHaveLength(orderProducts.length);
   });
@@ -127,9 +127,9 @@ describe.skipIf(!dbUrl)('catalogue and pricing (B1)', () => {
     expect(unknown.status).toBe(400);
     expect(unknown.body).toEqual({ error: 'invalid', message: 'That item can’t be ordered online.' });
 
-    const short = await request(app()).post('/api/quotes/price').send(body({ quantity: 10 }));
+    const short = await request(app()).post('/api/quotes/price').send(body({ quantity: 9 }));
     expect(short.status).toBe(400);
-    expect(short.body.message).toBe('The smallest order is 50 pieces.');
+    expect(short.body.message).toBe('The smallest order is 10 pieces.');
 
     for (const bad of [
       body({ quantity: '120' }),

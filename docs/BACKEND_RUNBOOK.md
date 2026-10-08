@@ -292,6 +292,7 @@ backend/
 | 003 ✓ | payments (B3) | `payment_requests` (STK prompts: public id, provider request id **unique**, one pending per order by a partial unique index, timeout), `payments` (**mpesa_receipt unique**, receipt_no unique, the prompt it answers), `provider_callbacks` (every STK body as received), `c2b_confirmations` (**trans_id unique**, route, reason, staff action); `orders.attention`. Receipt PDFs (the planned `receipts` table) come with the PDFs |
 | 004 ✓ | staff (B4) | `staff_users` (email, role, scrypt hash, active), `staff_sessions` (token hash, sliding expiry), `audit_log`, `production_logs`; orders gain `pickup_code`, `dispatch`, `handed_over` |
 | 005 ✓ | proofs (B4) | `proofs` (version unique per order, status, note, the watermarked and original file keys, customer comments, pins, the checklist ticked, who uploaded); brought forward from B5 so staff can run an order through |
+| 006 ✓ | minimum ten | Data only: quantity runs still on the old stand-in minimum of 50 go to 10 (owner, 8 Oct 2026), and a first price tier at 50 starts at 10; a minimum staff set themselves stays |
 | 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
 | 003 | people | `customers` (email unique, lower case: the account; name, phone, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, email unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
 | 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
@@ -725,7 +726,14 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   office, approved on the site's own order page (the watermarked proof showing), its balance paid,
   logged, made ready and handed over with the pickup code in the back office: two receipts, every
   message sent, no demo controls. axe found nothing on the back office's screens.
-- **Not yet:** the price manager and staff reports (with B5's back office work), the job card with
+- **Minimum runs** (owner, 8 Oct 2026): 10 pieces by default (was a stand-in 50), with each
+  product's first price tier from 10 (`shared/catalogue`, the shop's `MIN`, migration 006). Staff
+  see every quantity-run product's minimum in the back office (Products), and admins set a
+  product's own (`modules/products`: `GET /api/staff/products`, `PATCH /api/staff/products/:slug`
+  `{ minQuantity }`, 1 to 100,000, audited). The cached catalogue is dropped on a change, so the
+  order form, the price and new orders follow at once. On the site's mock (Vercel today) the
+  minimum is the catalogue's 10; staff changes need the API.
+- **Not yet:** the rest of the price manager (prices, tiers, deadline and delivery fees) and staff reports (with B5's back office work), the job card with
   its QR code, mockups on proofs, the pre-production sample, partial deliveries, site jobs'
   survey, quote and installation steps, and accounts on the API (B5).
 

@@ -34,7 +34,7 @@ function filledTees(): OrderDraft {
 describe('emptyOrderDraft', () => {
   it('starts at the minimum, with sensible defaults', () => {
     const d = emptyOrderDraft(tees);
-    expect(d.quantity).toBe('50');
+    expect(d.quantity).toBe('10');
     expect(d.brief.garmentColour).toBe('White');
     expect(d.brief.positions).toEqual(['front']);
     expect(d.handover).toBe('pickup');
@@ -49,8 +49,8 @@ describe('validateOrderDraft', () => {
   });
 
   it('enforces the minimum quantity', () => {
-    const d = { ...filledTees(), quantity: '20' };
-    expect(validateOrderDraft(d, tees, 'what', TODAY).quantity).toBe('The minimum is 50 pieces.');
+    const d = { ...filledTees(), quantity: '9' };
+    expect(validateOrderDraft(d, tees, 'what', TODAY).quantity).toBe('The minimum is 10 pieces.');
   });
 
   it('checks that sizes add up to the quantity', () => {
@@ -103,7 +103,7 @@ describe('validateBrief', () => {
 describe('conversions', () => {
   it('turns the draft into numbers for pricing, tolerating half-typed input', () => {
     const d = { ...filledTees(), quantity: '1' };
-    expect(toPriceRequest(d, tees).quantity).toBe(50);
+    expect(toPriceRequest(d, tees).quantity).toBe(10);
     const r = toPriceRequest(filledTees(), tees);
     expect(r.brief.sizes).toEqual({ S: 20, M: 30, L: 30, XL: 20, XXL: 0 });
     expect(r.brief.printColours).toBe(2);

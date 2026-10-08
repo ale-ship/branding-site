@@ -3,11 +3,12 @@ import { ApiError, api, may } from './api.js';
 import { ROLE } from './format.js';
 import { Board } from './pages/Board.jsx';
 import { OrderPage } from './pages/OrderPage.jsx';
+import { ProductsPage } from './pages/ProductsPage.jsx';
 import { SignIn } from './pages/SignIn.jsx';
 import { StaffPage } from './pages/StaffPage.jsx';
 import { Unmatched } from './pages/Unmatched.jsx';
 
-/** The route lives in the hash: #/orders, #/orders/NB-123456, #/payments, #/staff. */
+/** The route lives in the hash: #/orders, #/orders/NB-123456, #/payments, #/products, #/staff. */
 function useHashRoute() {
   const read = () => window.location.hash.replace(/^#\/?/, '') || 'orders';
   const [route, setRoute] = useState(read);
@@ -45,6 +46,7 @@ export function App() {
   const nav = [
     ['orders', 'Orders', true],
     ['payments', 'Unmatched payments', may(staff, 'payments')],
+    ['products', 'Products', true],
     ['staff', 'Staff', staff.role === 'admin'],
   ];
 
@@ -74,8 +76,9 @@ export function App() {
         {page === 'orders' && param && <OrderPage key={param} orderRef={param} staff={staff} onAuthLost={onAuthLost} />}
         {page === 'orders' && !param && <Board onAuthLost={onAuthLost} />}
         {page === 'payments' && <Unmatched onAuthLost={onAuthLost} />}
+        {page === 'products' && <ProductsPage me={staff} onAuthLost={onAuthLost} />}
         {page === 'staff' && <StaffPage me={staff} onAuthLost={onAuthLost} />}
-        {!['orders', 'payments', 'staff'].includes(page) && <p>No such page. <a href="#/orders">Back to the orders</a>.</p>}
+        {!['orders', 'payments', 'products', 'staff'].includes(page) && <p>No such page. <a href="#/orders">Back to the orders</a>.</p>}
       </main>
     </>
   );

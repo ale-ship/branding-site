@@ -4,10 +4,11 @@ const img = (name: string, alt: string) => ({ src: `/images/placeholder/${name}.
 
 /**
  * Prices are per piece, from the live site (owner's screenshot, 3 Oct 2026).
- * TODO(business): minimum quantities are a stand-in of 50 until Noorcom confirms real ones;
- * descriptions and options are a first draft.
+ * Minimum 10 pieces (owner, 8 Oct 2026); staff can set a product's own minimum in the back office
+ * (Products), which the order form follows once orders run on the API. Descriptions and options are
+ * a first draft.
  */
-const MIN = 50;
+const MIN = 10;
 
 export const products: Product[] = [
   {

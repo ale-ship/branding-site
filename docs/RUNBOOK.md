@@ -77,6 +77,8 @@ next. Update it at the end of every task.
   from B5: the customer approves or asks for changes on the site's order page, and sees the proof
   with PROOF across it. An order was run from placing to handover in browsers without the demo
   controls. The first admin: `npm run staff:add` in `backend/`.
+- **8 Oct 2026, the minimum run is 10 pieces** (was 50) across the shop, the order form and the
+  service pages; admins set a product's own minimum in the back office (Products).
 - **Next (owner, 7 Oct 2026: the VPS waits):** step B5 (accounts on the API, the sample, partial
   deliveries, site jobs, the price manager and reports), or B3b once Absa's documentation arrives.
   Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS record, deploy key,
@@ -812,6 +814,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 8 Oct 2026 | **The minimum run is 10 pieces** (was a stand-in 50), on the shop, the order form and the service pages; the first price tier starts at 10 at the old 50-piece price; staff set a product's own minimum in the back office (Products, admins only) | Owner's decision |
 | 8 Oct 2026 | Backend B4: the back office is its own app (`admin/`, Vite + React) on the same origin under `/admin/`, with a staff cookie scoped to `/api/staff`; staff passwords use scrypt from Node itself; proofs were built now rather than in B5 and are watermarked as an SVG around the image; every staff step is audited with who did it | "Staff run an order through" needs proofs; same-origin keeps the cookie strict and CSRF simple; no native modules to build on the VPS |
 | 8 Oct 2026 | Backend B3: every payment goes through one ledger function in one transaction (order locked, M-Pesa receipt unique, RCT number, status move, messages in the outbox); callbacks are stored before they are acted on and settled by a separate worker (BullMQ under `nb:bull`); Absa's bodies are read as Daraja's until Absa's samples arrive; receipt PDFs move to a step B3b with the live Absa client | Money can't be counted twice or lost if a process dies mid-way; Absa always gets a fast answer; nothing waits on Absa's paperwork that doesn't have to |
 | 8 Oct 2026 | Backend B2: an order is stored as placed (product, brief, handover and price frozen in JSONB; status, money, email and phone in columns); its token is kept only as a SHA-256 hash and travels in a header, never a URL; placing it is one transaction with the capacity calendar locked; the outbox is written in that transaction and sent by the worker after commit (B3); the site passes the visitor's address on, so per-visitor limits count visitors | Only the server's price counts; two orders can't take the same machine time; no message goes out for an order that rolled back; otherwise the site's server would count as one visitor for every limit |

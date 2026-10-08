@@ -70,7 +70,7 @@ export const services: Service[] = [
     includes: ['T-shirts', 'Hoodies', 'Uniforms', 'Caps', 'Screen printing', 'Heat transfer', 'Embroidery'],
     materials: ['Combed cotton and poly-cotton blanks', 'Plastisol and water-based screen inks', 'Heat-transfer vinyl', 'Embroidery thread'],
     turnaround: '3 to 7 working days',
-    minimum: '50 pieces',
+    minimum: '10 pieces',
     productCategories: ['apparel'],
     faqs: [
       { question: 'Can you print different names on each shirt?', answer: 'Yes, with heat transfer. It’s common for teams and staff uniforms.' },
@@ -88,7 +88,7 @@ export const services: Service[] = [
     includes: ['Mugs', 'Water bottles', 'Umbrellas', 'Gift bags', 'Notebooks', 'Gift boxes'],
     materials: ['Ceramic and enamel mugs', 'Steel bottles, printed or laser engraved', 'Kraft and laminated paper bags', 'Gift boxes and tissue'],
     turnaround: '5 to 10 working days',
-    minimum: '50 pieces',
+    minimum: '10 pieces',
     productCategories: ['gifts'],
     faqs: [
       { question: 'Can you pack and deliver gift sets?', answer: 'Yes. We pack each set with a card and deliver to one address or to each recipient.' },
@@ -106,7 +106,7 @@ export const services: Service[] = [
     includes: ['Business cards', 'Letterheads', 'Envelopes', 'Brochures', 'Booklets', 'Posters', 'Logo design'],
     materials: ['300 to 400 gsm card', 'Uncoated, silk and gloss papers', 'Soft-touch and gloss laminate', 'Saddle-stitched and perfect binding'],
     turnaround: '2 to 5 working days',
-    minimum: '50 pieces',
+    minimum: '10 pieces',
     productCategories: ['stationery', 'print'],
     faqs: [
       { question: 'Can you design my logo too?', answer: 'Yes. Our studio designs logos and stationery together so everything matches.' },

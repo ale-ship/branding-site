@@ -12,6 +12,7 @@ import { healthRoutes } from './modules/health/routes.js';
 import { orderRoutes } from './modules/orders/routes.js';
 import { absaCallbackRoutes, devRoutes, paymentRoutes } from './modules/payments/routes.js';
 import { pricingRoutes } from './modules/pricing/routes.js';
+import { staffProductRoutes } from './modules/products/routes.js';
 import { proofRoutes, staffProofRoutes } from './modules/proofs/routes.js';
 import { staffAuthRoutes, staffRoutes } from './modules/staff/routes.js';
 
@@ -58,7 +59,7 @@ export function createApp(config, { limits = {}, ...deps }) {
   // B4: the back office. Sign-in is open; everything else needs a staff session (checked once).
   app.use('/api/staff/auth', staffAuthRoutes(all));
   const staff = Router();
-  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all), staffProofRoutes(all));
+  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all), staffProofRoutes(all), staffProductRoutes(all));
   app.use('/api/staff', staff);
   // A made-up Paybill payment, for trying the flow: only while Absa is fake, never in production.
   if (config.integrations.absa === 'fake' && config.env !== 'production') app.use('/api/dev', devRoutes(all));
