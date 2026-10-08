@@ -7,24 +7,27 @@ import { capacityRoutes } from './modules/capacity/routes.js';
 import { catalogueRoutes } from './modules/catalogue/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { orderRoutes } from './modules/orders/routes.js';
+import { absaCallbackRoutes, devRoutes, paymentRoutes } from './modules/payments/routes.js';
 import { pricingRoutes } from './modules/pricing/routes.js';
 
 /**
- * @typedef {object} AppDeps
- * @property {import('./lib/logger.js').Logger} logger
- * @property {import('pg').Pool | null} pool Null in development without DATABASE_URL.
- * @property {import('ioredis').Redis | null} redis Null in development without REDIS_URL.
- * @property {{ api?: { limit?: number; windowSec?: number } }} [limits]
+ * @typedef {import('./deps.js').Deps & {
+ *   logger: import('./lib/logger.js').Logger;
+ *   redis: import('ioredis').Redis | null;
+ *   limits?: { api?: { limit?: number; windowSec?: number } };
+ * }} AppDeps
  */
 
 /**
  * The Express app, without listening: tests drive it with supertest. Middleware in order: request id
- * and logger, JSON body (small), health, the general per-IP limit, the modules, then 404 and the error
- * handler (docs/BACKEND_RUNBOOK.md, section 4).
+ * and logger, JSON body (small), health, Absa's callbacks (never rate limited), the general per-IP
+ * limit, the modules, then 404 and the error handler (docs/BACKEND_RUNBOOK.md, section 4).
  * @param {import('./config.js').Config} config
  * @param {AppDeps} deps
  */
-export function createApp(config, { logger, pool, redis, limits = {} }) {
+export function createApp(config, { limits = {}, ...deps }) {
+  const { logger, pool, redis } = deps;
+  const all = { ...deps, config };
   const app = express();
   app.disable('x-powered-by');
   // Only nginx and the site, on this machine, talk to the API.
@@ -34,16 +37,20 @@ export function createApp(config, { logger, pool, redis, limits = {} }) {
   app.use(express.json({ limit: '100kb' }));
 
   app.use('/api/health', healthRoutes({ pool, redis, build: config.build, integrations: config.integrations }));
+  app.use('/api/payments/absa', absaCallbackRoutes(all, config.absa.secret));
 
   // Everything else under /api: a general per-IP ceiling (routes add their own, section 8.1).
   app.use('/api', rateLimit(redis, { name: 'api', limit: 300, windowSec: 60, ...limits.api }));
 
   // The modules (docs/BACKEND_RUNBOOK.md, section 13): B1 catalogue and pricing; B2 orders and the
-  // capacity calendar; payments follow.
+  // capacity calendar; B3 payments.
   app.use('/api/catalogue', catalogueRoutes({ pool, redis }));
   app.use('/api/quotes', pricingRoutes({ pool, redis }));
   app.use('/api/capacity', capacityRoutes({ pool }));
-  app.use('/api/orders', orderRoutes({ pool, redis }));
+  app.use('/api/orders', orderRoutes(all));
+  app.use('/api/payments', paymentRoutes(all));
+  // A made-up Paybill payment, for trying the flow: only while Absa is fake, never in production.
+  if (config.integrations.absa === 'fake' && config.env !== 'production') app.use('/api/dev', devRoutes(all));
 
   app.use('/api', notFoundHandler);
   app.use(errorHandler);

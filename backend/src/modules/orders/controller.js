@@ -1,11 +1,12 @@
 // @ts-check
 import { orderInputSchema, orderLookupSchema } from '@noorcom-branding/shared/contract/schemas.js';
+import { accessFrom } from '../../middleware/customerAccess.js';
 import { createOrder, getOrder } from './service.js';
 
 /**
  * The customer's side of orders. The secret token travels in a header, never in the URL, so it stays
  * out of access logs (section 9). Order answers are never cached.
- * @typedef {import('../catalogue/service.js').CatalogueDeps} Deps
+ * @typedef {import('../../deps.js').Deps} Deps
  */
 
 /** @param {import('express').Response} res */
@@ -22,13 +23,12 @@ export const postOrder = (deps) => async (req, res) => {
 };
 
 /**
- * GET /api/orders/:no with the secret token in `X-Order-Token`.
+ * GET /api/orders/:no with the secret token in `X-Order-Token` (or the phone in `X-Order-Phone`).
  * @param {Deps} deps
  * @returns {import('express').RequestHandler}
  */
 export const getOrderHandler = (deps) => async (req, res) => {
-  const token = req.get('x-order-token') ?? '';
-  noStore(res).json(await getOrder({ ...deps, logger: req.log }, String(req.params.no), { token }));
+  noStore(res).json(await getOrder({ ...deps, logger: req.log }, String(req.params.no), accessFrom(req)));
 };
 
 /**

@@ -5,7 +5,7 @@ import { getOrderHandler, postLookup, postOrder } from './controller.js';
 
 /**
  * /api/orders, with the limits in section 8.1 (per visitor: the site passes their address along).
- * @param {{ pool: import('pg').Pool | null; redis: import('ioredis').Redis | null }} deps
+ * @param {import('../../deps.js').Deps & { redis: import('ioredis').Redis | null }} deps
  */
 export function orderRoutes(deps) {
   const router = Router();

@@ -12,6 +12,7 @@ import { hashToken, newOrderNo, newToken, tokenMatches } from '../../lib/ids.js'
 import { nextNumber } from '../../lib/numbering.js';
 import { book, bookedFrom, lockCalendar, release } from '../capacity/repo.js';
 import { getProduct } from '../catalogue/service.js';
+import { queueNotifications } from '../notifications/service.js';
 import { orderPlaced } from '../notifications/templates.js';
 import { checkOrderInput } from './checks.js';
 import * as repo from './repo.js';
@@ -29,7 +30,7 @@ import { toOrder } from './view.js';
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderInput} OrderInput
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderProduct} OrderProduct
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderProgress} OrderProgress
- * @typedef {import('../catalogue/service.js').CatalogueDeps} Deps
+ * @typedef {import('../../deps.js').Deps} Deps
  */
 
 const NOT_FOUND = 'We couldn’t find that order.';
@@ -117,7 +118,7 @@ export async function createOrder(deps, input, now = new Date()) {
     await repo.insertInvoice(trx, id, { invoiceNo: await nextNumber(trx, 'invoice'), lines: estimate.lines, subtotal: estimate.subtotal, total: estimate.total });
     await repo.insertEvent(trx, id, 'Order placed.', now);
     const text = orderPlaced({ name: order.customer.name, ref, dueNow: order.dueNow });
-    await repo.insertNotifications(
+    const notificationIds = await repo.insertNotifications(
       trx,
       id,
       [
@@ -126,15 +127,17 @@ export async function createOrder(deps, input, now = new Date()) {
       ],
       now,
     );
-    return { ref, token };
+    return { ref, token, notificationIds };
   });
   deps.logger?.info({ ref: placed.ref, product: product.slug }, 'order placed');
-  return placed;
+  // After commit: the worker sends the messages (the outbox sweep catches any this misses).
+  await queueNotifications(deps, placed.notificationIds);
+  return { ref: placed.ref, token: placed.token };
 }
 
 /**
  * Expires unpaid orders past their 48 hours (just one when `orderId` is given) and lets go of their
- * machine time. Run on every read of an unpaid order and every 15 minutes (server.js).
+ * machine time. Run on every read of an unpaid order and every 15 minutes by the worker.
  * @param {{ pool: import('pg').Pool | null }} deps
  * @param {Date} [now]
  * @param {number} [orderId]
@@ -156,9 +159,9 @@ export async function expireUnpaid(deps, now = new Date(), orderId) {
  * @param {string} ref
  * @param {{ token: string } | { phone: string }} access
  * @param {Date} [now]
- * @returns {Promise<Order>}
+ * @returns {Promise<Record<string, any>>} The order row, expired first if its time is up.
  */
-export async function getOrder(deps, ref, access, now = new Date()) {
+export async function findOrderFor(deps, ref, access, now = new Date()) {
   const pool = need(deps.pool);
   const orderNo = ref.trim().toUpperCase();
   let row = await repo.findByOrderNo(pool, orderNo);
@@ -171,5 +174,18 @@ export async function getOrder(deps, ref, access, now = new Date()) {
     row = await repo.findByOrderNo(pool, orderNo);
     if (!row) throw new OrderError('not_found', NOT_FOUND);
   }
-  return toOrder(row, await repo.historyOf(pool, row.id));
+  return row;
+}
+
+/**
+ * The order as the customer sees it (`Order`): see `findOrderFor` for the access.
+ * @param {Deps} deps
+ * @param {string} ref
+ * @param {{ token: string } | { phone: string }} access
+ * @param {Date} [now]
+ * @returns {Promise<Order>}
+ */
+export async function getOrder(deps, ref, access, now = new Date()) {
+  const row = await findOrderFor(deps, ref, access, now);
+  return toOrder(row, await repo.historyOf(need(deps.pool), row.id));
 }

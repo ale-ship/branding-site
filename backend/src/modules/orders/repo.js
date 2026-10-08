@@ -63,13 +63,18 @@ export async function insertEvent(trx, orderId, text, at) {
  * @param {number} orderId
  * @param {{ channel: 'whatsapp' | 'email'; recipient: string; template: string; payload: unknown }[]} messages
  * @param {Date} at
+ * @returns {Promise<number[]>} The new rows' ids, for the caller to queue after commit.
  */
 export async function insertNotifications(trx, orderId, messages, at) {
+  const ids = [];
   for (const m of messages) {
-    await trx.query('INSERT INTO notifications (order_id, channel, recipient, template, payload, created_at) VALUES ($1, $2, $3, $4, $5, $6)', [
-      orderId, m.channel, m.recipient, m.template, JSON.stringify(m.payload), at,
-    ]);
+    const { rows } = await trx.query(
+      'INSERT INTO notifications (order_id, channel, recipient, template, payload, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [orderId, m.channel, m.recipient, m.template, JSON.stringify(m.payload), at],
+    );
+    ids.push(rows[0].id);
   }
+  return ids;
 }
 
 /**
@@ -89,17 +94,19 @@ export async function findByOrderNo(db, orderNo, { lock = false } = {}) {
 }
 
 /**
- * The order's events and the messages sent about it, oldest first.
+ * The order's events, the messages sent about it, its prompts and its payments, oldest first.
  * @param {Db} db
  * @param {number} orderId
- * @returns {Promise<{ events: Row[]; notifications: Row[] }>}
+ * @returns {Promise<{ events: Row[]; notifications: Row[]; requests: Row[]; payments: Row[] }>}
  */
 export async function historyOf(db, orderId) {
-  const [events, notifications] = await Promise.all([
+  const [events, notifications, requests, payments] = await Promise.all([
     db.query('SELECT text, at FROM order_events WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT channel, recipient, payload, created_at FROM notifications WHERE order_id = $1 ORDER BY id', [orderId]),
+    db.query('SELECT * FROM payment_requests WHERE order_id = $1 ORDER BY id', [orderId]),
+    db.query('SELECT id, public_id, request_id, purpose, method, phone, amount, mpesa_receipt, receipt_no, created_at FROM payments WHERE order_id = $1 ORDER BY id', [orderId]),
   ]);
-  return { events: events.rows, notifications: notifications.rows };
+  return { events: events.rows, notifications: notifications.rows, requests: requests.rows, payments: payments.rows };
 }
 
 /**

@@ -63,8 +63,15 @@ next. Update it at the end of every task.
   were in the local database with INV00001 to INV00004.
 - **8 Oct 2026, Memurai (local Redis) is installed** with the ACL user `nb` (`docs/BACKEND_RUNBOOK.md`,
   "Setting up Postgres and Redis"); `/api/health` answers `ok` and all 37 backend tests run.
-- **Next (owner, 7 Oct 2026: the VPS waits):** step B3: payments through the Absa fakes, the ledger, receipts (RCT) and the worker that sends the
-  outbox. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
+- **8 Oct 2026, backend step B3 done against the fakes** (`docs/BACKEND_RUNBOOK.md`, "Step B3"):
+  M-Pesa prompts (STK Push) and Paybill payments (Absa C2B) go through the ledger, which gives each
+  payment its receipt (RCT), moves the order on and queues a "payment received" WhatsApp and email;
+  unmatched Paybill payments wait for staff. A worker (`npm run backend:worker`) settles callbacks,
+  routes Paybill payments, sends the messages and expires unpaid orders. With
+  `NEXT_PUBLIC_API_MODE=live` the site's pay panel uses it; proofs and accounts stay on the mock until
+  B5. Absa's real API waits for its documentation (B3b, with the PDFs).
+- **Next (owner, 7 Oct 2026: the VPS waits):** step B4, the staff back office (`admin/`: sign-in,
+  order board, unmatched payments, production log), or B3b once Absa's documentation arrives. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
   record, deploy key, first deploy) and section 8 (Postgres and Redis). Staff reports and the staff
   dashboard come with B4. Ask Absa for the items in its section 14. Then the launch checklist.
 
@@ -797,6 +804,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 8 Oct 2026 | Backend B3: every payment goes through one ledger function in one transaction (order locked, M-Pesa receipt unique, RCT number, status move, messages in the outbox); callbacks are stored before they are acted on and settled by a separate worker (BullMQ under `nb:bull`); Absa's bodies are read as Daraja's until Absa's samples arrive; receipt PDFs move to a step B3b with the live Absa client | Money can't be counted twice or lost if a process dies mid-way; Absa always gets a fast answer; nothing waits on Absa's paperwork that doesn't have to |
 | 8 Oct 2026 | Backend B2: an order is stored as placed (product, brief, handover and price frozen in JSONB; status, money, email and phone in columns); its token is kept only as a SHA-256 hash and travels in a header, never a URL; placing it is one transaction with the capacity calendar locked; the outbox is written in that transaction and sent by the worker after commit (B3); the site passes the visitor's address on, so per-visitor limits count visitors | Only the server's price counts; two orders can't take the same machine time; no message goes out for an order that rolled back; otherwise the site's server would count as one visitor for every limit |
 | 8 Oct 2026 | **Accounts sign in with an emailed code, not WhatsApp**: an account is its verified email; orders join it by the email they were placed with; company members are added by email; the phone stays a detail for M-Pesa and delivery; guests still find an order by its number and phone | Owner's decision: Meta charges per WhatsApp authentication message (about US$0.004 each in Kenya); email from our own mailbox is free |
 | 7 Oct 2026 | Backend B1: the order catalogue lives in Postgres, seeded from `shared/catalogue` (the seed adds what's missing and never overwrites, so staff edits survive deploys); the deadline tiers, delivery zones and deposit rule stay in `shared/rules/pricing.js` until the price manager (B4); the site moves to the API method by method with `NEXT_PUBLIC_API_MODE=live` | The site and the API price with the same code from the same data; a deploy can never undo a staff price |

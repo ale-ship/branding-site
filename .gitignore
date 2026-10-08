@@ -16,3 +16,7 @@ npm-debug.log*
 **/.env
 **/.env.*
 !**/.env.example
+
+# The backend fakes write messages here (docs/BACKEND_RUNBOOK.md, section 2.3).
+.mail-outbox/
+.whatsapp-outbox/

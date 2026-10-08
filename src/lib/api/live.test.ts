@@ -124,11 +124,36 @@ describe('liveApi (step B2)', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('http://127.0.0.1:4300/api/capacity');
   });
 
-  it('says what comes after placing isn’t online yet, instead of asking the mock about an order it doesn’t have', async () => {
+  it('says what comes after payment isn’t online yet, instead of asking the mock about an order it doesn’t have', async () => {
     const fetchMock = stubFetch(() => json(200, {}));
-    const err = await liveApi.startPayment(placed.ref, { token: placed.token }, '0722530301').catch((e: unknown) => e);
+    const checklist = { spelling: true, colours: true, size: true, quantity: true, colourVariance: true };
+    const err = await liveApi.approveProof(placed.ref, { token: placed.token }, 1, checklist).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(OrderError);
     expect(err).toMatchObject({ code: 'invalid_state' });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('liveApi (step B3)', () => {
+  const placed = { ref: 'NB-123456', token: 'a'.repeat(32) };
+
+  it('sends the M-Pesa prompt with POST /api/payments/stk, the order’s access in a header', async () => {
+    const payment = { id: 'PAY-12345678', status: 'pending' };
+    const fetchMock = stubFetch(() => json(200, payment));
+    expect(await liveApi.startPayment(placed.ref, { token: placed.token }, '0722530303')).toEqual(payment);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('http://127.0.0.1:4300/api/payments/stk');
+    expect(JSON.parse(String(init?.body))).toEqual({ ref: placed.ref, phone: '0722530303' });
+    expect(init?.headers).toMatchObject({ 'x-order-token': placed.token });
+
+    await liveApi.startPayment(placed.ref, { phone: '+254722530303' }, '0722530303');
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({ 'x-order-phone': '+254722530303' });
+  });
+
+  it('passes the API’s refusal on as an OrderError the pay panel can show', async () => {
+    stubFetch(() => json(409, { error: 'invalid_state', message: 'Nothing is due on this order right now.' }));
+    const err = await liveApi.startPayment(placed.ref, { token: placed.token }, '0722530303').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(OrderError);
+    expect(err).toMatchObject({ message: 'Nothing is due on this order right now.' });
   });
 });

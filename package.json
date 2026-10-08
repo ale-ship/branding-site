@@ -19,6 +19,7 @@
     "devices": "node scripts/check-devices.mjs",
     "menu": "node scripts/check-menu.mjs",
     "backend": "npm run dev -w backend",
+    "backend:worker": "npm run worker:dev -w backend",
     "backend:check": "npm run check -w backend"
   },
   "devDependencies": {

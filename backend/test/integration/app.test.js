@@ -33,7 +33,7 @@ describe('GET /api/health', () => {
     const app = createApp(config, { logger, pool: upPool, redis: fakeRedis() });
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'ok', build: 'test-build', db: 'up', redis: 'up', integrations: { absa: 'fake', daraja: 'fake', whatsapp: 'fake', storage: 'fake' } });
+    expect(res.body).toEqual({ status: 'ok', build: 'test-build', db: 'up', redis: 'up', integrations: { absa: 'fake', daraja: 'fake', whatsapp: 'fake', storage: 'fake', email: 'fake' } });
     expect(res.headers['cache-control']).toBe('no-store');
     expect(res.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
   });

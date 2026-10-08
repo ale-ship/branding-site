@@ -8,7 +8,7 @@ const banned = (message, ...patterns) => ({
   'no-restricted-imports': ['error', { patterns: [{ group: patterns.flat(), message }] }],
 });
 
-const DB = ['pg', 'knex', '**/db/*', '**/repo.js'];
+const DB = ['pg', 'knex', '**/db/*', '**/repo.js', '**/*.repo.js'];
 const NET = ['ioredis', 'bullmq', '**/redis.js', '**/jobs/*', '**/integrations/*'];
 // The backend never uses the site's code or frameworks; what both need lives in shared/ and is
 // imported as @noorcom-branding/shared/... (the site's @/ and @shared/ aliases don't exist here).
@@ -32,9 +32,9 @@ export default [
   // controllers: parse, call one service, answer. No database, integrations or queues.
   { files: ['src/**/controller.js'], rules: banned('controller.js calls services only.', DB, NET, SITE) },
   // services: business rules. They call repos and never build SQL themselves.
-  { files: ['src/**/service.js'], rules: banned('service.js does not build SQL; go through repo.js.', ['pg', 'knex'], SITE) },
+  { files: ['src/**/service.js', 'src/**/*.service.js'], rules: banned('service.js does not build SQL; go through repo.js.', ['pg', 'knex'], SITE) },
   // repos: SQL only. No network, Redis or queues.
-  { files: ['src/**/repo.js'], rules: banned('repo.js is SQL only.', NET, SITE) },
+  { files: ['src/**/repo.js', 'src/**/*.repo.js'], rules: banned('repo.js is SQL only.', NET, SITE) },
   // integrations talk to one outside system and never touch Postgres.
   { files: ['src/integrations/**/*.js'], rules: banned('An integration does not touch Postgres.', DB, SITE) },
   // job handlers call services, not SQL or integrations directly.

@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import type { CapacityCalendar } from '../capacity';
 import { mockApi } from './mock';
 import { OrderError } from './order-types';
-import type { Order, OrderCategory, OrderErrorCode, OrderProduct, PriceEstimate, SiteApi } from './types';
+import type { Order, OrderAccess, OrderCategory, OrderErrorCode, OrderPayment, OrderProduct, PriceEstimate, SiteApi } from './types';
 
 /**
  * SiteApi over HTTP to our backend (docs/BACKEND_RUNBOOK.md, section 12), chosen in index.ts when
@@ -13,10 +13,11 @@ import type { Order, OrderCategory, OrderErrorCode, OrderProduct, PriceEstimate,
  *       priceEstimate)
  *   B2  placing and reading orders (createOrder, getOrder by token or order number + phone) and the
  *       capacity calendar (getCapacity)
+ *   B3  paying by M-Pesa (startPayment; the order page then follows the payment through getOrder)
  *
- * What happens to an order after it is placed (paying, proofs, deliveries, surveys) arrives with B3
- * and B5: until then those methods answer that it isn't available online yet, rather than looking
- * for the order in the mock, which doesn't have it. Accounts stay on the mock until B5, so an order
+ * What happens after payment (proofs, deliveries, surveys) arrives with B5: until then those methods
+ * answer that it isn't available online yet, rather than looking for the order in the mock, which
+ * doesn't have it. Accounts stay on the mock until B5, so an order
  * reached through a signed-in account (`{ email }`) isn't found in live mode until then.
  */
 
@@ -76,6 +77,10 @@ async function orNull(read: Promise<Order>): Promise<Order | null> {
   }
 }
 
+/** The order's access as the API reads it: headers, never the URL. */
+const accessHeaders = (access: { token: string } | { phone: string }): Record<string, string> =>
+  'token' in access ? { 'x-order-token': access.token } : { 'x-order-phone': access.phone };
+
 const notYet = async (): Promise<never> => {
   throw new OrderError('invalid_state', 'This isn’t available online yet. Please WhatsApp us and we’ll sort it out.');
 };
@@ -108,15 +113,20 @@ export const liveApi: SiteApi = {
     // The token travels in a header, never in the URL.
     if ('token' in access) {
       if (!access.token) return null;
-      return orNull(forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}`, { headers: { 'x-order-token': access.token } }));
+      return orNull(forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}`, { headers: accessHeaders(access) }));
     }
     if ('phone' in access) return orNull(forVisitor<Order>('/api/orders/lookup', { method: 'POST', body: JSON.stringify({ ref, phone: access.phone }) }));
     // `{ email }` comes from a session, and sessions move to the API with accounts (B5).
     return null;
   },
 
-  // B3 and B5: after the order is placed.
-  startPayment: notYet,
+  // B3: the M-Pesa prompt. The order moves only when Absa's callback confirms it (the API's worker).
+  async startPayment(ref, access: OrderAccess, phone) {
+    if ('email' in access) return notYet();
+    return forVisitor<OrderPayment>('/api/payments/stk', { method: 'POST', body: JSON.stringify({ ref, phone }), headers: accessHeaders(access) });
+  },
+
+  // B5: after the design starts.
   approveProof: notYet,
   requestChanges: notYet,
   reviewSample: notYet,

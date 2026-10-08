@@ -80,3 +80,9 @@ export const orderLookupSchema = z.object({
   ref: z.string().trim().toUpperCase().regex(/^NB-\d{6}$/),
   phone: z.string().trim().min(1).max(30),
 });
+
+/** POST /api/payments/stk: which order, and the number to send the M-Pesa prompt to. */
+export const stkRequestSchema = z.object({
+  ref: z.string().trim().toUpperCase().regex(/^NB-\d{6}$/),
+  phone: z.string().trim().min(1).max(30),
+});

@@ -1,8 +1,9 @@
 # Noorcom Branding Backend Runbook
 
 Last updated 8 Oct 2026. The design of the backend behind the website: the stack, the file layout,
-the database, the API, the payment flows and the order to build it in. **Steps B0 to B2 are built**
-(section 13: the skeleton and `shared/`, the catalogue and price, orders); the rest is the plan to
+the database, the API, the payment flows and the order to build it in. **Steps B0 to B3 are built**
+(section 13: the skeleton and `shared/`, the catalogue and price, orders, payments against the
+fakes); the rest is the plan to
 build from. Read `docs/RUNBOOK.md` (the site) and `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow)
 first.
 
@@ -289,6 +290,7 @@ backend/
 | --- | --- | --- |
 | 001 ✓ | catalogue (B1) | `categories`, `products` (mechanism A/B/C, brief_schema JSONB, min_qty, lead days, setup and design fees, survey fee, package price, active), `price_tiers` |
 | 002 ✓ | orders (B2) | `orders` (as placed: product, brief, common brief, handover and estimate in JSONB; status, money, customer email and phone, expiry in columns; token hash), `order_events`, `invoices`, `counters`, `capacity_bookings`, `notifications` (the outbox). Built ahead of the settings and people tables below, which come with B4 and B5; the planned rows that follow keep their order but take the next free numbers |
+| 003 ✓ | payments (B3) | `payment_requests` (STK prompts: public id, provider request id **unique**, one pending per order by a partial unique index, timeout), `payments` (**mpesa_receipt unique**, receipt_no unique, the prompt it answers), `provider_callbacks` (every STK body as received), `c2b_confirmations` (**trans_id unique**, route, reason, staff action); `orders.attention`. Receipt PDFs (the planned `receipts` table) come with the PDFs |
 | 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
 | 003 | people | `customers` (email unique, lower case: the account; name, phone, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, email unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
 | 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
@@ -379,7 +381,8 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | `createOrder` | `POST /api/orders` | Re-validates, re-prices, opens the order; returns number + secret token |
 | `getOrder` | `GET /api/orders/:no` | The secret token in the `X-Order-Token` header, never in the URL |
 | (order lookup) | `POST /api/orders/lookup` | Order number + phone; rate limited |
-| `startPayment` | `POST /api/payments/stk` | One pending prompt per order |
+| `startPayment` | `POST /api/payments/stk` | `{ ref, phone }`, the order's token in `X-Order-Token` or its phone in `X-Order-Phone`; one pending prompt per order |
+| (fake mode only) | `POST /api/dev/c2b` | A made-up Paybill confirmation through the real path: `{ ref, amount }`, or `billRef` and `phone`; never mounted in production |
 | (Absa) | `POST /api/payments/absa/stk/:secret` | STK callback |
 | (Absa) | `POST /api/payments/absa/c2b/confirm/:secret` | C2B confirmation |
 | (Absa, optional) | `POST /api/payments/absa/c2b/validate/:secret` | Always accepts |
@@ -474,6 +477,11 @@ from Nairobi, so put Cloudflare in front at the DNS cutover (an African edge) fo
 `WHATSAPP_TEMPLATE_NAMESPACE`, `REVALIDATE_SECRET`. The site gains `API_INTERNAL_URL=http://127.0.0.1:4300`,
 `NEXT_PUBLIC_API_MODE=live` and the same `REVALIDATE_SECRET` (section 12).
 
+Read today (B3; `backend/.env.example` has each with a note): the database and Redis URLs,
+`PUBLIC_URL`, the four modes, `ABSA_CALLBACK_SECRET` (24+ characters, required in production),
+`ABSA_PAYBILL`, `FAKE_STK_DELAY_MS`, `MAIL_FROM`, `SMTP_*` (email is live when `SMTP_HOST` is
+set), `MAIL_OUTBOX_DIR` and `WHATSAPP_OUTBOX_DIR`. The rest join with the clients that read them.
+
 ## 12. What the site itself needs
 
 The site doesn't talk to Redis or the database; everything goes through the API. It needs:
@@ -501,7 +509,8 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 | B0 ✓ | Folders: create `backend/` (skeleton: config with zod, health, pino with phone masking, Postgres, Redis user `nb`, the rate limiter, ESLint layer rule, Vitest with a test database) and `shared/` (move pricing, calendar, c2b and order rules out of `src/lib` into `shared/rules` as JavaScript + JSDoc; `shared/contract`); the site keeps `src/` and imports `@shared/*`; the site's `eslint.config.mjs` ignores and `tsconfig.json` excludes `backend/` and `admin/`, which have their own checks | The site builds and passes every check; `backend/` answers `/api/health` |
 | B1 ✓ | Catalogue and pricing in the database; `GET /api/catalogue`, `POST /api/quotes/price`; `live.ts` for those methods | The order form prices from the API |
 | B2 ✓ | Orders: create, read, lookup, expiry; invoices (INV); WhatsApp and email outbox with "order placed" | An order placed on staging appears in the database with its invoice |
-| B3 | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; receipt and invoice PDFs | A real KES 1 payment on staging confirms the order and sends the receipt, by both STK and Paybill |
+| B3 ✓ (fakes) | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; the worker and the outbox; receipt and invoice PDFs (moved to B3b) | Against the fakes: done. The real KES 1 payment on staging waits for Absa's documentation (section 14) and the VPS |
+| B3b | Receipt and invoice PDFs (Playwright printing the site's pages), live Absa client, live WhatsApp templates | A real KES 1 payment on staging confirms the order and sends the receipt with its PDF, by both STK and Paybill |
 | B4 | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger | Staff run an order through without the demo controls |
 | B5 | Spec Phase 2 to 4: proofs and approval, production and deliveries, accounts and brand kits, surveys and firm quotes, capacity calendar, reports | As in the spec |
 
@@ -610,6 +619,59 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 - **Checked end to end:** the API on 4300 against the local database, the site built with
   `NEXT_PUBLIC_API_MODE=live` on 3200, and an order placed through the form: it opened on its page
   and its invoice, and was in `orders` with `INV00001`, its event and two pending messages.
+
+### Step B3, done against the fakes 8 Oct 2026
+
+- **Migration `003_payments`** (section 5).
+- **The ledger** (`modules/payments/ledger.js`, `record()`), as section 6 describes: the order row
+  locked, a seen M-Pesa receipt changes nothing (checked under the lock; the unique column backs it
+  up), the next RCT number, the money and status worked out by `apply.js` (pure, the same rules as the
+  site's mock: underpaid stays put, overpaid becomes credit, a paid step moves the order on, money
+  for an expired or cancelled order is all credit and sets `orders.attention`), then the payment, the
+  events and a "payment-received" WhatsApp and email in the outbox. Messages are queued after commit.
+- **STK Push** (`modules/payments/service.js`): `POST /api/payments/stk` checks the order's access
+  and that something is due, takes the `nb:stk:lock:<order>` lock, stores the prompt (60 s), calls
+  Absa outside any transaction and queues a status query for 65 s later. A second tap returns the
+  pending prompt. Without Redis it answers 503 `try_again`. Absa's callback
+  (`POST /api/payments/absa/stk/:secret`, behind `providerGuard`) is stored in `provider_callbacks`
+  and answered at once; the worker settles it (`settle-stk`). With no callback, the status query asks
+  Absa and times the prompt out.
+- **Paybill (C2B)** (`modules/payments/c2b.service.js`): the confirmation is stored (a repeated
+  TransID is dropped) and answered at once; the worker routes it with `shared/rules/c2b.js` against
+  the order named in the reference and the payer's waiting orders, then records it, or keeps it as
+  unmatched with the reason. `assignUnmatched`, `markForRefund` and `listUnmatched` are ready for the
+  staff screen (B4); their routes come with staff sign-in. The validation URL accepts everything.
+- **Absa's body shapes are assumed to be Daraja's** (STK `Body.stkCallback`, C2B `TransID`…) until
+  Absa's documentation and samples arrive: only `providers/absa/stk.js` and `c2b.js` change then.
+  `ABSA_MODE=live` is refused at start-up until the live client exists (section 14).
+- **The fakes** (section 2.3): Absa answers about 6 s after a prompt (`FAKE_STK_DELAY_MS`) through the
+  real callback route, by the phone's last digit (0 cancelled, 1 silent then timed out, 2 failed,
+  else paid). `POST /api/dev/c2b` makes up a Paybill confirmation (fake mode, never production).
+  WhatsApp writes JSON to `.whatsapp-outbox/`; email writes `.eml` files to `.mail-outbox/` unless
+  `SMTP_HOST` is set, when it really sends (nodemailer).
+- **The worker** (`src/worker.js`; `npm run backend:worker` at the root, `npm run worker` in
+  `backend/`): BullMQ on one queue `work` under `nb:bull`, jobs `settle-stk`, `stk-query`,
+  `process-c2b`, `send-notification` (five tries with backoff, then `failed`), and the repeating
+  `expire-unpaid` (15 min, taking over from the API's sweep) and `outbox-sweep` (1 min). The handlers
+  are `src/jobs/handlers/index.js`; `src/deps.js` builds what both processes use. BullMQ runs as the
+  ACL user `nb` without needing anything `-@dangerous` denies.
+- **Config refuses** live mode for clients not built yet, fakes behind the live site's address, and
+  production without a 24+ character `ABSA_CALLBACK_SECRET`.
+- **The site:** in live mode `startPayment` goes to the API (`X-Order-Token` or `X-Order-Phone`),
+  and the order page follows the payment through `getOrder` as before.
+- **Tests:** `test/unit/apply.test.js` (the money rules and the callback parser),
+  `test/integration/payments.test.js` (prompt → callback → ledger → receipt → messages; a repeated
+  callback; two settlements of one receipt at once; cancelled, declined, silent and late prompts; a
+  wrong secret; Paybill by reference and by phone + amount; a repeated confirmation; unmatched,
+  assigned and refunded; part and over payments; money after expiry; the outbox sweep) and
+  `test/integration/worker.test.js` (the real BullMQ worker on Memurai as `nb`: an M-Pesa payment end
+  to end, every key under `nb:`). 70 backend tests.
+- **Checked end to end** with the API, the worker and the site in live mode as separate processes:
+  an M-Pesa prompt confirmed by the fake about 6 s later (RCT00001), the order and receipt pages
+  showing it, a Paybill payment by order number (RCT00002), a cancelled prompt with its reason, and
+  the messages written to the outboxes.
+- **Not yet (B3b and the VPS):** receipt and invoice PDFs, the live Absa client, WhatsApp templates,
+  and systemd units for the API and the worker in `deploy/`.
 
 ### Setting up Postgres and Redis on a development machine
 

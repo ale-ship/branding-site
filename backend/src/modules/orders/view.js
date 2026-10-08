@@ -1,9 +1,10 @@
 // @ts-check
+import { paymentsOf } from '../payments/view.js';
 
 /**
  * A stored order as the contract's `Order` (shared/contract/order-types.d.ts): what the site's order
- * page reads. Payments, proofs, deliveries, the site quote and company orders have their tables from
- * steps B3 and B5; until then they are empty, which is exactly what a newly placed order has.
+ * page reads. Proofs, deliveries, the site quote and company orders have their tables from step B5;
+ * until then they are empty, which is exactly what an order has before its design starts.
  *
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').Order} Order
  * @typedef {Record<string, any>} Row
@@ -14,10 +15,10 @@ const iso = (t) => (t == null ? null : new Date(t).toISOString());
 
 /**
  * @param {Row} r The order row, with `invoice_no`.
- * @param {{ events: Row[]; notifications: Row[] }} history
+ * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[] }} history
  * @returns {Order}
  */
-export function toOrder(r, { events, notifications }) {
+export function toOrder(r, { events, notifications, requests = [], payments = [] }) {
   return {
     ref: r.order_no,
     invoiceNo: r.invoice_no,
@@ -39,7 +40,7 @@ export function toOrder(r, { events, notifications }) {
     credit: r.credit,
     dueNow: r.due_now,
     duePurpose: r.due_purpose,
-    payments: [],
+    payments: paymentsOf(requests, payments),
     events: events.map((e) => ({ at: /** @type {string} */ (iso(e.at)), text: e.text })),
     notifications: notifications.map((n) => ({ at: /** @type {string} */ (iso(n.created_at)), channel: n.channel, to: n.recipient, text: n.payload.text })),
     progress: r.progress,

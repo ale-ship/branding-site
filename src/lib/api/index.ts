@@ -11,9 +11,9 @@ import type { SiteApi } from './types';
 export const api: SiteApi = process.env.NEXT_PUBLIC_API_MODE === 'live' ? liveApi : mockApi;
 
 /**
- * Whether payments and accounts run on the mock. They still do in live mode until steps B3 and B5
- * move them to the backend; the payment hints and the sign-in demo code exist only while they are
- * mocked.
+ * Whether accounts run on the mock. They still do in live mode until step B5 moves them to the
+ * backend; the sign-in demo code exists only while they are mocked. (Orders and payments follow
+ * `ordersOnApi`.)
  */
 export const apiMode: 'mock' | 'live' = 'mock';
 
