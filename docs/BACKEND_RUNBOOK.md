@@ -640,9 +640,13 @@ memurai-cli --user nb --pass '<nb password>' SET ne:probe ok
 ```
 
 Install Memurai with `winget install Memurai.MemuraiDeveloper` from your own terminal, as
-Administrator. (On 8 Oct 2026 the installer failed from Claude's sandbox with 1603: its custom
-actions couldn't create a temp folder.) The Memurai steps above haven't been run yet: correct them
-here if anything differs on the first setup.
+Administrator. (From Claude's sandbox the installer fails with 1603: its custom actions can't
+create a temp folder.) It runs as the `Memurai` Windows service on 6379; the CLI is
+`C:\Program Files\Memurai\memurai-cli.exe` (add `--no-auth-warning` to quiet the password
+warning). The steps above were run as written on the office machine on 8 Oct 2026: `nb:probe` OK,
+`ne:probe` NOPERM, no access without a password, and both users saved in `memurai.conf`. There
+the passwords are random and kept only in `backend\.env` (`REDIS_URL`, `TEST_REDIS_URL`, and
+`MEMURAI_ADMIN_PASSWORD` for the default user, which the API doesn't read).
 
 Then copy `backend/.env.example` to `backend/.env` (never committed) and fill in `DATABASE_URL`,
 `TEST_DATABASE_URL`, `REDIS_URL` (database 0) and `TEST_REDIS_URL` (database 15). `npm run backend:check`

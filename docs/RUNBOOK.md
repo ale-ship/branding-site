@@ -61,9 +61,9 @@ next. Update it at the end of every task.
   the site places and reads orders there; paying, proofs and accounts stay on the mock until B3 and B5
   (in live mode those steps say they aren't online yet). Orders placed through the live site's form
   were in the local database with INV00001 to INV00004.
-- **Next (owner, 7 Oct 2026: the VPS waits):** install Memurai (local Redis: `winget install
-  Memurai.MemuraiDeveloper` in your own terminal; it wouldn't install from Claude's sandbox), then
-  step B3: payments through the Absa fakes, the ledger, receipts (RCT) and the worker that sends the
+- **8 Oct 2026, Memurai (local Redis) is installed** with the ACL user `nb` (`docs/BACKEND_RUNBOOK.md`,
+  "Setting up Postgres and Redis"); `/api/health` answers `ok` and all 37 backend tests run.
+- **Next (owner, 7 Oct 2026: the VPS waits):** step B3: payments through the Absa fakes, the ledger, receipts (RCT) and the worker that sends the
   outbox. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
   record, deploy key, first deploy) and section 8 (Postgres and Redis). Staff reports and the staff
   dashboard come with B4. Ask Absa for the items in its section 14. Then the launch checklist.
