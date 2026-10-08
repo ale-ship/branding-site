@@ -6,7 +6,7 @@ import { may } from '../api.js';
  * ready, send out, hand over, cancel, clear a flag. Logging takes seconds: type a number or tap a
  * quick amount.
  */
-export function Steps({ order: o, staff, attention, act }) {
+export function Steps({ order: o, staff, attention, act, upload }) {
   const method = o.handover.method;
   const pieces = o.progress.kind === 'pieces' ? o.progress : null;
   const left = pieces ? pieces.total - pieces.done : 0;
@@ -39,10 +39,11 @@ export function Steps({ order: o, staff, attention, act }) {
     );
   }
   if (cancellable && may(staff, 'cancel')) panels.push(<Cancel key="cancel" paid={o.amountPaid} act={act} />);
-  if (o.status === 'in_design' || o.status === 'awaiting_approval') {
+  if (o.status === 'in_design' && may(staff, 'proofs')) panels.push(<UploadProof key="proof" order={o} upload={upload} />);
+  if (o.status === 'awaiting_approval') {
     panels.push(
-      <p key="b5" className="muted">
-        Proofs are uploaded and approved here once that part is built (B4, part 3).
+      <p key="waiting" className="notice">
+        Proof v{o.proofs.at(-1)?.version} is with the customer.
       </p>,
     );
   }
@@ -61,6 +62,40 @@ const useSubmit = (run) => {
   };
   return [busy, onSubmit];
 };
+
+function UploadProof({ order: o, upload }) {
+  const [busy, setBusy] = useState(false);
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    setBusy(true);
+    if (await upload(data.get('file'), String(data.get('note') ?? ''))) form.reset();
+    setBusy(false);
+  };
+  const next = o.proofs.length + 1;
+  const last = o.proofs.at(-1);
+  return (
+    <section className="panel" aria-labelledby="upload-title">
+      <h2 id="upload-title">Upload proof v{next}</h2>
+      {last?.status === 'changes_requested' && <p>The customer asked for changes on v{last.version}: see the proofs below.</p>}
+      <p className="muted">PNG or JPEG, up to 10 MB. The customer sees it with PROOF across it.</p>
+      <form onSubmit={onSubmit}>
+        <div className="field">
+          <label htmlFor="proof-file">Proof image</label>
+          <input id="proof-file" name="file" type="file" accept="image/png,image/jpeg" required />
+        </div>
+        <div className="field">
+          <label htmlFor="proof-note">Note to the customer (optional)</label>
+          <input id="proof-note" name="note" maxLength={300} placeholder={next === 1 ? 'First proof.' : 'Revised as you asked.'} />
+        </div>
+        <button className="primary" type="submit" disabled={busy}>
+          {busy ? 'Uploading…' : 'Send to the customer'}
+        </button>
+      </form>
+    </section>
+  );
+}
 
 function LogPieces({ left, act }) {
   const [busy, onSubmit] = useSubmit((f) => act('progress', { pieces: Number(f.pieces), note: f.note ?? '' }));

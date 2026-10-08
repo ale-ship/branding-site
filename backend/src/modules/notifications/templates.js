@@ -25,6 +25,12 @@ export function subjectFor(template, payload) {
   switch (template) {
     case 'order-placed':
       return `Order ${ref} is placed`;
+    case 'proof-ready':
+      return `Your proof for ${ref} is ready to check`;
+    case 'balance-due':
+      return `Proof approved for ${ref}: the balance is due`;
+    case 'design-approved':
+      return `Design approved for ${ref}`;
     case 'ready':
       return `Order ${ref} is ready`;
     case 'out-for-delivery':

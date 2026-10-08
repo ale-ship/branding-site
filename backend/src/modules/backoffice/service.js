@@ -6,6 +6,7 @@ import { AppError } from '../../lib/errors.js';
 import { release } from '../capacity/repo.js';
 import { queueNotifications } from '../notifications/service.js';
 import { findByOrderNo, historyOf, insertEvent, insertNotifications } from '../orders/repo.js';
+import { signerFor } from '../orders/service.js';
 import { toOrder } from '../orders/view.js';
 import { assignUnmatched, listUnmatched, markForRefund } from '../payments/c2b.service.js';
 import { audit, auditOf } from '../staff/repo.js';
@@ -85,7 +86,7 @@ export async function orderForStaff(deps, ref) {
   if (!row) throw new OrderError('not_found', 'There is no order with that number.');
   const [history, trail] = await Promise.all([historyOf(pool, row.id), auditOf(pool, row.id)]);
   return {
-    order: toOrder(row, history),
+    order: toOrder(row, history, signerFor(deps)),
     staff: {
       attention: row.attention,
       audit: trail.map((a) => ({ at: new Date(a.at).toISOString(), action: a.action, staff: a.staff, detail: a.detail })),

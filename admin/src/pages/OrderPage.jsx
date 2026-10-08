@@ -32,6 +32,18 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
     }
   };
 
+  /** Uploads a proof; the API answers with the order as it is now. */
+  const upload = async (file, note) => {
+    setError('');
+    try {
+      setData(await api.upload(`/staff/orders/${o.ref}/proofs`, file, { 'x-proof-note': encodeURIComponent(note) }));
+      return true;
+    } catch (e) {
+      fail(e);
+      return false;
+    }
+  };
+
   const pieces = o.progress.kind === 'pieces' ? o.progress : null;
   return (
     <>
@@ -66,7 +78,8 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
               {o.production.promisedBy && <p className="muted">Promised for {day(o.production.promisedBy)}.</p>}
             </section>
           )}
-          <Steps order={o} staff={staff} attention={extra.attention} act={act} />
+          <Steps order={o} staff={staff} attention={extra.attention} act={act} upload={upload} />
+          {o.proofs.length > 0 && <Proofs order={o} />}
           <Brief order={o} />
           <section className="panel" aria-labelledby="events-title">
             <h2 id="events-title">What’s happened</h2>
@@ -199,6 +212,41 @@ function Brief({ order: o }) {
           </>
         )}
       </dl>
+    </section>
+  );
+}
+
+const PROOF_STATUS = { pending: 'With the customer', approved: 'Approved', changes_requested: 'Changes asked for' };
+
+/** Every proof version, newest first, with the customer's notes and pins. */
+function Proofs({ order: o }) {
+  return (
+    <section className="panel" aria-labelledby="proofs-title">
+      <h2 id="proofs-title">Proofs</h2>
+      {[...o.proofs].reverse().map((p) => (
+        <article key={p.version} style={{ marginBottom: '1rem' }}>
+          <h3>
+            v{p.version} · {PROOF_STATUS[p.status]}
+          </h3>
+          <p className="muted">
+            Sent {when(p.uploadedAt)}
+            {p.decidedAt ? ` · answered ${when(p.decidedAt)}` : ''} · <a href={`/api/staff/orders/${o.ref}/proofs/${p.version}/original`}>original file</a>
+          </p>
+          <img src={p.image} alt={`Proof v${p.version}, marked PROOF`} style={{ maxWidth: '100%', maxHeight: '20rem', border: '1px solid var(--border)' }} />
+          {p.note && <p>Note: {p.note}</p>}
+          {p.comments && <p>Customer: {p.comments}</p>}
+          {p.pins.length > 0 && (
+            <ol>
+              {p.pins.map((pin, i) => (
+                <li key={i}>
+                  {pin.text}
+                  {pin.x !== null ? <span className="muted"> (at {Math.round(pin.x * 100)}% across, {Math.round(pin.y * 100)}% down)</span> : null}
+                </li>
+              ))}
+            </ol>
+          )}
+        </article>
+      ))}
     </section>
   );
 }

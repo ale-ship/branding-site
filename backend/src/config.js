@@ -37,6 +37,10 @@ const schema = z.object({
   SMTP_PASS: z.string().default(''),
   MAIL_OUTBOX_DIR: z.string().min(1).default('.mail-outbox'),
   WHATSAPP_OUTBOX_DIR: z.string().min(1).default('.whatsapp-outbox'),
+  // Signs the short-lived links to files (proofs). Production needs its own.
+  FILES_SECRET: z.string().default(''),
+  // Fake storage: files on disk here, until R2 (STORAGE_MODE=live).
+  STORAGE_DIR: z.string().min(1).default('.storage'),
 });
 
 /** The live site: fakes must never answer for it (section 2.3, rule 2). */
@@ -57,6 +61,7 @@ const LIVE_HOSTS = ['noorcombranding.co.ke', 'www.noorcombranding.co.ke'];
  * @property {{ secret: string; paybill: string; fakeDelayMs: number }} absa
  * @property {{ from: string; outboxDir: string; smtp: { host: string; port: number; user: string; pass: string } | null }} mail
  * @property {{ outboxDir: string }} whatsapp
+ * @property {{ secret: string; dir: string }} files
  */
 
 /**
@@ -74,6 +79,7 @@ export function parseConfig(env = process.env) {
     const missing = /** @type {const} */ (['DATABASE_URL', 'REDIS_URL']).filter((k) => !c[k]);
     if (missing.length) throw new Error(`Invalid configuration: ${missing.map((k) => `${k}: required in production`).join('; ')}`);
     if (c.ABSA_CALLBACK_SECRET.length < 24) throw new Error('Invalid configuration: ABSA_CALLBACK_SECRET: at least 24 characters in production');
+    if (c.FILES_SECRET.length < 24) throw new Error('Invalid configuration: FILES_SECRET: at least 24 characters in production');
   }
   // Clients that aren't built yet can't be switched on (section 2.3, rule 3).
   for (const [k, why] of /** @type {const} */ ([
@@ -107,5 +113,6 @@ export function parseConfig(env = process.env) {
       smtp: c.SMTP_HOST ? { host: c.SMTP_HOST, port: c.SMTP_PORT, user: c.SMTP_USER, pass: c.SMTP_PASS } : null,
     },
     whatsapp: { outboxDir: c.WHATSAPP_OUTBOX_DIR },
+    files: { secret: c.FILES_SECRET || 'dev-files-secret', dir: c.STORAGE_DIR },
   };
 }

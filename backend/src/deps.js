@@ -2,6 +2,7 @@
 import { createPool } from './db/pool.js';
 import { createAbsa } from './integrations/absa/index.js';
 import { createMailer } from './integrations/mailer/index.js';
+import { createStorage } from './integrations/storage/index.js';
 import { createWhatsApp } from './integrations/whatsapp/index.js';
 import { createJobs } from './jobs/queues.js';
 import { createRedis } from './redis.js';
@@ -19,6 +20,7 @@ import { createRedis } from './redis.js';
  * @property {import('./integrations/absa/index.js').AbsaClient} [absa]
  * @property {import('./integrations/whatsapp/index.js').WhatsAppClient} [whatsapp]
  * @property {import('./integrations/mailer/index.js').Mailer} [mailer]
+ * @property {import('./integrations/storage/index.js').Storage} [storage]
  * @property {import('./config.js').Config} [config]
  */
 
@@ -47,6 +49,7 @@ export function buildDeps(config, logger) {
     absa,
     whatsapp: createWhatsApp(config.whatsapp),
     mailer: createMailer(config.mail),
+    storage: createStorage(config.files),
     config,
     async close() {
       await Promise.allSettled([pool?.end(), redis?.quit(), jobs?.close()]);

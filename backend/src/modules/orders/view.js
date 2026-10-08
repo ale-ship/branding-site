@@ -3,8 +3,8 @@ import { paymentsOf } from '../payments/view.js';
 
 /**
  * A stored order as the contract's `Order` (shared/contract/order-types.d.ts): what the site's order
- * page reads. Proofs, deliveries, the site quote and company orders have their tables from step B5;
- * until then they are empty, which is exactly what an order has before its design starts.
+ * page reads. Proof images are short-lived signed links. Early deliveries, the site quote and company
+ * orders come with step B5; until then they are empty.
  *
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').Order} Order
  * @typedef {Record<string, any>} Row
@@ -39,10 +39,11 @@ const iso = (t) => (t == null ? null : new Date(t).toISOString());
 
 /**
  * @param {Row} r The order row, with `invoice_no`.
- * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[]; logs?: Row[] }} history
+ * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[]; logs?: Row[]; proofs?: Row[] }} history
+ * @param {(key: string) => string} [sign] A stored file's short-lived link (lib/signedUrl.js).
  * @returns {Order}
  */
-export function toOrder(r, { events, notifications, requests = [], payments = [], logs = [] }) {
+export function toOrder(r, { events, notifications, requests = [], payments = [], logs = [], proofs = [] }, sign = () => '') {
   return {
     ref: r.order_no,
     invoiceNo: r.invoice_no,
@@ -68,7 +69,17 @@ export function toOrder(r, { events, notifications, requests = [], payments = []
     events: events.map((e) => ({ at: /** @type {string} */ (iso(e.at)), text: e.text })),
     notifications: notifications.map((n) => ({ at: /** @type {string} */ (iso(n.created_at)), channel: n.channel, to: n.recipient, text: n.payload.text })),
     progress: r.progress,
-    proofs: [],
+    proofs: proofs.map((p) => ({
+      version: p.version,
+      status: p.status,
+      uploadedAt: /** @type {string} */ (iso(p.uploaded_at)),
+      note: p.note,
+      comments: p.comments,
+      pins: p.pins,
+      image: sign(p.file_key),
+      mockup: p.mockup_key ? sign(p.mockup_key) : null,
+      decidedAt: iso(p.decided_at),
+    })),
     survey: r.survey,
     siteQuote: null,
     installDate: null,

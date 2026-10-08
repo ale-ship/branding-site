@@ -33,7 +33,8 @@ const nextConfig: NextConfig = {
    * The old Lovable site's addresses (docs/RUNBOOK.md, Phase 6), so bookmarks and search results land
    * somewhere useful after the switch. Its shop checkout becomes the quote form; its admin and
    * sign-in pages are gone (our own back office comes later), so they go to the home page with a
-   * temporary redirect that can change once that exists.
+   * temporary redirect. Our own back office lives at /admin/ on the VPS (docs/BACKEND_RUNBOOK.md, step B4),
+   * served by nginx before a request reaches Next, so these redirects only answer where it isn't.
    */
   async redirects() {
     return [
@@ -44,6 +45,15 @@ const nextConfig: NextConfig = {
       { source: '/admin', destination: '/', permanent: false },
       { source: '/admin/:path*', destination: '/', permanent: false },
     ];
+  },
+  /**
+   * In live mode, links to stored files (proof images: /api/files/…, signed by the API) go to the API.
+   * On the VPS nginx sends /api/ to the API first; this is for running the site and the API locally.
+   */
+  async rewrites() {
+    if (process.env.NEXT_PUBLIC_API_MODE !== 'live') return [];
+    const api = process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:4300';
+    return [{ source: '/api/files/:path*', destination: `${api}/api/files/:path*` }];
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

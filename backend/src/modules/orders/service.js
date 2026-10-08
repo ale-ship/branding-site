@@ -10,6 +10,7 @@ import { withTransaction } from '../../db/pool.js';
 import { AppError } from '../../lib/errors.js';
 import { hashToken, newOrderNo, newToken, tokenMatches } from '../../lib/ids.js';
 import { nextNumber } from '../../lib/numbering.js';
+import { signedPath } from '../../lib/signedUrl.js';
 import { book, bookedFrom, lockCalendar, release } from '../capacity/repo.js';
 import { getProduct } from '../catalogue/service.js';
 import { queueNotifications } from '../notifications/service.js';
@@ -34,6 +35,13 @@ import { toOrder } from './view.js';
  */
 
 const NOT_FOUND = 'We couldn’t find that order.';
+
+/**
+ * Signs links to stored files (proofs) for an hour.
+ * @param {Deps} deps
+ * @returns {(key: string) => string}
+ */
+export const signerFor = (deps) => (key) => signedPath(deps.config?.files.secret ?? 'dev-files-secret', key);
 
 /** @param {import('pg').Pool | null} pool */
 function need(pool) {
@@ -187,5 +195,5 @@ export async function findOrderFor(deps, ref, access, now = new Date()) {
  */
 export async function getOrder(deps, ref, access, now = new Date()) {
   const row = await findOrderFor(deps, ref, access, now);
-  return toOrder(row, await repo.historyOf(need(deps.pool), row.id));
+  return toOrder(row, await repo.historyOf(need(deps.pool), row.id), signerFor(deps));
 }

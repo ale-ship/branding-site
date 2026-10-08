@@ -7,10 +7,12 @@ import { requireStaff } from './middleware/staffAuth.js';
 import { backofficeRoutes } from './modules/backoffice/routes.js';
 import { capacityRoutes } from './modules/capacity/routes.js';
 import { catalogueRoutes } from './modules/catalogue/routes.js';
+import { fileRoutes } from './modules/files/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { orderRoutes } from './modules/orders/routes.js';
 import { absaCallbackRoutes, devRoutes, paymentRoutes } from './modules/payments/routes.js';
 import { pricingRoutes } from './modules/pricing/routes.js';
+import { proofRoutes, staffProofRoutes } from './modules/proofs/routes.js';
 import { staffAuthRoutes, staffRoutes } from './modules/staff/routes.js';
 
 /**
@@ -50,12 +52,13 @@ export function createApp(config, { limits = {}, ...deps }) {
   app.use('/api/catalogue', catalogueRoutes({ pool, redis }));
   app.use('/api/quotes', pricingRoutes({ pool, redis }));
   app.use('/api/capacity', capacityRoutes({ pool }));
-  app.use('/api/orders', orderRoutes(all));
+  app.use('/api/orders', orderRoutes(all), proofRoutes(all));
+  app.use('/api/files', fileRoutes(all));
   app.use('/api/payments', paymentRoutes(all));
   // B4: the back office. Sign-in is open; everything else needs a staff session (checked once).
   app.use('/api/staff/auth', staffAuthRoutes(all));
   const staff = Router();
-  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all));
+  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all), staffProofRoutes(all));
   app.use('/api/staff', staff);
   // A made-up Paybill payment, for trying the flow: only while Absa is fake, never in production.
   if (config.integrations.absa === 'fake' && config.env !== 'production') app.use('/api/dev', devRoutes(all));

@@ -32,10 +32,23 @@ export const api = {
   get: (path) => call('GET', path),
   post: (path, body = {}) => call('POST', path, body),
   patch: (path, body) => call('PATCH', path, body),
+  /** Sends a file as the raw body (proofs: PNG or JPEG). */
+  async upload(path, file, headers = {}) {
+    const res = await fetch(`/api${path}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { accept: 'application/json', 'x-requested-with': 'nb-admin', 'content-type': file.type || 'application/octet-stream', ...headers },
+      body: file,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(res.status, data?.error ?? 'error', data?.message ?? `Upload failed (${res.status}).`);
+    return data;
+  },
 };
 
 /** The roles that may take each step (the API checks the same). Admin may do everything. */
 export const MAY = {
+  proofs: ['designer'],
   progress: ['production'],
   ready: ['production', 'sales'],
   dispatch: ['sales', 'installer'],

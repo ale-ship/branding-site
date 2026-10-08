@@ -8,7 +8,8 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test`: all four must pass before a task is handed over
 - `npm run photos`: re-downloads the placeholder photos into `public/images/placeholder` and rewrites `CREDITS.md`
 - `npm run a11y`, `npm run devices`, `npm run menu`: browser checks against a running production server (`BASE=http://localhost:3100`)
-- `npm run backend`: the API on http://127.0.0.1:4300; `npm run backend:check`: its lint, typecheck and tests (see docs/BACKEND_RUNBOOK.md)
+- `npm run backend`: the API on http://127.0.0.1:4300; `npm run backend:worker`: its job worker; `npm run backend:check`: its lint, typecheck and tests (see docs/BACKEND_RUNBOOK.md)
+- `npm run admin`: the staff back office on http://localhost:3300/admin/ (needs the API); `npm run admin:build`: its build
 
 ## Architecture rules
 

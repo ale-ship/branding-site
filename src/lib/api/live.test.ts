@@ -126,8 +126,7 @@ describe('liveApi (step B2)', () => {
 
   it('says what comes after payment isn’t online yet, instead of asking the mock about an order it doesn’t have', async () => {
     const fetchMock = stubFetch(() => json(200, {}));
-    const checklist = { spelling: true, colours: true, size: true, quantity: true, colourVariance: true };
-    const err = await liveApi.approveProof(placed.ref, { token: placed.token }, 1, checklist).catch((e: unknown) => e);
+    const err = await liveApi.reviewSample(placed.ref, { token: placed.token }, 'approve', '').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(OrderError);
     expect(err).toMatchObject({ code: 'invalid_state' });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -155,5 +154,36 @@ describe('liveApi (step B3)', () => {
     const err = await liveApi.startPayment(placed.ref, { token: placed.token }, '0722530303').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(OrderError);
     expect(err).toMatchObject({ message: 'Nothing is due on this order right now.' });
+  });
+});
+
+describe('liveApi (step B4)', () => {
+  const placed = { ref: 'NB-123456', token: 'a'.repeat(32) };
+  const checklist = { spelling: true, colours: true, size: true, quantity: true, colourVariance: true };
+
+  it('approves a proof with POST /api/orders/:no/proofs/:version/approve', async () => {
+    const fetchMock = stubFetch(() => json(200, { ref: placed.ref, status: 'awaiting_balance' }));
+    expect(await liveApi.approveProof(placed.ref, { token: placed.token }, 2, checklist)).toMatchObject({ status: 'awaiting_balance' });
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('http://127.0.0.1:4300/api/orders/NB-123456/proofs/2/approve');
+    expect(JSON.parse(String(init?.body))).toEqual({ checklist });
+    expect(init?.headers).toMatchObject({ 'x-order-token': placed.token });
+  });
+
+  it('sends changes with their notes and pins', async () => {
+    const fetchMock = stubFetch(() => json(200, { status: 'in_design' }));
+    const pins = [{ x: 0.5, y: 0.25, text: 'Bigger' }];
+    await liveApi.requestChanges(placed.ref, { phone: '+254722530301' }, 1, 'Make it pop', pins);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('http://127.0.0.1:4300/api/orders/NB-123456/proofs/1/changes');
+    expect(JSON.parse(String(init?.body))).toEqual({ comments: 'Make it pop', pins });
+    expect(init?.headers).toMatchObject({ 'x-order-phone': '+254722530301' });
+  });
+
+  it('answers not_found for access by a signed-in email, so the site falls back to the link', async () => {
+    const fetchMock = stubFetch(() => json(200, {}));
+    const err = await liveApi.approveProof(placed.ref, { email: 'amina@example.co.ke' }, 1, checklist).catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: 'not_found' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

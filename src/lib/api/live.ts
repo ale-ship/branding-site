@@ -14,8 +14,9 @@ import type { Order, OrderAccess, OrderCategory, OrderErrorCode, OrderPayment, O
  *   B2  placing and reading orders (createOrder, getOrder by token or order number + phone) and the
  *       capacity calendar (getCapacity)
  *   B3  paying by M-Pesa (startPayment; the order page then follows the payment through getOrder)
+ *   B4  answering a proof (approveProof, requestChanges); proof images are signed /api/files links
  *
- * What happens after payment (proofs, deliveries, surveys) arrives with B5: until then those methods
+ * The sample, early deliveries, surveys and installation arrive with B5: until then those methods
  * answer that it isn't available online yet, rather than looking for the order in the mock, which
  * doesn't have it. Accounts stay on the mock until B5, so an order
  * reached through a signed-in account (`{ email }`) isn't found in live mode until then.
@@ -81,6 +82,14 @@ async function orNull(read: Promise<Order>): Promise<Order | null> {
 const accessHeaders = (access: { token: string } | { phone: string }): Record<string, string> =>
   'token' in access ? { 'x-order-token': access.token } : { 'x-order-phone': access.phone };
 
+/**
+ * Orders reached through a signed-in account (`{ email }`) can't be found on the API until accounts
+ * move there (B5): the same not_found as getOrder's null, so callers fall back to the link or phone.
+ */
+const notFoundByEmail = async (): Promise<never> => {
+  throw new OrderError('not_found', 'We couldn’t find that order.');
+};
+
 const notYet = async (): Promise<never> => {
   throw new OrderError('invalid_state', 'This isn’t available online yet. Please WhatsApp us and we’ll sort it out.');
 };
@@ -122,13 +131,21 @@ export const liveApi: SiteApi = {
 
   // B3: the M-Pesa prompt. The order moves only when Absa's callback confirms it (the API's worker).
   async startPayment(ref, access: OrderAccess, phone) {
-    if ('email' in access) return notYet();
+    if ('email' in access) return notFoundByEmail();
     return forVisitor<OrderPayment>('/api/payments/stk', { method: 'POST', body: JSON.stringify({ ref, phone }), headers: accessHeaders(access) });
   },
 
-  // B5: after the design starts.
-  approveProof: notYet,
-  requestChanges: notYet,
+  // B4: the customer's answer to a proof. The API locks the artwork on approval.
+  async approveProof(ref, access, version, checklist) {
+    if ('email' in access) return notFoundByEmail();
+    return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/proofs/${version}/approve`, { method: 'POST', body: JSON.stringify({ checklist }), headers: accessHeaders(access) });
+  },
+  async requestChanges(ref, access, version, comments, pins) {
+    if ('email' in access) return notFoundByEmail();
+    return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/proofs/${version}/changes`, { method: 'POST', body: JSON.stringify({ comments, pins }), headers: accessHeaders(access) });
+  },
+
+  // B5: the sample, deliveries, site jobs.
   reviewSample: notYet,
   requestPartialDelivery: notYet,
   bookSurvey: notYet,

@@ -427,7 +427,7 @@ In this repo these endpoints belong to the separate backend; the Next.js site ne
 - [ ] How many revision rounds per design package.
 **Build phases**
 
-Status: all four phases built on the site (Phase 1 on 5 Oct 2026, Phases 2 to 4 on 6 Oct 2026), with payments, messages and sign-in codes mocked; see `docs/RUNBOOK.md`, "Online ordering". The staff dashboard and staff reports come with the backend. The staff order board waits for the backend.
+Status: all four phases built on the site (Phase 1 on 5 Oct 2026, Phases 2 to 4 on 6 Oct 2026), with payments, messages and sign-in codes mocked; see `docs/RUNBOOK.md`, "Online ordering". The staff back office (order board, production logging, proofs, unmatched payments) is built in `admin/` (backend step B4, 8 Oct 2026); staff reports and the price manager come later.
 
 1. **Phase 1, core ordering:** category brief forms, live pricing with urgency tiers, guest checkout, STK Push + Paybill, order tracker with statuses, WhatsApp and email confirmations, staff order board.
 2. **Phase 2, proofs and production:** proof upload and approval with pinned comments, balance payment gate, production logger with piece counts, pickup codes and delivery records.

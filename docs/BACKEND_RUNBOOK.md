@@ -1,11 +1,10 @@
 # Noorcom Branding Backend Runbook
 
 Last updated 8 Oct 2026. The design of the backend behind the website: the stack, the file layout,
-the database, the API, the payment flows and the order to build it in. **Steps B0 to B3 are built**
+the database, the API, the payment flows and the order to build it in. **Steps B0 to B4 are built**
 (section 13: the skeleton and `shared/`, the catalogue and price, orders, payments against the
-fakes); the rest is the plan to
-build from. Read `docs/RUNBOOK.md` (the site) and `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow)
-first.
+fakes, the staff back office with proofs); the rest is the plan to build from. Read
+`docs/RUNBOOK.md` (the site) and `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow) first.
 
 ## 1. What the backend does
 
@@ -41,7 +40,7 @@ one team can work on both.
 | PDFs | Playwright (Chromium) printing the same HTML templates the site shows | One design for screen and PDF |
 | Email | nodemailer over SMTP from `info@noorcombranding.co.ke` | |
 | WhatsApp | Meta WhatsApp Business Platform (Cloud API), approved templates | Spec, "Notifications" |
-| Staff auth | Sessions in Postgres, httpOnly cookie, argon2 password hashes | |
+| Staff auth | Sessions in Postgres, httpOnly cookie, scrypt password hashes (node:crypto) | Built at B4 with scrypt instead of the argon2 package: no native build, which npm now holds back |
 | Logs | pino (JSON), request ids | |
 | Tests | Vitest; supertest for HTTP; a separate test database and Redis database | |
 | Lint | ESLint with an import rule for the layers (section 2.1) and `max-lines: 250` | Keeps files small and the layers honest | |
@@ -291,6 +290,8 @@ backend/
 | 001 ✓ | catalogue (B1) | `categories`, `products` (mechanism A/B/C, brief_schema JSONB, min_qty, lead days, setup and design fees, survey fee, package price, active), `price_tiers` |
 | 002 ✓ | orders (B2) | `orders` (as placed: product, brief, common brief, handover and estimate in JSONB; status, money, customer email and phone, expiry in columns; token hash), `order_events`, `invoices`, `counters`, `capacity_bookings`, `notifications` (the outbox). Built ahead of the settings and people tables below, which come with B4 and B5; the planned rows that follow keep their order but take the next free numbers |
 | 003 ✓ | payments (B3) | `payment_requests` (STK prompts: public id, provider request id **unique**, one pending per order by a partial unique index, timeout), `payments` (**mpesa_receipt unique**, receipt_no unique, the prompt it answers), `provider_callbacks` (every STK body as received), `c2b_confirmations` (**trans_id unique**, route, reason, staff action); `orders.attention`. Receipt PDFs (the planned `receipts` table) come with the PDFs |
+| 004 ✓ | staff (B4) | `staff_users` (email, role, scrypt hash, active), `staff_sessions` (token hash, sliding expiry), `audit_log`, `production_logs`; orders gain `pickup_code`, `dispatch`, `handed_over` |
+| 005 ✓ | proofs (B4) | `proofs` (version unique per order, status, note, the watermarked and original file keys, customer comments, pins, the checklist ticked, who uploaded); brought forward from B5 so staff can run an order through |
 | 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
 | 003 | people | `customers` (email unique, lower case: the account; name, phone, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, email unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
 | 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
@@ -403,7 +404,8 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | (documents) | `GET /api/orders/:no/invoice.pdf`, `/receipts/:receiptNo.pdf` | Signed, short-lived links |
 | (uploads) | `POST /api/uploads` | Presigned PUT to R2 |
 | `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | |
-| (staff) | `/api/staff/*` | Order board, production log, unmatched payments, prices; role-checked |
+| (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`. Role-checked; changes need `X-Requested-With: nb-admin`. Prices come later |
+| (files) | `GET /api/files/<key>?exp&sig` | Stored files (proofs) behind links signed for an hour (`lib/signedUrl.js`) |
 
 ### 8.1 Rate limits
 
@@ -480,7 +482,9 @@ from Nairobi, so put Cloudflare in front at the DNS cutover (an African edge) fo
 Read today (B3; `backend/.env.example` has each with a note): the database and Redis URLs,
 `PUBLIC_URL`, the four modes, `ABSA_CALLBACK_SECRET` (24+ characters, required in production),
 `ABSA_PAYBILL`, `FAKE_STK_DELAY_MS`, `MAIL_FROM`, `SMTP_*` (email is live when `SMTP_HOST` is
-set), `MAIL_OUTBOX_DIR` and `WHATSAPP_OUTBOX_DIR`. The rest join with the clients that read them.
+set), `MAIL_OUTBOX_DIR` and `WHATSAPP_OUTBOX_DIR`; from B4, `FILES_SECRET` (24+ characters,
+required in production) and `STORAGE_DIR` (the fake storage's folder). The rest join with the
+clients that read them.
 
 ## 12. What the site itself needs
 
@@ -511,7 +515,7 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 | B2 ✓ | Orders: create, read, lookup, expiry; invoices (INV); WhatsApp and email outbox with "order placed" | An order placed on staging appears in the database with its invoice |
 | B3 ✓ (fakes) | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; the worker and the outbox; receipt and invoice PDFs (moved to B3b) | Against the fakes: done. The real KES 1 payment on staging waits for Absa's documentation (section 14) and the VPS |
 | B3b | Receipt and invoice PDFs (Playwright printing the site's pages), live Absa client, live WhatsApp templates | A real KES 1 payment on staging confirms the order and sends the receipt with its PDF, by both STK and Paybill |
-| B4 | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger | Staff run an order through without the demo controls |
+| B4 ✓ | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger; proofs (brought forward from B5) | Staff run an order through without the demo controls: done in browsers on 8 Oct 2026 |
 | B5 | Spec Phase 2 to 4: proofs and approval, production and deliveries, accounts and brand kits, surveys and firm quotes, capacity calendar, reports | As in the spec |
 
 ### Step B0, done 6 Oct 2026
@@ -672,6 +676,58 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   the messages written to the outboxes.
 - **Not yet (B3b and the VPS):** receipt and invoice PDFs, the live Absa client, WhatsApp templates,
   and systemd units for the API and the worker in `deploy/`.
+
+### Step B4, done 8 Oct 2026
+
+- **Staff accounts** (`modules/staff`, migration 004): email and password (scrypt, 12+ characters),
+  roles from the spec (admin, sales, designer, production, installer). The session token is in the
+  `nb_staff` cookie (httpOnly, SameSite=Strict, Secure in production, Path=/api/staff); only its
+  hash is stored, and it lasts 14 days from the last use. Changes need `X-Requested-With: nb-admin`
+  as well (`middleware/staffAuth.js`). Sign-in: 10 tries per 10 minutes per address, and one
+  answer for a wrong password, an unknown email and a deactivated account. Deactivating someone
+  or changing their password signs them out everywhere; the last active admin can't be removed.
+  **The first admin:** `npm run staff:add -- --email … --name "…" --role admin` in `backend/`
+  (asks for the password; `STAFF_PASSWORD` for scripts). Then admins add staff in the back office.
+- **The back office API** (`modules/backoffice`): the order board in the spec's columns, searchable
+  by number, name, phone or email, with overdue orders flagged; an order with its audit trail; and
+  the staff steps in `steps.js` (pure): log pieces (never more than are left), mark ready (a
+  six-digit pickup code for pickups), send out (a rider and phone, or a waybill), hand over (the
+  code checked and the collector's name, or the recipient), cancel before production (machine time
+  released; money paid flags `refund-due`), clear a flag. Each step runs in one transaction with
+  the order locked and writes the event, the customer's WhatsApp and email, and the audit row.
+  Unmatched Paybill payments: list, assign to an order, mark for a refund.
+- **Proofs** (`modules/proofs`, migration 005; brought forward from B5, because an order can't
+  reach production without one): a designer uploads a PNG or JPEG (up to 10 MB, the image as the
+  request body). The customer sees it as an SVG with PROOF across it three times (`lib/images.js`,
+  no native image library), served from storage behind a link signed for an hour
+  (`/api/files/…`, `lib/signedUrl.js`); staff can open the original. The customer approves it
+  with the full checklist, or asks for changes with notes and pins (`decide.js`, the mock's rules:
+  design only goes out as files; a site job starts production; a run asks for the balance if any is
+  left). Storage is the fake (files under `STORAGE_DIR`) until R2.
+- **The back office app** (`admin/`, Vite + React in JavaScript): sign-in; the board (Kanban on a
+  wide screen, one column at a time on a phone, refreshed every 30 s); an order with the step for
+  your role (the production logger has +10, +50, +100 and "all" buttons for the floor), the proof
+  upload and every version with the customer's notes and pins, money and payments, and who did
+  what; unmatched payments; staff accounts. `npm run admin` serves it on http://localhost:3300/admin/
+  and passes `/api` to the API; `npm run admin:build` writes `admin/dist/`, which nginx serves
+  at `/admin/` on the VPS (to add to the nginx file with the VPS work).
+- **The site** in live mode: `approveProof` and `requestChanges` go to the API; proof images load
+  through `/api/files` (nginx on the VPS, a rewrite in `next.config.ts` locally). Orders reached by
+  a signed-in email answer `not_found` on the API until accounts move (B5), so the site falls back
+  to the order's link or phone.
+- **Tests:** `backoffice.test.js` (sign-in, the cookie, the same answer for every failure, CSRF,
+  sign-out; staff accounts and the last admin; the board, search and overdue; pickup and delivery
+  run-throughs with the customer's view, messages and audit; cancelling; unmatched payments),
+  `proofs.test.js` (an order run from placing to handover by the API alone; uploads refused when not
+  an image or not in design; access; design-only approval), `unit/files.test.js`. 90 backend tests.
+- **Checked in browsers** with the API, the worker, the back office and the site in live mode: an
+  order for 120 T-shirts was placed, its deposit paid by Paybill, its proof uploaded in the back
+  office, approved on the site's own order page (the watermarked proof showing), its balance paid,
+  logged, made ready and handed over with the pickup code in the back office: two receipts, every
+  message sent, no demo controls. axe found nothing on the back office's screens.
+- **Not yet:** the price manager and staff reports (with B5's back office work), the job card with
+  its QR code, mockups on proofs, the pre-production sample, partial deliveries, site jobs'
+  survey, quote and installation steps, and accounts on the API (B5).
 
 ### Setting up Postgres and Redis on a development machine
 
