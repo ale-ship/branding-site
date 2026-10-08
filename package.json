@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "shared",
-    "backend"
+    "backend",
+    "admin"
   ],
   "scripts": {
     "dev": "next dev",
@@ -20,7 +21,9 @@
     "menu": "node scripts/check-menu.mjs",
     "backend": "npm run dev -w backend",
     "backend:worker": "npm run worker:dev -w backend",
-    "backend:check": "npm run check -w backend"
+    "backend:check": "npm run check -w backend",
+    "admin": "npm run dev -w admin",
+    "admin:build": "npm run build -w admin"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

@@ -10,15 +10,39 @@ import { paymentsOf } from '../payments/view.js';
  * @typedef {Record<string, any>} Row
  */
 
+/**
+ * The whole order's delivery, once it is out (early, partial deliveries come with B5).
+ * @param {Row} r
+ * @returns {Order['deliveries']}
+ */
+function deliveriesOf(r) {
+  if (!r.dispatch) return [];
+  const delivered = r.handed_over?.method === 'delivery';
+  return [
+    {
+      id: `${r.order_no}-D1`,
+      pieces: r.quantity,
+      partial: false,
+      status: delivered ? 'delivered' : 'out',
+      rider: r.dispatch.rider || null,
+      riderPhone: r.dispatch.riderPhone || null,
+      waybill: r.dispatch.waybill || null,
+      recipient: delivered ? (r.handed_over.recipient ?? null) : null,
+      requestedAt: r.dispatch.at,
+      deliveredAt: delivered ? r.handed_over.at : null,
+    },
+  ];
+}
+
 /** @param {Date | string | null} t */
 const iso = (t) => (t == null ? null : new Date(t).toISOString());
 
 /**
  * @param {Row} r The order row, with `invoice_no`.
- * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[] }} history
+ * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[]; logs?: Row[] }} history
  * @returns {Order}
  */
-export function toOrder(r, { events, notifications, requests = [], payments = [] }) {
+export function toOrder(r, { events, notifications, requests = [], payments = [], logs = [] }) {
   return {
     ref: r.order_no,
     invoiceNo: r.invoice_no,
@@ -49,10 +73,15 @@ export function toOrder(r, { events, notifications, requests = [], payments = []
     siteQuote: null,
     installDate: null,
     sample: r.sample,
-    production: { logs: [], dailyCapacity: r.daily_capacity, startedOn: r.started_on, promisedBy: r.promised_date },
-    pickupCode: null,
-    deliveries: [],
-    handedOver: null,
+    production: {
+      logs: logs.map((l) => ({ at: /** @type {string} */ (iso(l.at)), pieces: l.pieces, note: l.note })),
+      dailyCapacity: r.daily_capacity,
+      startedOn: r.started_on,
+      promisedBy: r.promised_date,
+    },
+    pickupCode: r.pickup_code ?? null,
+    deliveries: deliveriesOf(r),
+    handedOver: r.handed_over ? { at: r.handed_over.at, method: r.handed_over.method, detail: r.handed_over.detail } : null,
     company: null,
   };
 }

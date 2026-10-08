@@ -1,14 +1,17 @@
 // @ts-check
-import express from 'express';
+import express, { Router } from 'express';
 import { errorHandler, notFoundHandler } from './lib/errors.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { requestContext } from './middleware/requestId.js';
+import { requireStaff } from './middleware/staffAuth.js';
+import { backofficeRoutes } from './modules/backoffice/routes.js';
 import { capacityRoutes } from './modules/capacity/routes.js';
 import { catalogueRoutes } from './modules/catalogue/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { orderRoutes } from './modules/orders/routes.js';
 import { absaCallbackRoutes, devRoutes, paymentRoutes } from './modules/payments/routes.js';
 import { pricingRoutes } from './modules/pricing/routes.js';
+import { staffAuthRoutes, staffRoutes } from './modules/staff/routes.js';
 
 /**
  * @typedef {import('./deps.js').Deps & {
@@ -43,12 +46,17 @@ export function createApp(config, { limits = {}, ...deps }) {
   app.use('/api', rateLimit(redis, { name: 'api', limit: 300, windowSec: 60, ...limits.api }));
 
   // The modules (docs/BACKEND_RUNBOOK.md, section 13): B1 catalogue and pricing; B2 orders and the
-  // capacity calendar; B3 payments.
+  // capacity calendar; B3 payments; B4 the back office.
   app.use('/api/catalogue', catalogueRoutes({ pool, redis }));
   app.use('/api/quotes', pricingRoutes({ pool, redis }));
   app.use('/api/capacity', capacityRoutes({ pool }));
   app.use('/api/orders', orderRoutes(all));
   app.use('/api/payments', paymentRoutes(all));
+  // B4: the back office. Sign-in is open; everything else needs a staff session (checked once).
+  app.use('/api/staff/auth', staffAuthRoutes(all));
+  const staff = Router();
+  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all));
+  app.use('/api/staff', staff);
   // A made-up Paybill payment, for trying the flow: only while Absa is fake, never in production.
   if (config.integrations.absa === 'fake' && config.env !== 'production') app.use('/api/dev', devRoutes(all));
 

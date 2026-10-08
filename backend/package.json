@@ -21,7 +21,8 @@
     "migrate:rollback": "knex migrate:rollback --all",
     "migrate:status": "knex migrate:list",
     "migrate:make": "knex migrate:make",
-    "seed": "knex seed:run"
+    "seed": "knex seed:run",
+    "staff:add": "node src/cli/add-staff.js"
   },
   "dependencies": {
     "@noorcom-branding/shared": "0.1.0",

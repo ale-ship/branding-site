@@ -20,3 +20,6 @@ npm-debug.log*
 # The backend fakes write messages here (docs/BACKEND_RUNBOOK.md, section 2.3).
 .mail-outbox/
 .whatsapp-outbox/
+
+# The back office build (npm run admin:build).
+admin/dist/

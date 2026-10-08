@@ -94,19 +94,21 @@ export async function findByOrderNo(db, orderNo, { lock = false } = {}) {
 }
 
 /**
- * The order's events, the messages sent about it, its prompts and its payments, oldest first.
+ * The order's events, the messages sent about it, its prompts, its payments and its production
+ * log, oldest first.
  * @param {Db} db
  * @param {number} orderId
- * @returns {Promise<{ events: Row[]; notifications: Row[]; requests: Row[]; payments: Row[] }>}
+ * @returns {Promise<{ events: Row[]; notifications: Row[]; requests: Row[]; payments: Row[]; logs: Row[] }>}
  */
 export async function historyOf(db, orderId) {
-  const [events, notifications, requests, payments] = await Promise.all([
+  const [events, notifications, requests, payments, logs] = await Promise.all([
     db.query('SELECT text, at FROM order_events WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT channel, recipient, payload, created_at FROM notifications WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT * FROM payment_requests WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT id, public_id, request_id, purpose, method, phone, amount, mpesa_receipt, receipt_no, created_at FROM payments WHERE order_id = $1 ORDER BY id', [orderId]),
+    db.query('SELECT pieces, note, at FROM production_logs WHERE order_id = $1 ORDER BY id', [orderId]),
   ]);
-  return { events: events.rows, notifications: notifications.rows, requests: requests.rows, payments: payments.rows };
+  return { events: events.rows, notifications: notifications.rows, requests: requests.rows, payments: payments.rows, logs: logs.rows };
 }
 
 /**
