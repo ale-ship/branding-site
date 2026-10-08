@@ -250,6 +250,32 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
     });
   });
 
+  describe('the dashboard', () => {
+    it('counts this month, the last 30 days of money, the pipeline and what needs a hand', async () => {
+      const a = await place();
+      const b = await place();
+      await intoProduction(b.ref);
+      const { id } = await knex('orders').where({ order_no: a.ref }).first();
+      await withTransaction(pool, (t) => record(t, { orderId: id, method: 'paybill', phone: null, amount: 1500, mpesaReceipt: 'DASH000001' }));
+      await request(app).post('/api/dev/c2b').send({ billRef: 'no idea', amount: 50 });
+      for (const job of queued.splice(0)) if (job.name === 'process-c2b') await runJob(deps, job.name, job.data);
+
+      const res = await as.designer.get('/api/staff/dashboard');
+      expect(res.status).toBe(200);
+      const d = res.body;
+      expect(d.month).toMatchObject({ revenue: 1500, orders: 2 });
+      expect(d.revenueByDay).toHaveLength(30);
+      expect(d.revenueByDay.at(-1)).toEqual({ day: d.today, amount: 1500, payments: 1 });
+      expect(d.stages).toMatchObject({ new: 1, production: 1, done: 0 });
+      expect(d.inProduction).toBe(1);
+      expect(d.awaiting.orders).toBe(1);
+      expect(d.unmatched).toBe(1);
+      expect(d.byCategory).toEqual([{ category: 'Apparel', orders: 2, value: expect.any(Number) }]);
+      expect(d.recent.map((o) => o.ref).sort()).toEqual([a.ref, b.ref].sort());
+      expect((await request(app).get('/api/staff/dashboard')).status).toBe(401);
+    });
+  });
+
   describe('unmatched Paybill payments', () => {
     it('shows them to sales, who assign one to an order', async () => {
       const placed = await place();

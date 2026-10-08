@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { kes } from '../format.js';
+import { PageHead } from '../ui.jsx';
 
 /**
  * Quantity-run products and their minimums (owner, 8 Oct 2026: 10 pieces unless set here). Every
@@ -14,7 +15,10 @@ export function ProductsPage({ me, onAuthLost }) {
 
   const fail = useCallback((e) => (e instanceof ApiError && e.status === 401 ? onAuthLost() : setError(e.message)), [onAuthLost]);
   useEffect(() => {
-    api.get('/staff/products').then((r) => setProducts(r.products)).catch(fail);
+    api
+      .get('/staff/products')
+      .then((r) => setProducts(r.products))
+      .catch(fail);
   }, [fail]);
 
   const save = async (e, p) => {
@@ -23,7 +27,9 @@ export function ProductsPage({ me, onAuthLost }) {
     setError('');
     setNotice('');
     try {
-      const { product } = await api.patch(`/staff/products/${p.slug}`, { minQuantity });
+      const { product } = await api.patch(`/staff/products/${p.slug}`, {
+        minQuantity,
+      });
       setProducts((all) => all.map((x) => (x.slug === p.slug ? product : x)));
       setNotice(`${p.name}: the minimum is now ${product.minQuantity.toLocaleString('en-KE')} pieces.`);
     } catch (err) {
@@ -33,11 +39,10 @@ export function ProductsPage({ me, onAuthLost }) {
 
   return (
     <>
-      <h1>Products</h1>
-      <p className="muted">
+      <PageHead title="Products" crumbs={<a href="#/dashboard">Dashboard</a>}>
         The smallest run a customer can order online. New orders and prices follow a change at once; orders already placed keep their quantity.
         {canEdit ? '' : ' Only admins can change a minimum.'}
-      </p>
+      </PageHead>
       {notice && (
         <p className="notice" role="status">
           {notice}
@@ -50,48 +55,58 @@ export function ProductsPage({ me, onAuthLost }) {
       )}
       {!products && !error && <p className="muted">Loading…</p>}
       {products && (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Product</th>
-                <th scope="col">Price per piece</th>
-                <th scope="col">Minimum (pieces)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tr key={p.slug}>
-                  <td>
-                    {p.name}
-                    <div className="muted">
-                      {p.category}
-                      {p.active ? '' : ' · not on sale'}
-                    </div>
-                  </td>
-                  <td className="muted">
-                    {p.tiers.map((t) => `${kes(t.unitPrice)} from ${t.minQty.toLocaleString('en-KE')}`).join('; ')}
-                  </td>
-                  <td>
-                    {canEdit ? (
-                      <form className="row" onSubmit={(e) => save(e, p)}>
-                        <div className="field" style={{ flex: '0 1 7rem' }}>
-                          <label className="sr-only" htmlFor={`min-${p.slug}`}>
-                            Minimum for {p.name}
-                          </label>
-                          <input id={`min-${p.slug}`} name="min" type="number" inputMode="numeric" min="1" max="100000" step="1" defaultValue={p.minQuantity} required />
-                        </div>
-                        <button type="submit">Save</button>
-                      </form>
-                    ) : (
-                      p.minQuantity.toLocaleString('en-KE')
-                    )}
-                  </td>
+        <section className="card">
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Product</th>
+                  <th scope="col">Price per piece</th>
+                  <th scope="col">Minimum (pieces)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p.slug}>
+                    <td>
+                      {p.name}
+                      <div className="muted">
+                        {p.category}
+                        {p.active ? '' : ' · not on sale'}
+                      </div>
+                    </td>
+                    <td className="muted">{p.tiers.map((t) => `${kes(t.unitPrice)} from ${t.minQty.toLocaleString('en-KE')}`).join('; ')}</td>
+                    <td>
+                      {canEdit ? (
+                        <form className="row" onSubmit={(e) => save(e, p)}>
+                          <div className="field" style={{ flex: '0 1 7rem' }}>
+                            <label className="sr-only" htmlFor={`min-${p.slug}`}>
+                              Minimum for {p.name}
+                            </label>
+                            <input
+                              id={`min-${p.slug}`}
+                              name="min"
+                              type="number"
+                              inputMode="numeric"
+                              min="1"
+                              max="100000"
+                              step="1"
+                              defaultValue={p.minQuantity}
+                              required
+                            />
+                          </div>
+                          <button type="submit">Save</button>
+                        </form>
+                      ) : (
+                        p.minQuantity.toLocaleString('en-KE')
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </>
   );

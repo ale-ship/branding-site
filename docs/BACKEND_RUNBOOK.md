@@ -712,6 +712,15 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   what; unmatched payments; staff accounts. `npm run admin` serves it on http://localhost:3300/admin/
   and passes `/api` to the API; `npm run admin:build` writes `admin/dist/`, which nginx serves
   at `/admin/` on the VPS (to add to the nginx file with the VPS work).
+- **The back office's look** (8 Oct 2026, from the owner's reference dashboards): a black sidebar
+  with grouped sections and icons (lucide-react; a drawer on phones), a top bar that finds an order
+  by number, name or phone, white cards with soft corners on a warm light page, status pills with
+  their words, and the logo's red only for actions and the current page. The home page is a
+  **Dashboard** (`GET /api/staff/dashboard`, `backoffice/dashboard.service.js`): money received this
+  month against the same days last month, orders this month, money waiting, what needs a hand
+  (overdue, flagged, unmatched payments), money received per day for 30 days (one line with a
+  hover tooltip and a table for screen readers), orders by category, the pipeline by stage and the
+  newest orders. The board also has a list view. axe finds nothing on any screen.
 - **The site** in live mode: `approveProof` and `requestChanges` go to the API; proof images load
   through `/api/files` (nginx on the VPS, a rewrite in `next.config.ts` locally). Orders reached by
   a signed-in email answer `not_found` on the API until accounts move (B5), so the site falls back

@@ -38,8 +38,8 @@ export function Steps({ order: o, staff, attention, act, upload }) {
       </section>,
     );
   }
-  if (cancellable && may(staff, 'cancel')) panels.push(<Cancel key="cancel" paid={o.amountPaid} act={act} />);
   if (o.status === 'in_design' && may(staff, 'proofs')) panels.push(<UploadProof key="proof" order={o} upload={upload} />);
+  if (cancellable && may(staff, 'cancel')) panels.push(<Cancel key="cancel" paid={o.amountPaid} act={act} />);
   if (o.status === 'awaiting_approval') {
     panels.push(
       <p key="waiting" className="notice">
@@ -152,7 +152,13 @@ function Pickup({ act }) {
 }
 
 function Dispatch({ act }) {
-  const [busy, onSubmit] = useSubmit((f) => act('dispatch', { rider: f.rider, riderPhone: f.riderPhone, waybill: f.waybill }));
+  const [busy, onSubmit] = useSubmit((f) =>
+    act('dispatch', {
+      rider: f.rider,
+      riderPhone: f.riderPhone,
+      waybill: f.waybill,
+    }),
+  );
   return (
     <section className="panel" aria-labelledby="dispatch-title">
       <h2 id="dispatch-title">Send it out</h2>

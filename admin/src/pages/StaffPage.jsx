@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { ROLE } from '../format.js';
+import { PageHead, initials } from '../ui.jsx';
 
 /** Admins add staff, change their role, deactivate them, or set a new password. */
 export function StaffPage({ me, onAuthLost }) {
@@ -9,7 +10,14 @@ export function StaffPage({ me, onAuthLost }) {
   const [notice, setNotice] = useState('');
 
   const fail = useCallback((e) => (e instanceof ApiError && e.status === 401 ? onAuthLost() : setError(e.message)), [onAuthLost]);
-  const load = useCallback(() => api.get('/staff/users').then((r) => setUsers(r.users)).catch(fail), [fail]);
+  const load = useCallback(
+    () =>
+      api
+        .get('/staff/users')
+        .then((r) => setUsers(r.users))
+        .catch(fail),
+    [fail],
+  );
   useEffect(() => {
     load();
   }, [load]);
@@ -42,7 +50,9 @@ export function StaffPage({ me, onAuthLost }) {
 
   return (
     <>
-      <h1>Staff</h1>
+      <PageHead title="Staff" crumbs={<a href="#/dashboard">Dashboard</a>}>
+        Who can sign in to the back office, and what each role may do.
+      </PageHead>
       {notice && (
         <p className="notice" role="status">
           {notice}
@@ -53,52 +63,74 @@ export function StaffPage({ me, onAuthLost }) {
           {error}
         </p>
       )}
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col">Role</th>
-              <th scope="col">Account</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users?.map((u) => (
-              <tr key={u.id}>
-                <td>{u.name}</td>
-                <td>{u.email}</td>
-                <td>
-                  <label className="sr-only" htmlFor={`role-${u.id}`}>
-                    Role for {u.name}
-                  </label>
-                  <select id={`role-${u.id}`} value={u.role} onChange={(e) => change(u, { role: e.target.value }, `${u.name} is now ${ROLE[e.target.value]}.`)}>
-                    {Object.entries(ROLE).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <div className="quick">
-                    {u.id !== me.id && (
-                      <button type="button" onClick={() => change(u, { active: !u.active }, `${u.name} is ${u.active ? 'deactivated' : 'active again'}.`)}>
-                        {u.active ? 'Deactivate' : 'Reactivate'}
-                      </button>
-                    )}
-                    <button type="button" onClick={() => resetPassword(u)}>
-                      New password
-                    </button>
-                  </div>
-                </td>
+      <section className="card">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+                <th scope="col">Account</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {users?.map((u) => (
+                <tr key={u.id}>
+                  <td>
+                    <span
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                      }}
+                    >
+                      <span className="avatar" aria-hidden="true" style={{ width: 32, height: 32, fontSize: '0.75rem' }}>
+                        {initials(u.name)}
+                      </span>
+                      <span>
+                        {u.name}
+                        {!u.active && <span className="sub">Deactivated</span>}
+                      </span>
+                    </span>
+                  </td>
+                  <td>{u.email}</td>
+                  <td>
+                    <label className="sr-only" htmlFor={`role-${u.id}`}>
+                      Role for {u.name}
+                    </label>
+                    <select
+                      id={`role-${u.id}`}
+                      value={u.role}
+                      onChange={(e) => change(u, { role: e.target.value }, `${u.name} is now ${ROLE[e.target.value]}.`)}
+                    >
+                      {Object.entries(ROLE).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <div className="quick">
+                      {u.id !== me.id && (
+                        <button type="button" onClick={() => change(u, { active: !u.active }, `${u.name} is ${u.active ? 'deactivated' : 'active again'}.`)}>
+                          {u.active ? 'Deactivate' : 'Reactivate'}
+                        </button>
+                      )}
+                      <button type="button" onClick={() => resetPassword(u)}>
+                        New password
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-      <section className="panel" aria-labelledby="add-title" style={{ marginTop: '1rem' }}>
+      <section className="panel" aria-labelledby="add-title">
         <h2 id="add-title">Add a staff member</h2>
         <form onSubmit={add}>
           <div className="row">

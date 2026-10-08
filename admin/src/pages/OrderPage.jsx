@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, api, may } from '../api.js';
-import { ATTENTION, STATUS, day, kes, when } from '../format.js';
+import { ApiError, api } from '../api.js';
+import { ATTENTION, day, kes, when } from '../format.js';
+import { PageHead, StatusPill } from '../ui.jsx';
 import { Steps } from './Steps.jsx';
 
 /**
@@ -36,7 +37,11 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
   const upload = async (file, note) => {
     setError('');
     try {
-      setData(await api.upload(`/staff/orders/${o.ref}/proofs`, file, { 'x-proof-note': encodeURIComponent(note) }));
+      setData(
+        await api.upload(`/staff/orders/${o.ref}/proofs`, file, {
+          'x-proof-note': encodeURIComponent(note),
+        }),
+      );
       return true;
     } catch (e) {
       fail(e);
@@ -47,18 +52,22 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
   const pieces = o.progress.kind === 'pieces' ? o.progress : null;
   return (
     <>
-      <p>
-        <a href="#/orders">← All orders</a>
-      </p>
-      <div className="order-head">
-        <h1>{o.ref}</h1>
-        <span className="tag">{STATUS[o.status]}</span>
-        {extra.attention && <span className="tag red">{ATTENTION[extra.attention] ?? extra.attention}</span>}
-      </div>
-      <p>
+      <PageHead
+        crumbs={
+          <>
+            <a href="#/dashboard">Dashboard</a> / <a href="#/orders">Order board</a> / {o.ref}
+          </>
+        }
+        title={
+          <span className="order-head">
+            {o.ref} <StatusPill status={o.status} />
+            {extra.attention && <span className="tag red">{ATTENTION[extra.attention] ?? extra.attention}</span>}
+          </span>
+        }
+      >
         {o.product.name}
-        {o.mechanism === 'A' ? ` × ${o.quantity.toLocaleString('en-KE')}` : ''} · {o.urgency} · invoice {o.invoiceNo}
-      </p>
+        {o.mechanism === 'A' ? ` × ${o.quantity.toLocaleString('en-KE')}` : ''} · {o.urgency} deadline · invoice {o.invoiceNo} · placed {when(o.createdAt)}
+      </PageHead>
       {error && (
         <p className="error" role="alert">
           {error}
@@ -73,7 +82,11 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
                 Progress: {pieces.done} of {pieces.total}
               </h2>
               <div className="bar" aria-hidden="true">
-                <span style={{ width: `${Math.round((pieces.done / pieces.total) * 100)}%` }} />
+                <span
+                  style={{
+                    width: `${Math.round((pieces.done / pieces.total) * 100)}%`,
+                  }}
+                />
               </div>
               {o.production.promisedBy && <p className="muted">Promised for {day(o.production.promisedBy)}.</p>}
             </section>
@@ -86,7 +99,8 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
             <ol className="timeline">
               {[...o.events].reverse().map((e, i) => (
                 <li key={i}>
-                  <span className="muted">{when(e.at)}</span> · {e.text}
+                  {e.text}
+                  <span className="when">{when(e.at)}</span>
                 </li>
               ))}
             </ol>
@@ -154,12 +168,12 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
             <ol className="timeline">
               {extra.audit.map((a, i) => (
                 <li key={i}>
-                  <span className="muted">{when(a.at)}</span> · {a.staff ?? 'System'}: {a.action.replace(/-/g, ' ')}
+                  {a.staff ?? 'System'}: {a.action.replace(/-/g, ' ')}
+                  <span className="when">{when(a.at)}</span>
                 </li>
               ))}
             </ol>
           </section>
-          {may(staff, 'cancel') && <p className="muted">Sales and admins can cancel an order before production.</p>}
         </div>
       </div>
     </>
@@ -170,7 +184,13 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
 function Brief({ order: o }) {
   const show = (v) => {
     if (Array.isArray(v)) return v.join(', ');
-    if (v && typeof v === 'object') return 'widthCm' in v ? `${v.widthCm} × ${v.heightCm} cm` : Object.entries(v).filter(([, n]) => n).map(([k, n]) => `${k}: ${n}`).join(', ');
+    if (v && typeof v === 'object')
+      return 'widthCm' in v
+        ? `${v.widthCm} × ${v.heightCm} cm`
+        : Object.entries(v)
+            .filter(([, n]) => n)
+            .map(([k, n]) => `${k}: ${n}`)
+            .join(', ');
     if (typeof v === 'boolean') return v ? 'Yes' : 'No';
     return String(v);
   };
@@ -216,7 +236,11 @@ function Brief({ order: o }) {
   );
 }
 
-const PROOF_STATUS = { pending: 'With the customer', approved: 'Approved', changes_requested: 'Changes asked for' };
+const PROOF_STATUS = {
+  pending: 'With the customer',
+  approved: 'Approved',
+  changes_requested: 'Changes asked for',
+};
 
 /** Every proof version, newest first, with the customer's notes and pins. */
 function Proofs({ order: o }) {
@@ -232,7 +256,7 @@ function Proofs({ order: o }) {
             Sent {when(p.uploadedAt)}
             {p.decidedAt ? ` · answered ${when(p.decidedAt)}` : ''} · <a href={`/api/staff/orders/${o.ref}/proofs/${p.version}/original`}>original file</a>
           </p>
-          <img src={p.image} alt={`Proof v${p.version}, marked PROOF`} style={{ maxWidth: '100%', maxHeight: '20rem', border: '1px solid var(--border)' }} />
+          <img src={p.image} alt={`Proof v${p.version}, marked PROOF`} className="proof-img" />
           {p.note && <p>Note: {p.note}</p>}
           {p.comments && <p>Customer: {p.comments}</p>}
           {p.pins.length > 0 && (
@@ -240,7 +264,12 @@ function Proofs({ order: o }) {
               {p.pins.map((pin, i) => (
                 <li key={i}>
                   {pin.text}
-                  {pin.x !== null ? <span className="muted"> (at {Math.round(pin.x * 100)}% across, {Math.round(pin.y * 100)}% down)</span> : null}
+                  {pin.x !== null ? (
+                    <span className="muted">
+                      {' '}
+                      (at {Math.round(pin.x * 100)}% across, {Math.round(pin.y * 100)}% down)
+                    </span>
+                  ) : null}
                 </li>
               ))}
             </ol>

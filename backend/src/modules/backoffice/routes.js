@@ -11,6 +11,7 @@ import * as c from './controller.js';
  */
 export function backofficeRoutes(deps) {
   const router = Router();
+  router.get('/dashboard', c.getDashboard(deps));
   router.get('/orders', c.getBoard(deps));
   router.get('/orders/:no', c.getOrder(deps));
   router.post('/orders/:no/progress', requireRole('production'), c.postProgress(deps));

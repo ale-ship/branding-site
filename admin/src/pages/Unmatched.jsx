@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { kes, when } from '../format.js';
+import { PageHead } from '../ui.jsx';
 
 const REASON = {
   'unknown-order': 'The order number in the reference doesn’t exist',
@@ -17,7 +18,14 @@ export function Unmatched({ onAuthLost }) {
   const [notice, setNotice] = useState('');
 
   const fail = useCallback((e) => (e instanceof ApiError && e.status === 401 ? onAuthLost() : setError(e.message)), [onAuthLost]);
-  const load = useCallback(() => api.get('/staff/payments/unmatched').then((r) => setPayments(r.payments)).catch(fail), [fail]);
+  const load = useCallback(
+    () =>
+      api
+        .get('/staff/payments/unmatched')
+        .then((r) => setPayments(r.payments))
+        .catch(fail),
+    [fail],
+  );
   useEffect(() => {
     load();
   }, [load]);
@@ -47,8 +55,9 @@ export function Unmatched({ onAuthLost }) {
 
   return (
     <>
-      <h1>Unmatched payments</h1>
-      <p className="muted">Paybill payments we couldn’t put on an order by themselves.</p>
+      <PageHead title="Unmatched payments" crumbs={<a href="#/dashboard">Dashboard</a>}>
+        Paybill payments we couldn’t put on an order by themselves. Assign each to its order, or mark it for a refund.
+      </PageHead>
       {notice && (
         <p className="notice" role="status">
           {notice}
@@ -59,7 +68,7 @@ export function Unmatched({ onAuthLost }) {
           {error}
         </p>
       )}
-      {payments?.length === 0 && <p>Nothing waiting.</p>}
+      {payments?.length === 0 && <div className="card empty">Nothing waiting. Every Paybill payment found its order.</div>}
       {payments?.map((p) => (
         <section key={p.id} className="panel" aria-label={`Payment ${p.transId}`}>
           <h2>

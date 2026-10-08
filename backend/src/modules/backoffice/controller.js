@@ -1,6 +1,7 @@
 // @ts-check
 import { z } from 'zod';
 import { staffOf } from '../../middleware/staffAuth.js';
+import { dashboard } from './dashboard.service.js';
 import * as service from './service.js';
 
 /**
@@ -84,4 +85,9 @@ export const postAssign = (deps) => async (req, res) => {
 export const postRefund = (deps) => async (req, res) => {
   await service.refundPayment(deps, staffOf(req), id(req));
   res.status(204).end();
+};
+
+/** @param {Deps} deps @returns {import('express').RequestHandler} */
+export const getDashboard = (deps) => async (_req, res) => {
+  noStore(res).json(await dashboard(deps));
 };
