@@ -67,8 +67,8 @@ const signIn = `(async () => {
     el.dispatchEvent(new Event('input', { bubbles: true }));
   };
   // Signed in already (an earlier width): nothing to do.
-  if (!document.querySelector('#signin-phone')) return;
-  set('#signin-phone', '0722 530 303');
+  if (!document.querySelector('#signin-email')) return;
+  set('#signin-email', 'a11y-check@example.co.ke');
   document.querySelector('form button[type=submit]').click();
   for (let i = 0; i < 40 && !document.querySelector('#signin-code'); i++) await wait(250);
   set('#signin-code', document.body.innerText.match(/The code is ([0-9]{6})/)?.[1] ?? '');

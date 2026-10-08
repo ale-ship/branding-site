@@ -9,14 +9,15 @@ import { DELIVERY_ZONES } from './pricing.js';
 
 /**
  * Account rules (docs/ORDER_WORKFLOW_SPEC.md, "Accounts"), shared by the account page, its server
- * actions and the backend. Sign-in is by phone and a one-time code on WhatsApp: no passwords to forget
- * or leak.
+ * actions and the backend. Sign-in is by email and a one-time code sent there (owner, 7 Oct 2026: email
+ * is free, a WhatsApp code is charged per message): no passwords to forget or leak. The account is its
+ * verified email.
  */
 
 export const CODE_LENGTH = 6;
 export const CODE_TTL_MINUTES = 10;
 export const CODE_MAX_TRIES = 5;
-/** Seconds before another code can be sent to the same phone. */
+/** Seconds before another code can be sent to the same email. */
 export const CODE_RESEND_SECONDS = 60;
 export const SESSION_DAYS = 30;
 export const MAX_ADDRESSES = 5;
@@ -78,6 +79,30 @@ export function coerceAddress(raw) {
   const zone = /** @type {DeliveryZone} */ (DELIVERY_ZONES.some((z) => z.zone === r.zone) ? r.zone : 'cbd');
   const address = { id: str(r.id, 40) || undefined, label: str(r.label, 40) || 'Address', address: str(r.address, 300), zone };
   return { address, error: address.address.length < 5 ? 'Enter the building, street, area and town.' : null };
+}
+
+// The same pattern as the order form (src/lib/order.ts), so an email that can order can sign in.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/**
+ * An email address as an account knows it (trimmed, lower case), or null when it isn't one.
+ * @param {unknown} raw
+ * @returns {string | null}
+ */
+export function normaliseEmail(raw) {
+  const email = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  return email.length <= 200 && EMAIL.test(email) ? email : null;
+}
+
+/**
+ * `wanjiru@example.co.ke` -> `wa•••@example.co.ke`, for saying where a code went without showing it all.
+ * @param {string} email
+ * @returns {string}
+ */
+export function maskEmail(email) {
+  const at = email.lastIndexOf('@');
+  if (at < 1) return email;
+  return `${email.slice(0, Math.min(2, at))}•••${email.slice(at)}`;
 }
 
 /**

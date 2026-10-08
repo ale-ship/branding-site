@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { addMemberAction, createCompanyAction, removeAddressAction, removeMemberAction, saveAddressAction, saveBrandKitAction, signOutAction, updateDetailsAction } from '@/app/account/actions';
 import type { BrandKit, Company, CompanyRole, DeliveryZone, SavedAddress } from '@/lib/api/order-types';
-import { localPhone } from '@/lib/order-status';
 import { DELIVERY_ZONES } from '@/lib/pricing';
 import { FilePicker } from '../order/controls';
 import { ChoiceGroup, TextArea, TextField } from '../quote/fields';
@@ -48,7 +47,7 @@ function Feedback({ message }: { message: { ok: boolean; text: string } | null }
   );
 }
 
-export function DetailsForm({ initial }: { initial: { name: string; email: string; company: string } }) {
+export function DetailsForm({ initial }: { initial: { name: string; phone: string; company: string } }) {
   const [d, setD] = useState(initial);
   const { message, pending, save } = useSave();
   return (
@@ -62,7 +61,7 @@ export function DetailsForm({ initial }: { initial: { name: string; email: strin
     >
       <TextField name="acc-name" label="Your name" autoComplete="name" value={d.name} onChange={(v) => setD({ ...d, name: v })} />
       <TextField name="acc-company" label="Company" optional autoComplete="organization" value={d.company} onChange={(v) => setD({ ...d, company: v })} />
-      <TextField name="acc-email" type="email" label="Email" autoComplete="email" value={d.email} onChange={(v) => setD({ ...d, email: v })} />
+      <TextField name="acc-phone" type="tel" inputMode="tel" label="Phone" hint="For M-Pesa and deliveries." optional autoComplete="tel" value={d.phone} onChange={(v) => setD({ ...d, phone: v })} />
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={pending} className={saveButton}>
           Save details
@@ -215,8 +214,8 @@ export function CreateCompanyForm({ defaultName }: { defaultName: string }) {
 const ROLE_LABEL: Record<CompanyRole, string> = { owner: 'Owner', approver: 'Approves proofs', member: 'Orders' };
 
 /** The company's people. The owner adds and removes them; everyone else sees who approves. */
-export function CompanyMembers({ company, isOwner, myPhone }: { company: Company; isOwner: boolean; myPhone: string }) {
-  const [phone, setPhone] = useState('');
+export function CompanyMembers({ company, isOwner, myEmail }: { company: Company; isOwner: boolean; myEmail: string }) {
+  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'member' | 'approver'>('member');
   const { message, pending, save } = useSave();
@@ -224,21 +223,21 @@ export function CompanyMembers({ company, isOwner, myPhone }: { company: Company
     <div className="flex flex-col gap-5">
       <ul className="flex flex-col border-t border-border">
         {company.members.map((m) => (
-          <li key={m.phone} className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm">
+          <li key={m.email} className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm">
             <span className="min-w-0">
               <span className="block font-semibold text-heading">
                 {m.name}
-                {m.phone === myPhone && ' (you)'}
+                {m.email === myEmail && ' (you)'}
               </span>
-              <span className="block text-muted">
-                {localPhone(m.phone)} · {ROLE_LABEL[m.role]}
+              <span className="block break-all text-muted">
+                {m.email} · {ROLE_LABEL[m.role]}
               </span>
             </span>
             {isOwner && m.role !== 'owner' && (
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => save(() => removeMemberAction(m.phone), `${m.name} removed.`)}
+                onClick={() => save(() => removeMemberAction(m.email), `${m.name} removed.`)}
                 aria-label={`Remove ${m.name}`}
                 className="grid size-11 shrink-0 place-items-center text-muted transition-colors hover:text-heading"
               >
@@ -253,8 +252,8 @@ export function CompanyMembers({ company, isOwner, myPhone }: { company: Company
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
-            save(() => addMemberAction({ phone, name, role }), 'Added. They sign in with their own phone.', () => {
-              setPhone('');
+            save(() => addMemberAction({ email, name, role }), 'Added. They sign in with their own email.', () => {
+              setEmail('');
               setName('');
             });
           }}
@@ -262,7 +261,7 @@ export function CompanyMembers({ company, isOwner, myPhone }: { company: Company
         >
           <p className="font-semibold text-heading">Add someone</p>
           <TextField name="member-name" label="Name" value={name} onChange={setName} />
-          <TextField name="member-phone" type="tel" inputMode="tel" label="Phone" value={phone} onChange={setPhone} />
+          <TextField name="member-email" type="email" inputMode="email" label="Email" value={email} onChange={setEmail} />
           <ChoiceGroup
             name="member-role"
             legend="They can"

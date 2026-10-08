@@ -305,7 +305,7 @@ Accounts are optional: anyone can order as a guest, and a guest order can be cla
 
 **Accounts**
 
-- Sign in with phone + a one-time code sent on WhatsApp, email + password, or Google.
+- Sign in with email + a one-time code sent by email (decided 8 Oct 2026: free, where a WhatsApp code is charged per message; built on the site). The account is the verified email.
 - Account page: all orders, saved brand kits, saved addresses, invoices and receipts, credit balance.
 - **Brand kit:** logo files, colours and fonts saved once and auto-filled into every future brief. This is the main reason a repeat customer creates an account.
 - **Reorder:** one click to repeat a past order with the same approved artwork, skipping design.

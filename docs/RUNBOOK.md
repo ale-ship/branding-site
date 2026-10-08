@@ -28,7 +28,7 @@ next. Update it at the end of every task.
   pinned notes and an approval checklist, every version kept, the pre-production sample, the
   production log with a calculated ETA, pickup codes, deliveries and early (partial) deliveries.
 - **6 Oct 2026, online ordering Phase 3 (accounts and site jobs) built**, mocked: sign-in with a
-  WhatsApp code, `/account` with every order, brand kit, saved addresses and "Order again"; site jobs
+  code (by email since 8 Oct), `/account` with every order, brand kit, saved addresses and "Order again"; site jobs
   run survey booking → firm quote → deposit → design → installation date → sign-off → balance.
 - **6 Oct 2026, online ordering Phase 4 (polish) built**, mocked: the capacity calendar drives the
   deadlines offered, proofs show a mockup on the item, print-ready files are checked in the browser
@@ -634,15 +634,20 @@ Still mocked. With this the order workflow spec's four phases are all on the sit
 
 Still mocked (`src/lib/api/mock-accounts.ts`, `mock-orders.ts`).
 
-- **Sign-in** (`/account`, `components/account/SignInForm.tsx`): phone, then a six-digit code on
-  WhatsApp; no passwords. Codes last 10 minutes, allow 5 tries and can be resent after a minute; the
-  session is an httpOnly cookie (`nb-session`) for 30 days (`src/lib/account.ts`). The mock shows the
-  code on the page ("Demo: …"); the server action passes it on only in mock mode, and the backend
-  must never return it.
-- **The account is its verified phone**: every order placed with that phone is listed, guest orders
-  included, so there is nothing to claim. Its orders also open without the secret link
-  (`loadOrder` and `resolveAccess` fall back to the session). Missing name and email come from the
-  latest order.
+- **Sign-in** (`/account`, `components/account/SignInForm.tsx`): email, then a six-digit code sent
+  there; no passwords. (Built with a WhatsApp code on 6 Oct; switched to email on 8 Oct because
+  Meta charges about US$0.004 for every WhatsApp authentication message in Kenya, and email is
+  free.) Codes last 10 minutes, allow 5 tries and can be resent after a minute; the session is an
+  httpOnly cookie (`nb-session`) for 30 days (`src/lib/account.ts`: `normaliseEmail`, `maskEmail`).
+  The mock shows the code on the page ("Demo: …"); the server action passes it on only in mock mode,
+  and the backend must never return it.
+- **The account is its verified email** (lower case): every order placed with that email is listed,
+  guest orders included, so there is nothing to claim. Its orders also open without the secret link
+  (`loadOrder` and `resolveAccess` fall back to the session, as `{ email }` access, which is only
+  ever built from a session). The phone is a detail on the account, for M-Pesa and delivery; it and
+  the name start from the latest order. Guests still find an order with its number and phone.
+- **Company members** are added and recognised by email; a member's order is a company order when
+  they order with their own email, and proofs are approved by an owner or approver signed in.
 - **Brand kit** (colours, fonts, logo file names, notes) and up to five **delivery addresses**. A new
   order starts with the account's details, brand kit and first address (`startingDraft` in
   `src/app/order/new/page.tsx`; the server still checks and prices everything).
@@ -782,6 +787,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 8 Oct 2026 | **Accounts sign in with an emailed code, not WhatsApp**: an account is its verified email; orders join it by the email they were placed with; company members are added by email; the phone stays a detail for M-Pesa and delivery; guests still find an order by its number and phone | Owner's decision: Meta charges per WhatsApp authentication message (about US$0.004 each in Kenya); email from our own mailbox is free |
 | 7 Oct 2026 | Backend B1: the order catalogue lives in Postgres, seeded from `shared/catalogue` (the seed adds what's missing and never overwrites, so staff edits survive deploys); the deadline tiers, delivery zones and deposit rule stay in `shared/rules/pricing.js` until the price manager (B4); the site moves to the API method by method with `NEXT_PUBLIC_API_MODE=live` | The site and the API price with the same code from the same data; a deploy can never undo a staff price |
 | 7 Oct 2026 | **The site goes on the shared Contabo VPS like Noorcom Computers** (`docs/VPS_BRANDING.md`): staging at `staging.noorcombranding.co.ke` (one A record; the live name stays on Lovable until cutover), cloned with a read-only deploy key, port 4301; the database and Redis on the box | Owner's request: same arrangement as electronics |
 | 7 Oct 2026 | Work moves to the office machine (`C:\noorcom-branding`). Development Redis on Windows is **Memurai** (no Docker); the database work is done mostly on the VPS, with a local Postgres 18 and Memurai for the tests | Owner's decision |
@@ -789,7 +795,7 @@ Newest first.
 | 6 Oct 2026 | Backend B0: the shared code is JavaScript + JSDoc in `shared/` (npm workspace), its types in a `.d.ts` both sides read; the site keeps its imports through re-exports | One copy of every rule, checked by both type checkers |
 | 6 Oct 2026 | Company orders are approved only by the company's owner or an approver; PO numbers print on invoices | Spec "company accounts" |
 | 6 Oct 2026 | Deadlines offered come from the capacity calendar; a tier the workshop can't meet is switched off, not sold | Spec "capacity calendar" |
-| 6 Oct 2026 | Accounts sign in with the phone and a WhatsApp code only; an account is its verified phone, so guest orders join it without claiming | Spec "Accounts"; no passwords to leak |
+| 6 Oct 2026 | Accounts sign in with the phone and a WhatsApp code only; an account is its verified phone, so guest orders join it without claiming. **Replaced 8 Oct: email** | Spec "Accounts"; no passwords to leak |
 | 6 Oct 2026 | **Paybill payments go through Absa C2B on 303030**; the order number travels in the account reference (`2055268420#NB123456`, format to confirm) and is matched automatically, with phone + amount as the fallback and an unmatched queue for staff | Owner's decision |
 | 6 Oct 2026 | Invoices and receipts use the main number and info@ (confirmed) and **start afresh**: INV00001, RCT00001; a receipt for every confirmed payment | Owner's decision |
 | 6 Oct 2026 | **The site's colours follow the logo**: red accent with white text on it, black type, a black dark section, black underlined links | Owner's decision |

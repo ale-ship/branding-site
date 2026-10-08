@@ -28,9 +28,9 @@ export default async function AccountPage() {
       <Container className="grid grid-cols-1 gap-10 py-16 sm:py-24 lg:grid-cols-2">
         <div>
           <Eyebrow>Your account</Eyebrow>
-          <h1 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] leading-[1] font-extrabold">Sign in with your phone</h1>
+          <h1 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] leading-[1] font-extrabold">Sign in with your email</h1>
           <p className="mt-4 max-w-md text-lg text-body">
-            No password: we send a code on WhatsApp. You’ll see every order placed with your number, keep your brand kit for the next brief, and reorder in one tap.
+            No password: we email you a code. You’ll see every order placed with your email, keep your brand kit for the next brief, and reorder in one tap.
           </p>
         </div>
         <div className="bg-paper p-6 sm:p-8">
@@ -49,7 +49,7 @@ export default async function AccountPage() {
           {account.name ? `Hello, ${account.name.split(' ')[0]}` : 'Your account'}
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-body">
-          <span>Signed in as {localPhone(account.phone)}</span>
+          <span className="break-all">Signed in as {account.email}</span>
           {account.credit > 0 && (
             <span>
               Credit <strong className="text-heading">{formatKes(account.credit)}</strong>
@@ -161,11 +161,11 @@ export default async function AccountPage() {
               {account.companyAccount
                 ? account.companyAccount.role === 'member'
                   ? 'Your orders go on the company’s invoices; an approver checks their proofs.'
-                  : 'Colleagues order with their own phones; owners and approvers approve their proofs. PO numbers go on the invoices.'
-                : 'Set up a company account: colleagues order with their own phones, one person approves proofs, and invoices carry your PO numbers.'}
+                  : 'Colleagues order with their own email; owners and approvers approve their proofs. PO numbers go on the invoices.'
+                : 'Set up a company account: colleagues order with their own email, one person approves proofs, and invoices carry your PO numbers.'}
             </p>
             {account.companyAccount ? (
-              <CompanyMembers company={account.companyAccount} isOwner={account.companyAccount.role === 'owner'} myPhone={account.phone} />
+              <CompanyMembers company={account.companyAccount} isOwner={account.companyAccount.role === 'owner'} myEmail={account.email} />
             ) : (
               <CreateCompanyForm defaultName={account.company} />
             )}
@@ -174,7 +174,7 @@ export default async function AccountPage() {
             <h2 id="details-title" className="mb-5 text-2xl font-bold">
               Your details
             </h2>
-            <DetailsForm initial={{ name: account.name, email: account.email, company: account.company }} />
+            <DetailsForm initial={{ name: account.name, phone: account.phone ? localPhone(account.phone) : '', company: account.company }} />
           </section>
         </div>
       </Container>

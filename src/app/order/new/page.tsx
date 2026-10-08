@@ -44,7 +44,7 @@ function startingDraft(product: OrderProduct, account: Account, reorder: Reorder
   d.name = account.name;
   d.company = account.company;
   d.email = account.email;
-  d.phone = localPhone(account.phone);
+  d.phone = account.phone ? localPhone(account.phone) : '';
   const kit = account.brandKit;
   if (kit) {
     d.common = { ...d.common, colours: kit.colours, typography: kit.typography, fonts: kit.fonts, assets: kit.logos, notes: kit.notes };

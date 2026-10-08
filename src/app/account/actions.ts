@@ -1,9 +1,8 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { coerceAddress, coerceBrandKit, isCode, SESSION_COOKIE, SESSION_DAYS } from '@/lib/account';
+import { coerceAddress, coerceBrandKit, isCode, normaliseEmail, SESSION_COOKIE, SESSION_DAYS } from '@/lib/account';
 import { api, apiMode, OrderError } from '@/lib/api';
-import { normaliseKenyanPhone } from '@/lib/quote';
 
 /**
  * Accounts, server side (docs/ORDER_WORKFLOW_SPEC.md, "Accounts"). The session lives in an httpOnly
@@ -23,11 +22,13 @@ async function session(): Promise<string> {
   return value;
 }
 
-export async function requestCodeAction(phone: unknown): Promise<{ ok: true; sentTo: string; demoCode?: string } | Fail> {
-  const msisdn = normaliseKenyanPhone(String(phone ?? ''));
-  if (!msisdn) return { ok: false, message: 'Enter your phone number, like 0722 530 301.' };
+const ENTER_EMAIL = 'Enter your email address, like you@company.co.ke.';
+
+export async function requestCodeAction(email: unknown): Promise<{ ok: true; sentTo: string; demoCode?: string } | Fail> {
+  const address = normaliseEmail(email);
+  if (!address) return { ok: false, message: ENTER_EMAIL };
   try {
-    const sent = await api.requestSignInCode(msisdn);
+    const sent = await api.requestSignInCode(address);
     // The mock hands the code back so the flow can be tried; the live API never does.
     return { ok: true, sentTo: sent.sentTo, ...(apiMode === 'mock' && sent.demoCode ? { demoCode: sent.demoCode } : {}) };
   } catch (e) {
@@ -35,13 +36,13 @@ export async function requestCodeAction(phone: unknown): Promise<{ ok: true; sen
   }
 }
 
-export async function verifyCodeAction(phone: unknown, code: unknown): Promise<Done | Fail> {
-  const msisdn = normaliseKenyanPhone(String(phone ?? ''));
+export async function verifyCodeAction(email: unknown, code: unknown): Promise<Done | Fail> {
+  const address = normaliseEmail(email);
   const c = String(code ?? '').trim();
-  if (!msisdn) return { ok: false, message: 'Enter your phone number, like 0722 530 301.' };
-  if (!isCode(c)) return { ok: false, message: 'Enter the six-digit code from WhatsApp.' };
+  if (!address) return { ok: false, message: ENTER_EMAIL };
+  if (!isCode(c)) return { ok: false, message: 'Enter the six-digit code from the email.' };
   try {
-    const { session: value } = await api.verifySignInCode(msisdn, c);
+    const { session: value } = await api.verifySignInCode(address, c);
     (await cookies()).set(SESSION_COOKIE, value, COOKIE_OPTIONS);
     return { ok: true };
   } catch (e) {
@@ -61,7 +62,7 @@ export async function updateDetailsAction(raw: unknown): Promise<Done | Fail> {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const s = (v: unknown) => (typeof v === 'string' ? v : '');
   try {
-    await api.updateAccount(await session(), { name: s(r.name), email: s(r.email), company: s(r.company) });
+    await api.updateAccount(await session(), { name: s(r.name), phone: s(r.phone), company: s(r.company) });
     return { ok: true };
   } catch (e) {
     return failure(e, 'We couldn’t save that. Please try again.');
@@ -111,19 +112,19 @@ export async function createCompanyAction(raw: unknown): Promise<Done | Fail> {
 
 export async function addMemberAction(raw: unknown): Promise<Done | Fail> {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const phone = normaliseKenyanPhone(String(r.phone ?? ''));
-  if (!phone) return { ok: false, message: 'Enter their phone number, like 0722 530 301.' };
+  const email = normaliseEmail(r.email);
+  if (!email) return { ok: false, message: 'Enter their email address, like name@company.co.ke.' };
   try {
-    await api.addCompanyMember(await session(), { phone, name: String(r.name ?? ''), role: r.role === 'approver' ? 'approver' : 'member' });
+    await api.addCompanyMember(await session(), { email, name: String(r.name ?? ''), role: r.role === 'approver' ? 'approver' : 'member' });
     return { ok: true };
   } catch (e) {
     return failure(e, 'We couldn’t add them. Please try again.');
   }
 }
 
-export async function removeMemberAction(phone: unknown): Promise<Done | Fail> {
+export async function removeMemberAction(email: unknown): Promise<Done | Fail> {
   try {
-    await api.removeCompanyMember(await session(), String(phone ?? ''));
+    await api.removeCompanyMember(await session(), String(email ?? ''));
     return { ok: true };
   } catch (e) {
     return failure(e, 'We couldn’t remove them. Please try again.');

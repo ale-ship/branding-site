@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coerceAddress, coerceBrandKit, isCode, maskPhone, MAX_KIT_LOGOS } from './account';
+import { coerceAddress, coerceBrandKit, isCode, maskEmail, maskPhone, MAX_KIT_LOGOS, normaliseEmail } from './account';
 
 describe('account rules', () => {
   it('checks codes and masks phones', () => {
@@ -7,6 +7,17 @@ describe('account rules', () => {
     expect(isCode('12345')).toBe(false);
     expect(isCode('12345a')).toBe(false);
     expect(maskPhone('+254722530301')).toBe('07•• ••• 301');
+  });
+
+  it('knows an email however it is typed, and masks it', () => {
+    expect(normaliseEmail('  Wanjiru.Kamau@Example.CO.KE ')).toBe('wanjiru.kamau@example.co.ke');
+    expect(normaliseEmail('sales+orders@kamau-foods.co.ke')).toBe('sales+orders@kamau-foods.co.ke');
+    for (const bad of ['', 'wanjiru', 'wanjiru@', '@example.co.ke', 'wanjiru@example', 'wan jiru@example.co.ke', 'wanjiru@example.c', 42, null]) {
+      expect(normaliseEmail(bad), String(bad)).toBeNull();
+    }
+    expect(normaliseEmail(`${'a'.repeat(200)}@example.co.ke`)).toBeNull();
+    expect(maskEmail('wanjiru@example.co.ke')).toBe('wa•••@example.co.ke');
+    expect(maskEmail('a@example.co.ke')).toBe('a•••@example.co.ke');
   });
 
   it('cleans a brand kit and says what to fix', () => {

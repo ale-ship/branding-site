@@ -5,7 +5,7 @@ import { api, demo, OrderError, type Order, type OrderAccess, type OrderPayment 
 import { coerceOrderDraft, toOrderInput, validateOrderDraft, type OrderErrors } from '@/lib/order';
 import { changeRequestError, checklistComplete, coerceChecklist, coercePins, MAX_CHANGE_NOTES } from '@/lib/proof';
 import { normaliseKenyanPhone } from '@/lib/quote';
-import { SESSION_COOKIE } from '@/lib/account';
+import { normaliseEmail, SESSION_COOKIE } from '@/lib/account';
 import { accessCookie, parseAccess } from './access';
 
 /**
@@ -17,13 +17,14 @@ type Fail = { ok: false; message: string; errors?: OrderErrors };
 
 const COOKIE_OPTIONS = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60 * 60 * 24 * 90 };
 
-async function remember(ref: string, value: OrderAccess) {
+/** Only the link's token or order number + phone are remembered: an account's access comes from its session. */
+async function remember(ref: string, value: { token: string } | { phone: string }) {
   (await cookies()).set(accessCookie(ref), 'token' in value ? `t:${value.token}` : `p:${value.phone}`, COOKIE_OPTIONS);
 }
 
 /**
  * The token from the link if there is one, else what this browser remembers for the order, else the
- * signed-in account's verified phone (orders placed with it are the account's).
+ * signed-in account's verified email (orders placed with it are the account's).
  */
 async function resolveAccess(ref: string, token: string): Promise<OrderAccess> {
   if (token) return { token: String(token) };
@@ -32,7 +33,7 @@ async function resolveAccess(ref: string, token: string): Promise<OrderAccess> {
   if (remembered) return remembered;
   const session = jar.get(SESSION_COOKIE)?.value;
   const account = session ? await api.getAccount(session) : null;
-  return account ? { phone: account.phone } : { token: '' };
+  return account ? { email: account.email } : { token: '' };
 }
 
 const failure = (e: unknown, fallback: string): Fail =>
@@ -48,8 +49,8 @@ export async function createOrderAction(productSlug: string, input: unknown): Pr
     const input = toOrderInput(draft, product);
     const session = (await cookies()).get(SESSION_COOKIE)?.value;
     const account = session ? await api.getAccount(session) : null;
-    // A company order only when the signed-in member orders with their own phone.
-    if (account?.companyAccount && account.phone === input.customer.phone) input.company = { id: account.companyAccount.id, poNumber: draft.poNumber.trim() };
+    // A company order only when the signed-in member orders with their own email.
+    if (account?.companyAccount && account.email === normaliseEmail(input.customer.email)) input.company = { id: account.companyAccount.id, poNumber: draft.poNumber.trim() };
     const { ref, token } = await api.createOrder(input);
     await remember(ref, { token });
     return { ok: true, ref, token };
@@ -96,7 +97,7 @@ export async function approveProofAction(ref: string, token: string, version: nu
     const account = session ? await api.getAccount(session) : null;
     if (account) {
       try {
-        await api.approveProof(String(ref), { phone: account.phone }, Number(version), ticks);
+        await api.approveProof(String(ref), { email: account.email }, Number(version), ticks);
         return { ok: true };
       } catch (e) {
         if (!(e instanceof OrderError && e.code === 'not_found')) throw e;

@@ -393,7 +393,8 @@ export type OrderSummary = {
 };
 
 export type CompanyRole = 'owner' | 'approver' | 'member';
-export type CompanyMember = { phone: string; name: string; role: CompanyRole };
+/** A person in a company account, known by the email they sign in with. */
+export type CompanyMember = { email: string; name: string; role: CompanyRole };
 
 /**
  * Several people ordering for one company (spec, "Accounts": company accounts). Members' orders need
@@ -406,16 +407,18 @@ export type StatementLine = { date: string; ref: string; document: string; descr
 export type Statement = { lines: StatementLine[]; invoiced: number; paid: number; balance: number };
 
 export type Account = {
-  phone: string;
-  name: string;
+  /** The verified email the account signs in with: it is the account. */
   email: string;
+  name: string;
+  /** For M-Pesa and delivery; from the latest order until the customer edits it. */
+  phone: string;
   company: string;
   brandKit: BrandKit | null;
   addresses: SavedAddress[];
-  /** Every order placed with this phone, newest first: guest orders join the account by themselves. */
+  /** Every order placed with this email, newest first: guest orders join the account by themselves. */
   orders: OrderSummary[];
   credit: number;
-  /** The company this phone belongs to, with its role there. */
+  /** The company this email belongs to, with its role there. */
   companyAccount: (Company & { role: CompanyRole }) | null;
   /** Other members' orders, for owners and approvers. */
   companyOrders: (OrderSummary & { placedBy: string })[];
@@ -427,7 +430,11 @@ export type AccountSession = { session: string };
 /** What reordering fills in: the past order's choices, with its approved artwork and no design fee. */
 export type ReorderDraft = Pick<OrderInput, 'product' | 'quantity' | 'brief' | 'urgency' | 'handover' | 'common'> & { from: string };
 
-/** How a visitor proves an order is theirs: the secret link, or the phone used to order. */
-export type OrderAccess = { token: string } | { phone: string };
+/**
+ * How a visitor proves an order is theirs: the secret link, the phone used to order (order number +
+ * phone, for guests), or a signed-in account's verified email. The email form is only ever built
+ * from a session on the server, never from what a visitor types.
+ */
+export type OrderAccess = { token: string } | { phone: string } | { email: string };
 
 export type OrderErrorCode = 'not_found' | 'invalid' | 'invalid_state';

@@ -14,6 +14,13 @@ export const metadata: Metadata = { title: 'Statement of account', robots: { ind
 const day = (iso: string) => formatDateShort(nairobiToday(new Date(iso)));
 
 /** Every invoice and payment on the account, with a running balance; printable, and as CSV. */
+/** A short, stable number for the customer on their statements, from the account's email. */
+function customerNo(email: string): string {
+  let h = 5381;
+  for (const ch of email) h = (h * 33 + ch.charCodeAt(0)) % 1_000_000;
+  return String(h).padStart(6, '0');
+}
+
 export default async function StatementPage() {
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
   const account = session ? await api.getAccount(session) : null;
@@ -27,7 +34,7 @@ export default async function StatementPage() {
       backLabel="Back to your account"
       label="Statement of account"
       title="STATEMENT"
-      number={`${account.phone.slice(-6)}-${today.replace(/-/g, '')}`}
+      number={`${customerNo(account.email)}-${today.replace(/-/g, '')}`}
       highlight={{ label: statement.balance < 0 ? 'In credit' : 'Balance due', value: `KES ${money(Math.abs(statement.balance))}` }}
     >
       <div className="grid grid-cols-1 gap-6 py-6 sm:grid-cols-3">
@@ -36,7 +43,7 @@ export default async function StatementPage() {
           <DocLabel>Statement for</DocLabel>
           <p className="mt-2 text-base font-bold text-heading">{account.company || account.name}</p>
           {account.company && <p className="text-muted">{account.name}</p>}
-          <p className="text-muted">{localPhone(account.phone)}</p>
+          {account.phone && <p className="text-muted">{localPhone(account.phone)}</p>}
           <p className="break-all text-muted">{account.email}</p>
         </div>
         <div>

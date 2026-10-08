@@ -192,14 +192,14 @@ export interface SiteApi {
   /** Site jobs: books (or moves) the installation date while the job is in production. */
   bookInstall(ref: string, access: OrderAccess, date: string): Promise<Order>;
 
-  // Accounts (spec, "Accounts"): phone + a one-time code on WhatsApp. Orders placed with the phone
-  // belong to the account, guest orders included. Methods taking a session throw OrderError when
-  // it has expired.
-  /** Sends a sign-in code on WhatsApp. `demoCode` is filled by the mock only, never by the backend. */
-  requestSignInCode(phone: string): Promise<{ sentTo: string; demoCode?: string }>;
-  verifySignInCode(phone: string, code: string): Promise<AccountSession>;
+  // Accounts (spec, "Accounts"): email + a one-time code sent there (owner, 8 Oct 2026: email is free,
+  // a WhatsApp code is charged per message). Orders placed with the email belong to the account,
+  // guest orders included. Methods taking a session throw OrderError when it has expired.
+  /** Emails a sign-in code. `demoCode` is filled by the mock only, never by the backend. */
+  requestSignInCode(email: string): Promise<{ sentTo: string; demoCode?: string }>;
+  verifySignInCode(email: string, code: string): Promise<AccountSession>;
   getAccount(session: string): Promise<Account | null>;
-  updateAccount(session: string, details: { name: string; email: string; company: string }): Promise<Account>;
+  updateAccount(session: string, details: { name: string; phone: string; company: string }): Promise<Account>;
   saveBrandKit(session: string, kit: BrandKit): Promise<Account>;
   saveAddress(session: string, address: Omit<SavedAddress, 'id'> & { id?: string }): Promise<Account>;
   removeAddress(session: string, id: string): Promise<Account>;
@@ -209,9 +209,9 @@ export interface SiteApi {
   /** Invoices and payments for the account's own orders, with a running balance. */
   getStatement(session: string): Promise<Statement>;
   createCompany(session: string, details: { name: string; kraPin: string }): Promise<Account>;
-  /** Owners only. Adding a phone that already belongs to a company is refused. */
+  /** Owners only. Adding an email that already belongs to a company is refused. */
   addCompanyMember(session: string, member: CompanyMember): Promise<Account>;
-  removeCompanyMember(session: string, phone: string): Promise<Account>;
+  removeCompanyMember(session: string, email: string): Promise<Account>;
 }
 
 export type * from './order-types';

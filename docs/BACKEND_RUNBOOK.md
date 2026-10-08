@@ -88,7 +88,7 @@ in Redis is the only copy of anything that matters.
 | `nb:callback:seen:<receipt>` | Fast drop of a repeated callback before it reaches the database (the unique column stays the authority) | 24 h |
 | `nb:cache:catalogue` | The catalogue answer; deleted when staff change a product, price or tier | 10 min |
 | `nb:order:events:<orderNo>` | Pub/sub channel: the API publishes when an order changes, so the order page can update live (server-sent events) instead of polling every 3 s | Not stored |
-| `nb:otp:<phone>` | A sign-in code's hash, tries left and when it was sent (code 6 digits, 5 tries, resend after 60 s) | 10 min |
+| `nb:otp:<email>` | A sign-in code's hash, tries left and when it was sent (code 6 digits, 5 tries, resend after 60 s) | 10 min |
 | `nb:session:<hash>` | A customer session (phone); the cookie holds the token, Redis only its hash | 30 days, sliding |
 | `nb:fake:*` | The fakes' state in development and staging (section 2.3) | 1 day |
 
@@ -240,7 +240,7 @@ backend/
 │  │  ├─ surveys/          Mechanism B: book the survey, the quote builder (shared/rules/site-quote.js),
 │  │  │                    accept, installation date, sign-off
 │  │  ├─ deliveries/       pickup codes, rider or courier records, partial deliveries
-│  │  ├─ accounts/         sign-in codes (WhatsApp), sessions in Redis, profile, brand kit, addresses,
+│  │  ├─ accounts/         sign-in codes (by email), sessions in Redis, profile, brand kit, addresses,
 │  │  │                    reorder, statement (shared/rules/statement.js)
 │  │  ├─ companies/        company, members and roles; who may approve a company's proofs
 │  │  ├─ uploads/          POST /api/uploads → presigned PUT; file records; size and type checks
@@ -288,7 +288,7 @@ backend/
 | --- | --- | --- |
 | 001 | catalogue | `categories`, `products` (mechanism A/B/C, brief_schema JSONB, min_qty, lead days, setup and design fees, survey fee, package price, active), `price_tiers` |
 | 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
-| 003 | people | `customers` (phone unique, name, email, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, phone unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
+| 003 | people | `customers` (email unique, lower case: the account; name, phone, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, email unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
 | 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
 | 005 | files | `files` (owner, kind: logo, inspiration, artwork, proof, final, photo; R2 key; size; type) |
 | 006 | proofs | `proofs` (version, status, file, mockup file, decided_at, approved_by and the checklist ticked), `proof_comments` (x, y nullable for a note on the whole proof, text), `samples` (pre-production sample: photo, status, comments) |
@@ -389,7 +389,7 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | `bookSurvey` | `POST /api/orders/:no/survey` | After the survey fee |
 | `acceptSiteQuote` | `POST /api/orders/:no/quote/accept` | Within its validity; sets the total and the deposit |
 | `bookInstall` | `POST /api/orders/:no/install` | Two working days' notice, working days only |
-| `requestSignInCode`, `verifySignInCode` | `POST /api/auth/code`, `/api/auth/verify` | WhatsApp code; session cookie set by the site |
+| `requestSignInCode`, `verifySignInCode` | `POST /api/auth/code`, `/api/auth/verify` | Emailed code (owner, 8 Oct 2026); session cookie set by the site |
 | `getAccount`, `updateAccount`, `signOut` | `GET`, `PATCH /api/account`; `POST /api/auth/sign-out` | Session required |
 | `saveBrandKit`, `saveAddress`, `removeAddress` | `PUT /api/account/brand-kit`; `/api/account/addresses` | |
 | `reorderDraft` | `GET /api/account/orders/:no/reorder` | The account's own A orders with an approved proof |
@@ -413,7 +413,7 @@ Per IP, 429 `rate_limited` beyond them, Redis keys `nb:rl:<name>:<ip>` (Noorcom 
 | `POST /api/payments/stk` | 10 per 10 minutes, and one pending prompt per order (`nb:stk:lock:*`) |
 | `POST /api/uploads` | 30 per 10 minutes |
 | `POST /api/requests/quote`, `/contact` | 5 per hour, with a hidden honeypot field |
-| `POST /api/auth/code` | 5 per hour per IP and 1 per minute per phone (`nb:otp:*`) |
+| `POST /api/auth/code` | 5 per hour per IP and 1 per minute per email (`nb:otp:*`) |
 | `POST /api/auth/verify` | 20 per 10 minutes per IP; 5 tries per code |
 | Document downloads | 60 per 10 minutes |
 | Absa callbacks | Not limited (Absa's few addresses; a wrong secret stores nothing) |

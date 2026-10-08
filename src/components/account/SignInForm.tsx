@@ -1,16 +1,16 @@
 'use client';
 
-import { MessageCircle } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { requestCodeAction, verifyCodeAction } from '@/app/account/actions';
-import { normaliseKenyanPhone } from '@/lib/quote';
+import { normaliseEmail } from '@/lib/account';
 import { TextField } from '../quote/fields';
 
-/** Phone, then the six-digit code sent on WhatsApp. No passwords. */
+/** Email, then the six-digit code we email. No passwords. */
 export function SignInForm() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState<{ sentTo: string; demoCode?: string } | null>(null);
   const [error, setError] = useState('');
@@ -22,20 +22,20 @@ export function SignInForm() {
   }, [sent]);
 
   const send = () => {
-    if (!normaliseKenyanPhone(phone)) return setError('Enter your phone number, like 0722 530 301.');
+    if (!normaliseEmail(email)) return setError('Enter your email address, like you@company.co.ke.');
     setError('');
     startTransition(async () => {
-      const result = await requestCodeAction(phone);
+      const result = await requestCodeAction(email);
       if (result.ok) setSent({ sentTo: result.sentTo, demoCode: result.demoCode });
       else setError(result.message);
     });
   };
 
   const verify = () => {
-    if (!/^\d{6}$/.test(code.trim())) return setError('Enter the six-digit code from WhatsApp.');
+    if (!/^\d{6}$/.test(code.trim())) return setError('Enter the six-digit code from the email.');
     setError('');
     startTransition(async () => {
-      const result = await verifyCodeAction(phone, code);
+      const result = await verifyCodeAction(email, code);
       if (result.ok) router.refresh();
       else setError(result.message);
     });
@@ -53,22 +53,22 @@ export function SignInForm() {
     >
       {!sent ? (
         <>
-          <TextField name="signin-phone" type="tel" inputMode="tel" autoComplete="tel" label="Phone number" hint="The one you order and pay with." value={phone} onChange={setPhone} error={error} />
+          <TextField name="signin-email" type="email" inputMode="email" autoComplete="email" label="Email" hint="The one you put on your orders." value={email} onChange={setEmail} error={error} />
           <button
             type="submit"
             disabled={pending}
             className="inline-flex min-h-12 items-center justify-center gap-2 bg-accent px-6 font-semibold text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-60"
           >
-            <MessageCircle aria-hidden className="size-5" />
-            {pending ? 'Sending…' : 'Send me a code on WhatsApp'}
+            <Mail aria-hidden className="size-5" />
+            {pending ? 'Sending…' : 'Email me a code'}
           </button>
         </>
       ) : (
         <>
           <p role="status" className="text-body">
-            We sent a six-digit code on WhatsApp to <strong className="text-heading">{sent.sentTo}</strong>. It works for ten minutes.
+            We emailed a six-digit code to <strong className="text-heading">{sent.sentTo}</strong>. It works for ten minutes; if it isn’t there in a minute, look in spam.
           </p>
-          {sent.demoCode && <p className="border border-dashed border-border-strong px-4 py-3 text-sm text-body">Demo: no WhatsApp is sent. The code is {sent.demoCode}.</p>}
+          {sent.demoCode && <p className="border border-dashed border-border-strong px-4 py-3 text-sm text-body">Demo: no email is sent. The code is {sent.demoCode}.</p>}
           <div ref={codeBox}>
             <TextField name="signin-code" inputMode="numeric" autoComplete="one-time-code" label="Code" value={code} onChange={setCode} error={error} />
           </div>
@@ -88,7 +88,7 @@ export function SignInForm() {
             }}
             className="inline-flex min-h-11 items-center self-start text-sm font-semibold text-link underline underline-offset-4"
           >
-            Use another number, or send a new code
+            Use another email, or send a new code
           </button>
         </>
       )}

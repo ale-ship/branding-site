@@ -1,3 +1,4 @@
+import { normaliseEmail } from '../account';
 import { addWorkingDays } from '../calendar';
 import { allocate, book, machineFor, MACHINES, type CapacityCalendar, type Machine } from '../capacity';
 import { nairobiToday, normaliseKenyanPhone } from '../quote';
@@ -140,15 +141,20 @@ function initialProgress(p: OrderProduct, quantity: number): OrderProgress {
   return { kind: 'rounds', done: 0, total: p.revisionRounds };
 }
 
+/** Whether a signed-in account's email is the one the order was placed with. */
+const ownedBy = (order: Stored, email: string) => !!normaliseEmail(email) && normaliseEmail(email) === normaliseEmail(order.customer.email);
+
 function find(ref: string, access: OrderAccess): Stored {
   const order = orders.get(ref.trim().toUpperCase());
   if (!order) throw new OrderError('not_found', 'We couldn’t find that order.');
-  const phone = 'phone' in access ? normaliseKenyanPhone(access.phone) : null;
   const ok =
     'token' in access
       ? access.token.length === order.token.length && access.token === order.token
-      : // The phone that ordered, or an approver of the company it was ordered for.
-        phone === order.customer.phone || (!!phone && !!order.company && canApprove(order.company.id, phone));
+      : 'phone' in access
+        ? // The phone that ordered (order number + phone, for guests).
+          normaliseKenyanPhone(access.phone) === order.customer.phone
+        : // A signed-in account: the email that ordered, or an approver of the company it was ordered for.
+          ownedBy(order, access.email) || (!!order.company && canApprove(order.company.id, normaliseEmail(access.email) ?? ''));
   if (!ok) throw new OrderError('not_found', 'We couldn’t find that order.');
   return order;
 }
@@ -289,7 +295,7 @@ export function createOrder(input: OrderInput, newRef: () => string): { ref: str
   let company: Order['company'] = null;
   if (input.company) {
     const c = companies.get(input.company.id);
-    if (!c || !c.members.some((m) => m.phone === input.customer.phone)) throw new OrderError('invalid', 'You’re not a member of that company.');
+    if (!c || !c.members.some((m) => m.email === normaliseEmail(input.customer.email))) throw new OrderError('invalid', 'You’re not a member of that company.');
     company = { id: c.id, name: c.name, poNumber: input.company.poNumber.trim().slice(0, 40), approvers: approversOf(c).map((m) => m.name) };
   }
   const ref = newRef();
@@ -397,7 +403,8 @@ export function approveProof(ref: string, access: OrderAccess, version: number, 
   if (!checklistComplete(checklist)) throw new OrderError('invalid', 'Tick every item on the checklist to approve.');
   // Company orders are approved by the company's owner or an approver (spec, "company accounts").
   if (order.company) {
-    const who = 'phone' in access ? normaliseKenyanPhone(access.phone) : order.customer.phone;
+    // The signed-in account's email; a secret link or order number + phone acts as the customer who ordered.
+    const who = 'email' in access ? normaliseEmail(access.email) : normaliseEmail(order.customer.email);
     if (!who || !canApprove(order.company.id, who)) {
       throw new OrderError('invalid_state', `Proofs for ${order.company.name} are approved by ${order.company.approvers.join(' or ') || 'the company’s approver'}. Ask them to sign in and approve.`);
     }
