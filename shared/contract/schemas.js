@@ -41,3 +41,42 @@ export const priceRequestSchema = z.object({
   urgency: z.enum(urgencies),
   handover: handoverSchema,
 });
+
+const file = z.object({ name: z.string().max(200), size: z.number().finite().min(0), type: z.string().max(100) });
+
+/** The brief every order shares: `CommonBrief`. */
+export const commonBriefSchema = z.object({
+  colours: z.array(z.string().trim().max(40)).max(5),
+  typography: z.enum(['from-logo', 'designer', 'named']),
+  fonts: z.string().trim().max(200),
+  assets: z.array(file).max(10),
+  inspiration: z.array(file).max(10),
+  inspirationLinks: z.array(z.string().trim().max(500)).max(5),
+  text: z.string().max(4000),
+  styles: z.array(z.string().max(40)).max(10),
+  artwork: z.enum(['print-ready', 'need-design']),
+  notes: z.string().max(4000),
+});
+
+/** Who is ordering: `Customer`. The service normalises the phone and email and refuses what isn't one. */
+export const customerSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  company: z.string().trim().max(120),
+  phone: z.string().trim().min(1).max(30),
+  email: z.string().trim().min(3).max(200),
+});
+
+/**
+ * POST /api/orders: `OrderInput`. `company` is not accepted from the request: a company order comes
+ * from the signed-in account, which moves to the API with accounts (step B5).
+ */
+export const orderInputSchema = priceRequestSchema.extend({
+  common: commonBriefSchema,
+  customer: customerSchema,
+});
+
+/** POST /api/orders/lookup: the order number and the phone it was placed with. */
+export const orderLookupSchema = z.object({
+  ref: z.string().trim().toUpperCase().regex(/^NB-\d{6}$/),
+  phone: z.string().trim().min(1).max(30),
+});

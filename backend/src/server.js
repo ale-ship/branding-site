@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { parseConfig } from './config.js';
 import { createPool } from './db/pool.js';
 import { createLogger } from './lib/logger.js';
+import { expireUnpaid } from './modules/orders/service.js';
 import { createRedis } from './redis.js';
 
 /**
@@ -22,6 +23,16 @@ if (!redis) logger.warn('REDIS_URL is not set: running without Redis (rate limit
 redis?.connect().catch((err) => logger.warn({ err }, 'redis not reachable yet, retrying'));
 
 const app = createApp(config, { logger, pool, redis });
+
+// Unpaid orders expire after 48 hours and let go of their machine time. Reading an order expires it
+// on the spot; this sweep catches the ones nobody opens. It moves to the worker with the queues (B3).
+const SWEEP_MS = 15 * 60_000;
+const sweep = () =>
+  expireUnpaid({ pool })
+    .then((n) => n && logger.info({ expired: n }, 'unpaid orders expired'))
+    .catch((err) => logger.warn({ err }, 'expiry sweep failed'));
+const sweeper = pool ? setInterval(sweep, SWEEP_MS) : null;
+sweeper?.unref();
 const server = app.listen(config.port, config.host, () => {
   logger.info({ host: config.host, port: config.port, build: config.build || 'dev', integrations: config.integrations }, 'api listening');
 });
@@ -30,6 +41,7 @@ const server = app.listen(config.port, config.host, () => {
 async function shutdown(signal) {
   logger.info({ signal }, 'shutting down');
   server.close();
+  if (sweeper) clearInterval(sweeper);
   await Promise.allSettled([pool?.end(), redis?.quit()]);
   process.exit(0);
 }

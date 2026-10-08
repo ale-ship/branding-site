@@ -12,7 +12,7 @@ import { SampleReview } from '@/components/order/SampleReview';
 import { AcceptQuote, InstallBooking, SurveyBooking } from '@/components/order/SiteJobPanels';
 import { Container } from '@/components/ui/Container';
 import { Eyebrow } from '@/components/ui/PrintMarks';
-import { api, apiMode, type Order } from '@/lib/api';
+import { api, apiMode, demo, ordersOnApi, type Order } from '@/lib/api';
 import { addWorkingDays, formatDay } from '@/lib/calendar';
 import { formatKes } from '@/lib/format';
 import { describeBrief } from '@/lib/order';
@@ -145,7 +145,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
               defaultPhone={localPhone(order.customer.phone)}
               pending={pendingPayment}
               paybill={{ number: invoiceIssuer.paybill, account: invoiceIssuer.paybillAccount(order.ref) }}
-              isMock={apiMode === 'mock'}
+              isMock={apiMode === 'mock' && !ordersOnApi}
             />
           )}
 
@@ -517,7 +517,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
             </div>
           </section>
 
-          {apiMode === 'mock' && <DemoControls token={token} order={order} />}
+          {demo && <DemoControls token={token} order={order} />}
         </div>
 
         <aside aria-label="Order summary" className="flex flex-col gap-6 lg:sticky lg:top-28 lg:self-start">

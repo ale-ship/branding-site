@@ -3,8 +3,10 @@ import express from 'express';
 import { errorHandler, notFoundHandler } from './lib/errors.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { requestContext } from './middleware/requestId.js';
+import { capacityRoutes } from './modules/capacity/routes.js';
 import { catalogueRoutes } from './modules/catalogue/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
+import { orderRoutes } from './modules/orders/routes.js';
 import { pricingRoutes } from './modules/pricing/routes.js';
 
 /**
@@ -36,9 +38,12 @@ export function createApp(config, { logger, pool, redis, limits = {} }) {
   // Everything else under /api: a general per-IP ceiling (routes add their own, section 8.1).
   app.use('/api', rateLimit(redis, { name: 'api', limit: 300, windowSec: 60, ...limits.api }));
 
-  // The modules (docs/BACKEND_RUNBOOK.md, section 13): B1 catalogue and pricing; orders, payments… follow.
+  // The modules (docs/BACKEND_RUNBOOK.md, section 13): B1 catalogue and pricing; B2 orders and the
+  // capacity calendar; payments follow.
   app.use('/api/catalogue', catalogueRoutes({ pool, redis }));
   app.use('/api/quotes', pricingRoutes({ pool, redis }));
+  app.use('/api/capacity', capacityRoutes({ pool }));
+  app.use('/api/orders', orderRoutes({ pool, redis }));
 
   app.use('/api', notFoundHandler);
   app.use(errorHandler);

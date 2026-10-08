@@ -1,6 +1,6 @@
 # Noorcom Branding Website Runbook
 
-Last updated 7 Oct 2026. This is the handover document: read it first in a new chat or on a new
+Last updated 8 Oct 2026. This is the handover document: read it first in a new chat or on a new
 machine. It records what the project is, what we found, every decision and why, and what comes
 next. Update it at the end of every task.
 
@@ -53,8 +53,18 @@ next. Update it at the end of every task.
   the catalogue and prices from it (`src/lib/api/live.ts`; a price changed in the database reached
   the order page within a minute). Orders, payments and accounts stay on the mock until B2 and B3.
   The local database comes from `scripts\setup-dev-db.ps1`.
-- **Next (owner, 7 Oct 2026: the VPS waits):** Memurai (local Redis), then step B2: orders (create,
-  read, lookup, expiry), invoices (INV) and the WhatsApp and email outbox. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
+- **8 Oct 2026, accounts sign in with an emailed code** instead of WhatsApp (decisions log).
+- **8 Oct 2026, backend step B2 done** (`docs/BACKEND_RUNBOOK.md`, "Step B2"): orders are placed
+  and read on the API (`POST /api/orders`, `GET /api/orders/:no`, `POST /api/orders/lookup`), with
+  their invoice number (INV), the machine time they hold (`GET /api/capacity`), an "order placed"
+  WhatsApp and email in the outbox, and expiry after 48 hours unpaid. With `NEXT_PUBLIC_API_MODE=live`
+  the site places and reads orders there; paying, proofs and accounts stay on the mock until B3 and B5
+  (in live mode those steps say they aren't online yet). Orders placed through the live site's form
+  were in the local database with INV00001 to INV00004.
+- **Next (owner, 7 Oct 2026: the VPS waits):** install Memurai (local Redis: `winget install
+  Memurai.MemuraiDeveloper` in your own terminal; it wouldn't install from Claude's sandbox), then
+  step B3: payments through the Absa fakes, the ledger, receipts (RCT) and the worker that sends the
+  outbox. Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS
   record, deploy key, first deploy) and section 8 (Postgres and Redis). Staff reports and the staff
   dashboard come with B4. Ask Absa for the items in its section 14. Then the launch checklist.
 
@@ -787,6 +797,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 8 Oct 2026 | Backend B2: an order is stored as placed (product, brief, handover and price frozen in JSONB; status, money, email and phone in columns); its token is kept only as a SHA-256 hash and travels in a header, never a URL; placing it is one transaction with the capacity calendar locked; the outbox is written in that transaction and sent by the worker after commit (B3); the site passes the visitor's address on, so per-visitor limits count visitors | Only the server's price counts; two orders can't take the same machine time; no message goes out for an order that rolled back; otherwise the site's server would count as one visitor for every limit |
 | 8 Oct 2026 | **Accounts sign in with an emailed code, not WhatsApp**: an account is its verified email; orders join it by the email they were placed with; company members are added by email; the phone stays a detail for M-Pesa and delivery; guests still find an order by its number and phone | Owner's decision: Meta charges per WhatsApp authentication message (about US$0.004 each in Kenya); email from our own mailbox is free |
 | 7 Oct 2026 | Backend B1: the order catalogue lives in Postgres, seeded from `shared/catalogue` (the seed adds what's missing and never overwrites, so staff edits survive deploys); the deadline tiers, delivery zones and deposit rule stay in `shared/rules/pricing.js` until the price manager (B4); the site moves to the API method by method with `NEXT_PUBLIC_API_MODE=live` | The site and the API price with the same code from the same data; a deploy can never undo a staff price |
 | 7 Oct 2026 | **The site goes on the shared Contabo VPS like Noorcom Computers** (`docs/VPS_BRANDING.md`): staging at `staging.noorcombranding.co.ke` (one A record; the live name stays on Lovable until cutover), cloned with a read-only deploy key, port 4301; the database and Redis on the box | Owner's request: same arrangement as electronics |

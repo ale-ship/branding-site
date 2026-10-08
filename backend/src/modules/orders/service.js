@@ -1,0 +1,175 @@
+// @ts-check
+import { OrderError } from '@noorcom-branding/shared/contract/errors.js';
+import { normaliseEmail } from '@noorcom-branding/shared/rules/account.js';
+import { addWorkingDays, nairobiToday } from '@noorcom-branding/shared/rules/calendar.js';
+import { allocate, machineFor, MACHINES } from '@noorcom-branding/shared/rules/capacity.js';
+import { normaliseKenyanPhone } from '@noorcom-branding/shared/rules/phone.js';
+import { estimatePrice, UNPAID_EXPIRY_HOURS } from '@noorcom-branding/shared/rules/pricing.js';
+import { needsSample } from '@noorcom-branding/shared/rules/production.js';
+import { withTransaction } from '../../db/pool.js';
+import { AppError } from '../../lib/errors.js';
+import { hashToken, newOrderNo, newToken, tokenMatches } from '../../lib/ids.js';
+import { nextNumber } from '../../lib/numbering.js';
+import { book, bookedFrom, lockCalendar, release } from '../capacity/repo.js';
+import { getProduct } from '../catalogue/service.js';
+import { orderPlaced } from '../notifications/templates.js';
+import { checkOrderInput } from './checks.js';
+import * as repo from './repo.js';
+import { toOrder } from './view.js';
+
+/**
+ * Orders (docs/BACKEND_RUNBOOK.md, step B2): placed, read by the customer, expired when unpaid.
+ *
+ * Placing an order is one transaction: the price worked out again against the capacity calendar
+ * (under a lock, so two orders can't take the same machine time), the order row, its machine time,
+ * its invoice number, the "Order placed" event and the WhatsApp and email messages in the outbox.
+ * Nothing leaves the building inside it: the worker sends the outbox after commit.
+ *
+ * @typedef {import('@noorcom-branding/shared/contract/order-types.js').Order} Order
+ * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderInput} OrderInput
+ * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderProduct} OrderProduct
+ * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderProgress} OrderProgress
+ * @typedef {import('../catalogue/service.js').CatalogueDeps} Deps
+ */
+
+const NOT_FOUND = 'We couldn’t find that order.';
+
+/** @param {import('pg').Pool | null} pool */
+function need(pool) {
+  if (!pool) throw new AppError(503, 'unavailable', 'Ordering is unavailable for a moment. Please try again shortly.');
+  return pool;
+}
+
+/**
+ * @param {OrderProduct} p
+ * @param {number} quantity
+ * @returns {OrderProgress}
+ */
+function initialProgress(p, quantity) {
+  if (p.mechanism === 'A') return { kind: 'pieces', done: 0, total: quantity };
+  if (p.mechanism === 'B') return { kind: 'stages', done: 0, total: p.stages.length, stages: p.stages.map((name) => ({ name, done: false })) };
+  return { kind: 'rounds', done: 0, total: p.revisionRounds };
+}
+
+/**
+ * Prices the order again (the browser's price is never used) and opens it, awaiting payment.
+ * @param {Deps} deps
+ * @param {OrderInput} input Already shaped by `orderInputSchema`.
+ * @param {Date} [now]
+ * @returns {Promise<{ ref: string; token: string }>}
+ */
+export async function createOrder(deps, input, now = new Date()) {
+  const pool = need(deps.pool);
+  const product = await getProduct(deps, input.product);
+  if (!product) throw new OrderError('invalid', 'That item can’t be ordered online.');
+  checkOrderInput(product, input);
+  const phone = normaliseKenyanPhone(input.customer.phone);
+  if (!phone) throw new OrderError('invalid', 'Enter a Kenyan mobile number, like 0722 530 301.');
+  const email = normaliseEmail(input.customer.email);
+  if (!email) throw new OrderError('invalid', 'Enter a valid email address.');
+
+  const quantity = product.mechanism === 'A' ? input.quantity : 1;
+  const today = nairobiToday(now);
+  const token = newToken();
+
+  const placed = await withTransaction(pool, async (trx) => {
+    await lockCalendar(trx);
+    const calendar = await bookedFrom(trx, today);
+    const estimate = estimatePrice(product, { ...input, quantity }, today, calendar);
+    if (product.mechanism !== 'B' && estimate.urgency.code !== input.urgency) {
+      throw new OrderError('invalid', 'That deadline isn’t available for this order any more: choose another.');
+    }
+    // The order holds its machine time until it is paid or expires.
+    const machine = machineFor(product, input.brief);
+    const order = {
+      tokenHash: hashToken(token),
+      mechanism: product.mechanism,
+      product: { slug: product.slug, name: product.name, category: product.category },
+      quantity,
+      brief: input.brief,
+      common: input.common,
+      needsDesign: product.mechanism === 'C' || input.needsDesign,
+      urgency: estimate.urgency.code,
+      handover: input.handover,
+      customer: { name: input.customer.name, company: input.customer.company, phone, email },
+      estimate,
+      total: estimate.total,
+      dueNow: estimate.dueNow.amount,
+      duePurpose: estimate.dueNow.purpose,
+      progress: initialProgress(product, quantity),
+      survey: product.mechanism === 'B' ? { preferred: /** @type {string[]} */ (input.brief.surveyDates ?? []), booked: null } : null,
+      sample: needsSample(product.mechanism, quantity) ? { status: 'waiting', photo: null, uploadedAt: null, comments: null } : null,
+      dailyCapacity: machine ? MACHINES[machine].dailyUnits : null,
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + UNPAID_EXPIRY_HOURS * 3_600_000),
+    };
+
+    // Six random digits: draw again on the rare clash.
+    let id = null;
+    let ref = '';
+    for (let tries = 0; id === null && tries < 10; tries++) {
+      ref = newOrderNo();
+      id = await repo.insertOrder(trx, { ...order, orderNo: ref });
+    }
+    if (id === null) throw new Error('no free order number after 10 draws');
+
+    if (machine) await book(trx, id, machine, allocate(quantity, machine, addWorkingDays(today, 1), calendar).days);
+    await repo.insertInvoice(trx, id, { invoiceNo: await nextNumber(trx, 'invoice'), lines: estimate.lines, subtotal: estimate.subtotal, total: estimate.total });
+    await repo.insertEvent(trx, id, 'Order placed.', now);
+    const text = orderPlaced({ name: order.customer.name, ref, dueNow: order.dueNow });
+    await repo.insertNotifications(
+      trx,
+      id,
+      [
+        { channel: 'whatsapp', recipient: phone, template: 'order-placed', payload: { text, ref } },
+        { channel: 'email', recipient: email, template: 'order-placed', payload: { text, ref } },
+      ],
+      now,
+    );
+    return { ref, token };
+  });
+  deps.logger?.info({ ref: placed.ref, product: product.slug }, 'order placed');
+  return placed;
+}
+
+/**
+ * Expires unpaid orders past their 48 hours (just one when `orderId` is given) and lets go of their
+ * machine time. Run on every read of an unpaid order and every 15 minutes (server.js).
+ * @param {{ pool: import('pg').Pool | null }} deps
+ * @param {Date} [now]
+ * @param {number} [orderId]
+ * @returns {Promise<number>} How many expired.
+ */
+export async function expireUnpaid(deps, now = new Date(), orderId) {
+  return withTransaction(need(deps.pool), async (trx) => {
+    const ids = await repo.expireUnpaid(trx, now, orderId);
+    await release(trx, ids);
+    for (const id of ids) await repo.insertEvent(trx, id, `Not paid within ${UNPAID_EXPIRY_HOURS} hours, so the order has expired.`, now);
+    return ids.length;
+  });
+}
+
+/**
+ * The order for its customer: by the secret link's token, or by the phone it was placed with (order
+ * number + phone). The same not_found either way, so neither can be used to find which orders exist.
+ * @param {Deps} deps
+ * @param {string} ref
+ * @param {{ token: string } | { phone: string }} access
+ * @param {Date} [now]
+ * @returns {Promise<Order>}
+ */
+export async function getOrder(deps, ref, access, now = new Date()) {
+  const pool = need(deps.pool);
+  const orderNo = ref.trim().toUpperCase();
+  let row = await repo.findByOrderNo(pool, orderNo);
+  const ok =
+    row &&
+    ('token' in access ? !!access.token && tokenMatches(access.token, row.token_hash) : normaliseKenyanPhone(access.phone) === row.customer_phone);
+  if (!row || !ok) throw new OrderError('not_found', NOT_FOUND);
+  if (row.status === 'awaiting_payment' && row.expires_at && new Date(row.expires_at) < now) {
+    await expireUnpaid(deps, now, row.id);
+    row = await repo.findByOrderNo(pool, orderNo);
+    if (!row) throw new OrderError('not_found', NOT_FOUND);
+  }
+  return toOrder(row, await repo.historyOf(pool, row.id));
+}

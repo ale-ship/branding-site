@@ -1,9 +1,10 @@
 # Noorcom Branding Backend Runbook
 
-Last updated 7 Oct 2026. The design of the backend behind the website: the stack, the file layout,
-the database, the API, the payment flows and the order to build it in. **Step B0 is built** (the
-`backend/` skeleton and `shared/`); the rest is the plan to build from. Read `docs/RUNBOOK.md` (the site) and
-`docs/ORDER_WORKFLOW_SPEC.md` (the order workflow) first.
+Last updated 8 Oct 2026. The design of the backend behind the website: the stack, the file layout,
+the database, the API, the payment flows and the order to build it in. **Steps B0 to B2 are built**
+(section 13: the skeleton and `shared/`, the catalogue and price, orders); the rest is the plan to
+build from. Read `docs/RUNBOOK.md` (the site) and `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow)
+first.
 
 ## 1. What the backend does
 
@@ -286,7 +287,8 @@ backend/
 
 | # | Migration | Tables and key points |
 | --- | --- | --- |
-| 001 | catalogue | `categories`, `products` (mechanism A/B/C, brief_schema JSONB, min_qty, lead days, setup and design fees, survey fee, package price, active), `price_tiers` |
+| 001 ✓ | catalogue (B1) | `categories`, `products` (mechanism A/B/C, brief_schema JSONB, min_qty, lead days, setup and design fees, survey fee, package price, active), `price_tiers` |
+| 002 ✓ | orders (B2) | `orders` (as placed: product, brief, common brief, handover and estimate in JSONB; status, money, customer email and phone, expiry in columns; token hash), `order_events`, `invoices`, `counters`, `capacity_bookings`, `notifications` (the outbox). Built ahead of the settings and people tables below, which come with B4 and B5; the planned rows that follow keep their order but take the next free numbers |
 | 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
 | 003 | people | `customers` (email unique, lower case: the account; name, phone, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, email unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
 | 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
@@ -375,7 +377,7 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | `listOrderCategories`, `listOrderProducts`, `getOrderProduct` | `GET /api/catalogue` | Cached; prices from the database |
 | `priceEstimate` | `POST /api/quotes/price` | shared/rules/pricing.js |
 | `createOrder` | `POST /api/orders` | Re-validates, re-prices, opens the order; returns number + secret token |
-| `getOrder` | `GET /api/orders/:no` | Token or phone access |
+| `getOrder` | `GET /api/orders/:no` | The secret token in the `X-Order-Token` header, never in the URL |
 | (order lookup) | `POST /api/orders/lookup` | Order number + phone; rate limited |
 | `startPayment` | `POST /api/payments/stk` | One pending prompt per order |
 | (Absa) | `POST /api/payments/absa/stk/:secret` | STK callback |
@@ -498,7 +500,7 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 | --- | --- | --- |
 | B0 ✓ | Folders: create `backend/` (skeleton: config with zod, health, pino with phone masking, Postgres, Redis user `nb`, the rate limiter, ESLint layer rule, Vitest with a test database) and `shared/` (move pricing, calendar, c2b and order rules out of `src/lib` into `shared/rules` as JavaScript + JSDoc; `shared/contract`); the site keeps `src/` and imports `@shared/*`; the site's `eslint.config.mjs` ignores and `tsconfig.json` excludes `backend/` and `admin/`, which have their own checks | The site builds and passes every check; `backend/` answers `/api/health` |
 | B1 ✓ | Catalogue and pricing in the database; `GET /api/catalogue`, `POST /api/quotes/price`; `live.ts` for those methods | The order form prices from the API |
-| B2 | Orders: create, read, lookup, expiry; invoices (INV); WhatsApp and email outbox with "order placed" | An order placed on staging appears in the database with its invoice |
+| B2 ✓ | Orders: create, read, lookup, expiry; invoices (INV); WhatsApp and email outbox with "order placed" | An order placed on staging appears in the database with its invoice |
 | B3 | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; receipt and invoice PDFs | A real KES 1 payment on staging confirms the order and sends the receipt, by both STK and Paybill |
 | B4 | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger | Staff run an order through without the demo controls |
 | B5 | Spec Phase 2 to 4: proofs and approval, production and deliveries, accounts and brand kits, surveys and firm quotes, capacity calendar, reports | As in the spec |
@@ -564,6 +566,51 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 - **Run it locally:** in `backend/`, `npm run migrate && npm run seed`, then `npm run backend` at
   the root; build and start the site with `NEXT_PUBLIC_API_MODE=live`.
 
+### Step B2, done 8 Oct 2026
+
+- **Migration `002_orders`** (section 5). An order keeps what was agreed as JSONB (the product as
+  ordered, the brief, the common brief, the handover, the full `PriceEstimate`), so a later price
+  change never touches it; what is searched or moves has columns. The email is stored lower case
+  (an account is its email). The secret token is stored only as its SHA-256 hash.
+- **`POST /api/orders`** (`modules/orders`, 20 per 10 minutes): the body is checked with
+  `orderInputSchema` (`shared/contract/schemas.js`; anything else, such as a price, is dropped), then
+  `checks.js` checks it against the product (minimum run, required brief answers, a handover the
+  product allows, an address for delivery or installation) and the service normalises the phone and
+  email. In **one transaction**: the capacity calendar is locked (`pg_advisory_xact_lock`) and read,
+  the price is worked out again with `estimatePrice` (a deadline that is no longer available is
+  refused), the order gets a free `NB-` number (drawn again on a clash), its machine time goes into
+  `capacity_bookings`, the next invoice number from `counters` (`lib/numbering.js`), the "Order
+  placed." event and two outbox rows ("order-placed", WhatsApp and email; the words are in
+  `modules/notifications/templates.js`). Answers 201 `{ ref, token }`.
+- **`GET /api/orders/:no`** (120 a minute) with the token in `X-Order-Token`, and **`POST
+  /api/orders/lookup`** `{ ref, phone }` (30 per 10 minutes): both answer the contract's `Order`
+  (`view.js`), and the same 404 for a wrong token, a wrong phone and no such order. Payments,
+  proofs, deliveries, the site quote and the company are empty until their steps (B3, B5).
+  Access by a signed-in account's email comes with sessions (B5).
+- **Expiry:** an unpaid order past 48 hours becomes `expired`, nothing is due, its machine time is
+  released and an event says why. It happens when the order is read, and a sweep every 15 minutes in
+  `server.js` catches the rest (it moves to the worker with the queues, B3).
+- **`GET /api/capacity`** (`modules/capacity`) answers the calendar, and `POST /api/quotes/price` now
+  prices against it, so the form only offers deadlines the workshop can still meet. The workshop's
+  other work joins it when staff can enter it (B4); the site's mock still adds some made-up load.
+- **The outbox isn't delivered yet:** rows wait as `pending` until the worker and the WhatsApp and
+  email fakes arrive (B3). The order page shows them as sent, as the mock does.
+- **The site** (`src/lib/api/live.ts`): in live mode `createOrder`, `getOrder` (token, or order number
+  + phone) and `getCapacity` go to the API. The steps after placing (`startPayment`, proofs, sample,
+  deliveries, survey, site quote, installation) answer "This isn't available online yet" instead of
+  looking in the mock, which doesn't have the order, and the demo controls are off (`ordersOnApi` in
+  `src/lib/api/index.ts`). Calls made for one visitor pass on the visitor's address (the last
+  `X-Forwarded-For` entry, which nginx adds), so the API's per-visitor limits don't count the site's
+  server as one visitor. **Prices now come from the database in live mode for orders too.**
+- **Tests:** `backend/test/integration/orders.test.js` against the test database (placing with its
+  invoice, machine time and messages and only the token's hash; invoice numbers in sequence; the
+  browser's price ignored; reading by token and by phone in any format; the same 404 each way; the
+  order rules; malformed bodies; expiry on read and by the sweep; the calendar and the price against
+  it; 503 without a database). `src/lib/api/live.test.ts` for the site side.
+- **Checked end to end:** the API on 4300 against the local database, the site built with
+  `NEXT_PUBLIC_API_MODE=live` on 3200, and an order placed through the form: it opened on its page
+  and its invoice, and was in `orders` with `INV00001`, its event and two pending messages.
+
 ### Setting up Postgres and Redis on a development machine
 
 Most of the database work happens on the VPS (section 10). A local copy is only for running the
@@ -592,8 +639,10 @@ memurai-cli --user nb --pass '<nb password>' SET nb:probe ok
 memurai-cli --user nb --pass '<nb password>' SET ne:probe ok
 ```
 
-The Memurai steps have not been run yet (7 Oct 2026): correct them here if anything differs on the
-first setup.
+Install Memurai with `winget install Memurai.MemuraiDeveloper` from your own terminal, as
+Administrator. (On 8 Oct 2026 the installer failed from Claude's sandbox with 1603: its custom
+actions couldn't create a temp folder.) The Memurai steps above haven't been run yet: correct them
+here if anything differs on the first setup.
 
 Then copy `backend/.env.example` to `backend/.env` (never committed) and fill in `DATABASE_URL`,
 `TEST_DATABASE_URL`, `REDIS_URL` (database 0) and `TEST_REDIS_URL` (database 15). `npm run backend:check`
