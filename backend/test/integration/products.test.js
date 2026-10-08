@@ -46,7 +46,7 @@ describe.skipIf(!dbUrl)('product minimums', () => {
     const redis = { get: async (k) => cache.get(k) ?? null, set: async (k, v) => (cache.set(k, v), 'OK'), del: async (k) => Number(cache.delete(k)), eval: async () => [1, 60] };
     const deps = { pool, redis, logger, config };
     app = createApp(config, deps);
-    for (const role of ['admin', 'sales']) {
+    for (const role of ['admin', 'designer']) {
       await addStaff(deps, null, { email: `${role}@noorcombranding.co.ke`, name: `The ${role}`, role, password: PASSWORD });
       as[role] = request.agent(app);
       await as[role].post('/api/staff/auth/sign-in').send({ email: `${role}@noorcombranding.co.ke`, password: PASSWORD });
@@ -60,7 +60,7 @@ describe.skipIf(!dbUrl)('product minimums', () => {
   const setMin = (role, slug, minQuantity) => as[role].patch(`/api/staff/products/${slug}`).set('x-requested-with', 'nb-admin').send({ minQuantity });
 
   it('starts every quantity run at 10 pieces, with the first price tier from 10', async () => {
-    const { products } = (await as.sales.get('/api/staff/products')).body;
+    const { products } = (await as.designer.get('/api/staff/products')).body;
     expect(products.length).toBe(12);
     expect(products.every((p) => p.minQuantity === 10 && p.tiers[0].minQty === 10)).toBe(true);
     // Run on a cold catalogue: 10 is accepted and 9 refused.
@@ -83,7 +83,7 @@ describe.skipIf(!dbUrl)('product minimums', () => {
   });
 
   it('is for admins only, with a whole number, on a product that exists', async () => {
-    expect((await setMin('sales', 'mug-branding', 20)).status).toBe(403);
+    expect((await setMin('designer', 'mug-branding', 20)).status).toBe(403);
     expect((await setMin('admin', 'mug-branding', 0)).status).toBe(400);
     expect((await setMin('admin', 'mug-branding', 2.5)).status).toBe(400);
     expect((await setMin('admin', 'no-such-thing', 20)).status).toBe(404);

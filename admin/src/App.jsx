@@ -1,11 +1,13 @@
-import { CreditCard, KanbanSquare, LayoutDashboard, LogOut, Menu, Package, Search, Users } from 'lucide-react';
+import { BookUser, CreditCard, FileText, KanbanSquare, LayoutDashboard, LogOut, Menu, Package, Search, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api, may } from './api.js';
 import { ROLE } from './format.js';
+import { Accounts, Statement } from './pages/Accounts.jsx';
 import { Board } from './pages/Board.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { OrderPage } from './pages/OrderPage.jsx';
 import { ProductsPage } from './pages/ProductsPage.jsx';
+import { Reports } from './pages/Reports.jsx';
 import { SignIn } from './pages/SignIn.jsx';
 import { StaffPage } from './pages/StaffPage.jsx';
 import { Unmatched } from './pages/Unmatched.jsx';
@@ -13,7 +15,7 @@ import { initials } from './ui.jsx';
 
 /**
  * The route lives in the hash: #/dashboard, #/orders (?q=…), #/orders/NB-123456, #/payments,
- * #/products, #/staff.
+ * #/reports/<kind>, #/accounts, #/accounts/<email>, #/products, #/staff.
  */
 function useHashRoute() {
   const read = () => window.location.hash.replace(/^#\/?/, '') || 'dashboard';
@@ -71,6 +73,13 @@ export function App() {
       [
         ['orders', 'Order board', KanbanSquare, true],
         ['payments', 'Unmatched payments', CreditCard, may(staff, 'payments'), unmatched],
+      ],
+    ],
+    [
+      'Finance',
+      [
+        ['reports', 'Reports', FileText, may(staff, 'finance')],
+        ['accounts', 'Customer accounts', BookUser, may(staff, 'finance')],
       ],
     ],
     ['Catalogue', [['products', 'Products', Package, true]]],
@@ -151,9 +160,13 @@ export function App() {
           {page === 'orders' && param && <OrderPage key={param} orderRef={param} staff={staff} onAuthLost={onAuthLost} />}
           {page === 'orders' && !param && <Board key={query} initialQuery={new URLSearchParams(query).get('q') ?? ''} onAuthLost={onAuthLost} />}
           {page === 'payments' && <Unmatched onAuthLost={onAuthLost} />}
+          {page === 'reports' && may(staff, 'finance') && <Reports kind={param} onAuthLost={onAuthLost} />}
+          {page === 'accounts' && may(staff, 'finance') && !param && <Accounts onAuthLost={onAuthLost} />}
+          {page === 'accounts' && may(staff, 'finance') && param && <Statement key={param} email={decodeURIComponent(param)} onAuthLost={onAuthLost} />}
+          {['reports', 'accounts'].includes(page) && !may(staff, 'finance') && <p>Reports and customer accounts are for the admin.</p>}
           {page === 'products' && <ProductsPage me={staff} onAuthLost={onAuthLost} />}
           {page === 'staff' && <StaffPage me={staff} onAuthLost={onAuthLost} />}
-          {!['dashboard', 'orders', 'payments', 'products', 'staff'].includes(page) && (
+          {!['dashboard', 'orders', 'payments', 'reports', 'accounts', 'products', 'staff'].includes(page) && (
             <p>
               No such page. <a href="#/dashboard">Back to the dashboard</a>.
             </p>

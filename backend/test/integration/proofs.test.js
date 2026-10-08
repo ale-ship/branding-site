@@ -64,7 +64,7 @@ describe.skipIf(!dbUrl)('proofs, and an order run through by staff (B4)', () => 
       jobs: { enqueue: async (name, data) => void queued.push({ name, data }), schedule: async () => {}, close: async () => {} },
     };
     app = createApp(config, deps);
-    for (const role of ['designer', 'sales', 'production']) {
+    for (const role of ['designer']) {
       await addStaff(deps, null, { email: `${role}@noorcombranding.co.ke`, name: `The ${role}`, role, password: PASSWORD });
       as[role] = request.agent(app);
       await as[role].post('/api/staff/auth/sign-in').send({ email: `${role}@noorcombranding.co.ke`, password: PASSWORD });
@@ -97,7 +97,6 @@ describe.skipIf(!dbUrl)('proofs, and an order run through by staff (B4)', () => 
     expect(o.status).toBe('in_design');
 
     // The designer uploads proof v1; the customer sees it watermarked, behind a signed link.
-    expect((await upload('sales', placed.ref)).status).toBe(403);
     const up = await upload('designer', placed.ref, PNG, 'image/png', 'Logo on the chest');
     expect(up.status).toBe(201);
     o = await view(placed);
@@ -136,9 +135,9 @@ describe.skipIf(!dbUrl)('proofs, and an order run through by staff (B4)', () => 
     expect(o.production.promisedBy).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
     // The floor logs the run, marks it ready, and the counter hands it over.
-    await staff('production', placed.ref, 'progress', { pieces: 120 });
-    const ready = await staff('production', placed.ref, 'ready');
-    await staff('sales', placed.ref, 'handover', { code: ready.body.order.pickupCode, collector: 'Amina Wanjiru' });
+    await staff('designer', placed.ref, 'progress', { pieces: 120 });
+    const ready = await staff('designer', placed.ref, 'ready');
+    await staff('designer', placed.ref, 'handover', { code: ready.body.order.pickupCode, collector: 'Amina Wanjiru' });
     o = await view(placed);
     expect(o.status).toBe('completed');
     expect(o.events.map((e) => e.text)).toEqual([

@@ -405,7 +405,7 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | (documents) | `GET /api/orders/:no/invoice.pdf`, `/receipts/:receiptNo.pdf` | Signed, short-lived links |
 | (uploads) | `POST /api/uploads` | Presigned PUT to R2 |
 | `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | |
-| (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`. Role-checked; changes need `X-Requested-With: nb-admin`. Prices come later |
+| (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`; `dashboard`; `products` (admin changes a minimum); `reports/:kind` and `accounts`, `accounts/statement` (admin; `?format=pdf` or `csv` downloads). Role-checked; changes need `X-Requested-With: nb-admin`. Prices come later |
 | (files) | `GET /api/files/<key>?exp&sig` | Stored files (proofs) behind links signed for an hour (`lib/signedUrl.js`) |
 
 ### 8.1 Rate limits
@@ -436,8 +436,8 @@ link), never the phone number.
   checked when Absa provides one. The raw body is kept for audit.
 - The order's secret token is stored hashed; lookups by phone are rate limited and answer the same
   way whether or not the order exists.
-- Staff: argon2 hashes, httpOnly secure cookies, roles from the spec (Admin, Sales, Designer,
-  Production, Installer); every staff change in `audit_log`.
+- Staff: scrypt hashes, httpOnly secure cookies, two roles (Admin and Designer, owner 8 Oct
+  2026); every staff change in `audit_log`. Reports and customer accounts are the admin's alone.
 - Logs mask phone numbers and never include tokens or provider credentials.
 - Files are private in R2; every download is a short-lived signed URL.
 
@@ -681,7 +681,7 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 ### Step B4, done 8 Oct 2026
 
 - **Staff accounts** (`modules/staff`, migration 004): email and password (scrypt, 12+ characters),
-  roles from the spec (admin, sales, designer, production, installer). The session token is in the
+  two roles since migration 007 (admin and designer; see "Two roles" below). The session token is in the
   `nb_staff` cookie (httpOnly, SameSite=Strict, Secure in production, Path=/api/staff); only its
   hash is stored, and it lasts 14 days from the last use. Changes need `X-Requested-With: nb-admin`
   as well (`middleware/staffAuth.js`). Sign-in: 10 tries per 10 minutes per address, and one
@@ -742,7 +742,36 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   `{ minQuantity }`, 1 to 100,000, audited). The cached catalogue is dropped on a change, so the
   order form, the price and new orders follow at once. On the site's mock (Vercel today) the
   minimum is the catalogue's 10; staff changes need the API.
-- **Not yet:** the rest of the price manager (prices, tiers, deadline and delivery fees) and staff reports (with B5's back office work), the job card with
+- **Two roles** (owner, 8 Oct 2026: the shop is the admin and the graphic designers, who do every
+  other job): `admin` and `designer` (migration 007 turns anyone on an old role into a designer and
+  allows only the two). Designers take every order step (proofs, logging, ready, dispatch,
+  handover, cancel, unmatched payments); the admin does all of that and also manages staff and
+  products and sees the money.
+- **Reports and customer accounts** (owner, 8 Oct 2026; `modules/reports`, admin only), each on
+  screen and as a PDF or a CSV for Excel, from the same document so they always agree:
+  - **Reports** (`GET /api/staff/reports/:kind?from&to&format`): **sales** (each invoice issued in
+    the period on an order that went ahead, with what was paid and is owed), **payments received**
+    (every receipt, RCT and M-Pesa reference, by prompt or Paybill), **money owed** (open orders
+    still owing, as at today, aged 0–30, 31–60, 61–90 and over 90 days), **sales by product**, and
+    **Paybill suspense** (money that matched no order: waiting, assigned or to refund). "Invoiced"
+    follows `invoicedAmount` in `shared/rules/statement.js`. Periods default to this month, in
+    Nairobi days; at most ten years.
+  - **Customer accounts** (`GET /api/staff/accounts?q`): every customer by the email they order
+    with (an account is its email, as on the site), with orders, invoiced, paid and balance, the
+    biggest balance first. **Statements** (`GET /api/staff/accounts/statement?email&from&to&format`)
+    are built by the site's own `buildStatement`, with the balance brought forward from before the
+    period; a negative balance is money held for the customer (credit or a refund due).
+  - **PDFs** (`lib/pdf.js`, pdfkit, no browser needed): A4 in the invoices' look (the red bar, the
+    logo in `backend/assets/`, the title and period, headline figures, the table with its header
+    on every page, totals, "Page x of y" and the company at the foot). The letterhead is
+    `lib/letterhead.js`; keep it in step with `src/lib/site.ts`. **CSV** (`lib/csv.js`): UTF-8
+    with a byte-order mark for Excel, and any cell starting with `=`, `+`, `-` or `@` made inert.
+  - In the back office: **Finance → Reports** (a tab per report, a period picker with this month,
+    last month, this quarter, this year, last year or any dates) and **Finance → Customer
+    accounts** (search, then a customer's statement). Designers don't see the Finance group.
+  - Tests: `reports.test.js` (each report's figures, PDF and CSV downloads, a planted formula,
+    bad periods, statements with a balance brought forward, admin only), `unit/documents.test.js`.
+- **Not yet:** the rest of the price manager (prices, tiers, deadline and delivery fees), expenses (so profit can be reported), the job card with
   its QR code, mockups on proofs, the pre-production sample, partial deliveries, site jobs'
   survey, quote and installation steps, and accounts on the API (B5).
 

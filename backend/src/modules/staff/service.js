@@ -13,10 +13,11 @@ import * as repo from './repo.js';
  *
  * @typedef {import('../../deps.js').Deps} Deps
  * @typedef {import('./repo.js').Staff} Staff
- * @typedef {'admin' | 'sales' | 'designer' | 'production' | 'installer'} Role
+ * @typedef {'admin' | 'designer'} Role
  */
 
-export const ROLES = /** @type {const} */ (['admin', 'sales', 'designer', 'production', 'installer']);
+// Two roles (owner, 8 Oct 2026): the admin, and the designers, who also run the front desk, production and handover.
+export const ROLES = /** @type {const} */ (['admin', 'designer']);
 export const SESSION_DAYS = 14;
 const WRONG = 'That email and password don’t match an active staff account.';
 

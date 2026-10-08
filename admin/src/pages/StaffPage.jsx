@@ -51,7 +51,8 @@ export function StaffPage({ me, onAuthLost }) {
   return (
     <>
       <PageHead title="Staff" crumbs={<a href="#/dashboard">Dashboard</a>}>
-        Who can sign in to the back office, and what each role may do.
+        Who can sign in to the back office. Designers run every order from design to handover; admins also see the money (reports and customer accounts) and
+        manage staff and products.
       </PageHead>
       {notice && (
         <p className="notice" role="status">
@@ -144,7 +145,7 @@ export function StaffPage({ me, onAuthLost }) {
             </div>
             <div className="field">
               <label htmlFor="new-role">Role</label>
-              <select id="new-role" name="role" defaultValue="sales">
+              <select id="new-role" name="role" defaultValue="designer">
                 {Object.entries(ROLE).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}

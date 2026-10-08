@@ -258,6 +258,24 @@ td a.ref:hover { text-decoration: underline; }
 .tabs button { white-space: nowrap; min-height: 38px; border-radius: 999px; padding: 0.3rem 0.85rem; font-size: 0.85rem; }
 .tabs button[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
 .tabs .n { font-weight: 500; opacity: 0.7; }
+.tabs a {
+  white-space: nowrap; min-height: 38px; border-radius: 999px; padding: 0.3rem 0.85rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center;
+  border: 1px solid var(--line-strong); background: var(--card); color: var(--ink); text-decoration: none;
+}
+.tabs a:hover { border-color: var(--ink); }
+.tabs a[aria-current='page'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* Reports and statements */
+.button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.period { margin-bottom: 1rem; max-width: 40rem; }
+.doc-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); }
+.doc-kpis .stat-value { font-size: 1.3rem; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.doc-table td { white-space: normal; }
+.doc-table a.ref, .doc-table .nw { white-space: nowrap; }
+.doc-table tfoot td { font-weight: 700; color: var(--ink); border-top: 2px solid var(--ink); background: #fbfaf8; }
+.doc-note { max-width: 60rem; }
 .columns { display: grid; gap: 1rem; }
 @media (min-width: 1100px) { .columns.kanban { grid-template-columns: repeat(7, minmax(13rem, 1fr)); overflow-x: auto; padding-bottom: 0.5rem; } }
 .column { background: #efeee9; border-radius: var(--radius); padding: 0.75rem; }

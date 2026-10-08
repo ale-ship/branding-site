@@ -46,16 +46,23 @@ export const api = {
   },
 };
 
-/** The roles that may take each step (the API checks the same). Admin may do everything. */
+/**
+ * The roles that may take each step (the API checks the same). Admin may do everything; the
+ * designers run every order from design to handover; the money side is the admin's alone.
+ */
 export const MAY = {
   proofs: ['designer'],
-  progress: ['production'],
-  ready: ['production', 'sales'],
-  dispatch: ['sales', 'installer'],
-  handover: ['sales', 'installer'],
-  cancel: ['sales'],
-  payments: ['sales'],
+  progress: ['designer'],
+  ready: ['designer'],
+  dispatch: ['designer'],
+  handover: ['designer'],
+  cancel: ['designer'],
+  payments: ['designer'],
+  finance: [],
   staff: [],
 };
+
+/** A link to download a report or statement (GET, with the session cookie). */
+export const fileUrl = (path, params) => `/api${path}?${new URLSearchParams(params)}`;
 
 export const may = (staff, step) => staff?.role === 'admin' || MAY[step].includes(staff?.role);

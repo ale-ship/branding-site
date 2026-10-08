@@ -51,4 +51,5 @@ export const ATTENTION = {
   'refund-due': 'Refund due',
 };
 
-export const ROLE = { admin: 'Admin', sales: 'Sales / front desk', designer: 'Designer', production: 'Production', installer: 'Installer / rider' };
+/** Two roles (owner, 8 Oct 2026): the admin, and the designers, who also run the front desk, production and handover. */
+export const ROLE = { admin: 'Admin', designer: 'Designer' };

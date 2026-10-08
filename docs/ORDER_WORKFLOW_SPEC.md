@@ -334,13 +334,12 @@ The customer tracker is only as accurate as what staff log, so the staff side mu
 
 **Roles**
 
+Two roles (owner, 8 Oct 2026): the shop is the admin and the graphic designers, and the designers do every other job.
+
 | Role | Can do |
 | --- | --- |
-| Admin | Everything: prices, tiers, capacity, refunds, staff accounts |
-| Sales / front desk | Review new orders, adjust quotes, mark corporate terms, handle pickups |
-| Designer | See assigned briefs, upload proofs, reply to proof comments |
-| Production | Log pieces done, upload sample and batch photos, flag delays |
-| Installer / rider | See schedule, check in, upload handover photos and sign-off |
+| Admin | Everything: prices, tiers, capacity, refunds, staff accounts, reports and customer accounts |
+| Designer | Everything on an order: review new orders, briefs and proofs, log production, handle pickups, deliveries and unmatched payments |
 
 **Core screens**
 
@@ -427,7 +426,7 @@ In this repo these endpoints belong to the separate backend; the Next.js site ne
 - [ ] How many revision rounds per design package.
 **Build phases**
 
-Status: all four phases built on the site (Phase 1 on 5 Oct 2026, Phases 2 to 4 on 6 Oct 2026), with payments, messages and sign-in codes mocked; see `docs/RUNBOOK.md`, "Online ordering". The staff back office (order board, production logging, proofs, unmatched payments) is built in `admin/` (backend step B4, 8 Oct 2026); staff reports and the price manager come later.
+Status: all four phases built on the site (Phase 1 on 5 Oct 2026, Phases 2 to 4 on 6 Oct 2026), with payments, messages and sign-in codes mocked; see `docs/RUNBOOK.md`, "Online ordering". The staff back office (order board, production logging, proofs, unmatched payments, and the admin's reports and customer accounts with PDF and CSV downloads) is built in `admin/` (backend step B4, 8 Oct 2026); the price manager comes later.
 
 1. **Phase 1, core ordering:** category brief forms, live pricing with urgency tiers, guest checkout, STK Push + Paybill, order tracker with statuses, WhatsApp and email confirmations, staff order board.
 2. **Phase 2, proofs and production:** proof upload and approval with pinned comments, balance payment gate, production logger with piece counts, pickup codes and delivery records.

@@ -10,6 +10,7 @@ import { runJob } from '../../src/jobs/handlers/index.js';
 import { createLogger } from '../../src/lib/logger.js';
 import { record } from '../../src/modules/payments/ledger.js';
 import { addStaff } from '../../src/modules/staff/service.js';
+import * as twoRoles from '../../src/db/migrations/007_two_roles.js';
 
 /**
  * Step B4, the back office's API, against a real Postgres (TEST_DATABASE_URL; skipped without it):
@@ -54,7 +55,7 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
     queued = [];
     deps = { pool, redis: null, logger, config, jobs: { enqueue: async (name, data) => void queued.push({ name, data }), schedule: async () => {}, close: async () => {} } };
     app = createApp(config, deps);
-    for (const role of ['admin', 'sales', 'production', 'designer']) {
+    for (const role of ['admin', 'designer']) {
       await addStaff(deps, null, { email: `${role}@noorcombranding.co.ke`, name: `The ${role}`, role, password: PASSWORD });
       as[role] = request.agent(app);
       const res = await as[role].post('/api/staff/auth/sign-in').send({ email: `${role}@noorcombranding.co.ke`, password: PASSWORD });
@@ -103,36 +104,46 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
     it('needs a session, and the back office’s header on changes', async () => {
       expect((await request(app).get('/api/staff/me')).status).toBe(401);
       expect((await as.admin.get('/api/staff/me')).body.staff.role).toBe('admin');
-      const forged = await as.admin.post('/api/staff/users').send({ email: 'x@y.co.ke', name: 'X', role: 'sales', password: PASSWORD });
+      const forged = await as.admin.post('/api/staff/users').send({ email: 'x@y.co.ke', name: 'X', role: 'designer', password: PASSWORD });
       expect(forged.status).toBe(403);
     });
 
     it('signs out', async () => {
-      expect((await send('sales', '/api/staff/auth/sign-out')).status).toBe(204);
-      expect((await as.sales.get('/api/staff/me')).status).toBe(401);
+      expect((await send('designer', '/api/staff/auth/sign-out')).status).toBe(204);
+      expect((await as.designer.get('/api/staff/me')).status).toBe(401);
     });
   });
 
   describe('staff accounts (admin)', () => {
     it('lets an admin add and change staff, and nobody else', async () => {
-      expect((await send('sales', '/api/staff/users', { email: 'new@noorcombranding.co.ke', name: 'New', role: 'sales', password: PASSWORD })).status).toBe(403);
-      const added = await send('admin', '/api/staff/users', { email: 'New@Noorcombranding.co.ke', name: 'New Person', role: 'installer', password: PASSWORD });
+      expect((await send('designer', '/api/staff/users', { email: 'new@noorcombranding.co.ke', name: 'New', role: 'designer', password: PASSWORD })).status).toBe(403);
+      const added = await send('admin', '/api/staff/users', { email: 'New@Noorcombranding.co.ke', name: 'New Person', role: 'designer', password: PASSWORD });
       expect(added.status).toBe(201);
-      expect(added.body.user).toMatchObject({ email: 'new@noorcombranding.co.ke', role: 'installer' });
-      expect((await send('admin', '/api/staff/users', { email: 'new@noorcombranding.co.ke', name: 'Again', role: 'sales', password: PASSWORD })).status).toBe(409);
-      expect((await send('admin', '/api/staff/users', { email: 'short@noorcombranding.co.ke', name: 'Short', role: 'sales', password: 'short' })).status).toBe(400);
+      expect(added.body.user).toMatchObject({ email: 'new@noorcombranding.co.ke', role: 'designer' });
+      // Two roles only (owner, 8 Oct 2026): the old ones are refused.
+      expect((await send('admin', '/api/staff/users', { email: 'old@noorcombranding.co.ke', name: 'Old', role: 'installer', password: PASSWORD })).status).toBe(400);
+      expect((await send('admin', '/api/staff/users', { email: 'new@noorcombranding.co.ke', name: 'Again', role: 'designer', password: PASSWORD })).status).toBe(409);
+      expect((await send('admin', '/api/staff/users', { email: 'short@noorcombranding.co.ke', name: 'Short', role: 'designer', password: 'short' })).status).toBe(400);
       const users = (await as.admin.get('/api/staff/users')).body.users;
       expect(users.map((u) => u.email)).toContain('new@noorcombranding.co.ke');
       expect(JSON.stringify(users)).not.toContain('scrypt');
     });
 
     it('signs a deactivated member out everywhere, and keeps one active admin', async () => {
-      const sales = (await as.admin.get('/api/staff/users')).body.users.find((u) => u.role === 'sales');
-      await as.admin.patch(`/api/staff/users/${sales.id}`).set('x-requested-with', 'nb-admin').send({ active: false });
-      expect((await as.sales.get('/api/staff/me')).status).toBe(401);
-      const res = await as.admin.patch('/api/staff/users/1').set('x-requested-with', 'nb-admin').send({ role: 'sales' });
+      const designer = (await as.admin.get('/api/staff/users')).body.users.find((u) => u.role === 'designer');
+      await as.admin.patch(`/api/staff/users/${designer.id}`).set('x-requested-with', 'nb-admin').send({ active: false });
+      expect((await as.designer.get('/api/staff/me')).status).toBe(401);
+      const res = await as.admin.patch('/api/staff/users/1').set('x-requested-with', 'nb-admin').send({ role: 'designer' });
       expect(res.status).toBe(409);
       expect(res.body.message).toMatch(/one active admin/);
+    });
+
+    it('turns anyone on an old role into a designer (migration 007)', async () => {
+      await twoRoles.down(knex);
+      await knex('staff_users').where({ email: 'designer@noorcombranding.co.ke' }).update({ role: 'sales' });
+      await twoRoles.up(knex);
+      expect(await knex('staff_users').orderBy('id').pluck('role')).toEqual(['admin', 'designer']);
+      await expect(knex('staff_users').where({ id: 1 }).update({ role: 'installer' })).rejects.toThrow(/staff_users_role_check/);
     });
   });
 
@@ -154,7 +165,7 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
       const a = await place();
       await intoProduction(a.ref);
       await knex('orders').where({ order_no: a.ref }).update({ promised_date: '2026-01-05' });
-      expect((await as.sales.get('/api/staff/orders')).body.orders[0].overdue).toBe(true);
+      expect((await as.designer.get('/api/staff/orders')).body.orders[0].overdue).toBe(true);
     });
   });
 
@@ -163,21 +174,20 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
       const placed = await place();
       await intoProduction(placed.ref);
 
-      expect((await send('designer', `/api/staff/orders/${placed.ref}/progress`, { pieces: 50 })).status).toBe(403);
-      expect((await send('production', `/api/staff/orders/${placed.ref}/progress`, { pieces: 200 })).body.message).toBe('Only 120 pieces are left on this order.');
-      expect((await send('production', `/api/staff/orders/${placed.ref}/progress`, { pieces: 80, note: 'front prints' })).status).toBe(200);
-      const early = await send('production', `/api/staff/orders/${placed.ref}/ready`);
+      expect((await send('designer', `/api/staff/orders/${placed.ref}/progress`, { pieces: 200 })).body.message).toBe('Only 120 pieces are left on this order.');
+      expect((await send('designer', `/api/staff/orders/${placed.ref}/progress`, { pieces: 80, note: 'front prints' })).status).toBe(200);
+      const early = await send('designer', `/api/staff/orders/${placed.ref}/ready`);
       expect(early.status).toBe(409);
       expect(early.body.message).toBe('40 pieces are still to print.');
-      await send('production', `/api/staff/orders/${placed.ref}/progress`, { pieces: 40 });
-      const ready = await send('production', `/api/staff/orders/${placed.ref}/ready`);
+      await send('designer', `/api/staff/orders/${placed.ref}/progress`, { pieces: 40 });
+      const ready = await send('designer', `/api/staff/orders/${placed.ref}/ready`);
       expect(ready.body.order.status).toBe('ready');
       const code = ready.body.order.pickupCode;
       expect(code).toMatch(/^\d{6}$/);
 
-      const wrong = await send('sales', `/api/staff/orders/${placed.ref}/handover`, { code: code === '000000' ? '111111' : '000000', collector: 'Amina' });
+      const wrong = await send('designer', `/api/staff/orders/${placed.ref}/handover`, { code: code === '000000' ? '111111' : '000000', collector: 'Amina' });
       expect(wrong.body.message).toBe('That pickup code doesn’t match this order.');
-      const done = await send('sales', `/api/staff/orders/${placed.ref}/handover`, { code, collector: 'Amina Wanjiru' });
+      const done = await send('designer', `/api/staff/orders/${placed.ref}/handover`, { code, collector: 'Amina Wanjiru' });
       expect(done.body.order.status).toBe('completed');
 
       // What the customer sees.
@@ -205,22 +215,22 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
       // Staff see who did what.
       const audit = (await as.admin.get(`/api/staff/orders/${placed.ref}`)).body.staff.audit;
       expect(audit.map((a) => [a.action, a.staff])).toEqual([
-        ['handed-over', 'The sales'],
-        ['marked-ready', 'The production'],
-        ['production-logged', 'The production'],
-        ['production-logged', 'The production'],
+        ['handed-over', 'The designer'],
+        ['marked-ready', 'The designer'],
+        ['production-logged', 'The designer'],
+        ['production-logged', 'The designer'],
       ]);
     });
 
     it('sends a delivery out with a rider and closes it with the recipient', async () => {
       const placed = await place({ handover: { method: 'delivery', zone: 'inner', address: 'Kilimani, Nairobi' } });
       await intoProduction(placed.ref);
-      await send('production', `/api/staff/orders/${placed.ref}/progress`, { pieces: 120 });
-      await send('production', `/api/staff/orders/${placed.ref}/ready`);
-      expect((await send('sales', `/api/staff/orders/${placed.ref}/dispatch`, { rider: 'Kevin' })).body.message).toMatch(/rider’s name and phone/);
-      const out = await send('sales', `/api/staff/orders/${placed.ref}/dispatch`, { rider: 'Kevin', riderPhone: '0711 222 333' });
+      await send('designer', `/api/staff/orders/${placed.ref}/progress`, { pieces: 120 });
+      await send('designer', `/api/staff/orders/${placed.ref}/ready`);
+      expect((await send('designer', `/api/staff/orders/${placed.ref}/dispatch`, { rider: 'Kevin' })).body.message).toMatch(/rider’s name and phone/);
+      const out = await send('designer', `/api/staff/orders/${placed.ref}/dispatch`, { rider: 'Kevin', riderPhone: '0711 222 333' });
       expect(out.body.order.status).toBe('out_for_handover');
-      await send('sales', `/api/staff/orders/${placed.ref}/handover`, { recipient: 'Reception, Acme Ltd' });
+      await send('designer', `/api/staff/orders/${placed.ref}/handover`, { recipient: 'Reception, Acme Ltd' });
       const view = await customerView(placed);
       expect(view.status).toBe('completed');
       expect(view.deliveries).toEqual([
@@ -231,8 +241,8 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
     it('cancels before production, lets go of the machine time, and flags money to refund', async () => {
       const unpaid = await place();
       expect(await knex('capacity_bookings').count({ n: '*' }).first()).toEqual({ n: '1' });
-      expect((await send('sales', `/api/staff/orders/${unpaid.ref}/cancel`, { reason: '' })).status).toBe(400);
-      const res = await send('sales', `/api/staff/orders/${unpaid.ref}/cancel`, { reason: 'Customer changed their mind' });
+      expect((await send('designer', `/api/staff/orders/${unpaid.ref}/cancel`, { reason: '' })).status).toBe(400);
+      const res = await send('designer', `/api/staff/orders/${unpaid.ref}/cancel`, { reason: 'Customer changed their mind' });
       expect(res.body.order).toMatchObject({ status: 'cancelled', dueNow: 0 });
       expect(res.body.staff.attention).toBeNull();
       expect(await knex('capacity_bookings').count({ n: '*' }).first()).toEqual({ n: '0' });
@@ -240,13 +250,13 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
       const paid = await place();
       const { id } = await knex('orders').where({ order_no: paid.ref }).first();
       await withTransaction(pool, (t) => record(t, { orderId: id, method: 'paybill', phone: null, amount: 1000, mpesaReceipt: 'CANCEL0001' }));
-      const flagged = await send('sales', `/api/staff/orders/${paid.ref}/cancel`, { reason: 'Duplicate order' });
+      const flagged = await send('designer', `/api/staff/orders/${paid.ref}/cancel`, { reason: 'Duplicate order' });
       expect(flagged.body.staff.attention).toBe('refund-due');
-      expect((await send('sales', `/api/staff/orders/${paid.ref}/attention/clear`)).body.staff.attention).toBeNull();
+      expect((await send('designer', `/api/staff/orders/${paid.ref}/attention/clear`)).body.staff.attention).toBeNull();
 
       await intoProduction((await place()).ref);
-      const busy = (await as.sales.get('/api/staff/orders?column=production')).body.orders[0];
-      expect((await send('sales', `/api/staff/orders/${busy.ref}/cancel`, { reason: 'Too late' })).status).toBe(409);
+      const busy = (await as.designer.get('/api/staff/orders?column=production')).body.orders[0];
+      expect((await send('designer', `/api/staff/orders/${busy.ref}/cancel`, { reason: 'Too late' })).status).toBe(409);
     });
   });
 
@@ -277,17 +287,16 @@ describe.skipIf(!dbUrl)('the back office API (B4)', () => {
   });
 
   describe('unmatched Paybill payments', () => {
-    it('shows them to sales, who assign one to an order', async () => {
+    it('shows them to the designers, who assign one to an order', async () => {
       const placed = await place();
       await request(app).post('/api/dev/c2b').send({ billRef: 'for the shirts', amount: 999 });
       for (const job of queued.splice(0)) if (job.name === 'process-c2b') await runJob(deps, job.name, job.data);
-      expect((await as.production.get('/api/staff/payments/unmatched')).status).toBe(403);
-      const list = (await as.sales.get('/api/staff/payments/unmatched')).body.payments;
+            const list = (await as.designer.get('/api/staff/payments/unmatched')).body.payments;
       expect(list).toEqual([expect.objectContaining({ amount: 999, billRef: 'for the shirts', reason: 'no-match' })]);
-      const res = await send('sales', `/api/staff/payments/unmatched/${list[0].id}/assign`, { ref: placed.ref.toLowerCase() });
+      const res = await send('designer', `/api/staff/payments/unmatched/${list[0].id}/assign`, { ref: placed.ref.toLowerCase() });
       expect(res.body.result).toBe('assigned RCT00001');
       expect((await customerView(placed)).amountPaid).toBe(999);
-      expect((await as.sales.get('/api/staff/payments/unmatched')).body.payments).toEqual([]);
+      expect((await as.designer.get('/api/staff/payments/unmatched')).body.payments).toEqual([]);
     });
   });
 });
