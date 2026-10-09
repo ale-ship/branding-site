@@ -4,7 +4,8 @@ import { api } from '../api.js';
 
 /**
  * Staff sign-in: one card, a red header with contour lines and the logo that curves into the form
- * (owner's reference, 9 Oct 2026). Full screen on a phone, a centred card on a wide screen. There is
+ * (owner's reference, 9 Oct 2026), on a black page of contour lines with two red hills, crop marks at
+ * the card's corners and CMYK dots by the footer. Full screen on a phone, where the card is the page. There is
  * no "remember me": a session lasts 14 days from the last use anyway. Passwords are reset by an
  * admin (Staff page), so "Forgot password?" says so rather than leading nowhere.
  */
@@ -34,71 +35,146 @@ export function SignIn({ onSignedIn }) {
 
   return (
     <main className="signin-page">
-      <div className="signin-card">
-        <header className="signin-head">
-          <Contours />
-          <div className="signin-brand">
-            <img src={`${import.meta.env.BASE_URL}nb-mark.png`} alt="" />
-            <div>
-              <strong>Noorcom Branding</strong>
-              <span>Back office</span>
+      <Backdrop />
+      <div className="signin-frame">
+        {/* Crop marks at the card's corners, as on a print proof. */}
+        <span className="crop tl" aria-hidden="true" />
+        <span className="crop tr" aria-hidden="true" />
+        <span className="crop bl" aria-hidden="true" />
+        <span className="crop br" aria-hidden="true" />
+        <div className="signin-card">
+          <header className="signin-head">
+            <Contours />
+            <div className="signin-brand">
+              <img src={`${import.meta.env.BASE_URL}nb-mark.png`} alt="" />
+              <div>
+                <strong>Noorcom Branding</strong>
+                <span>Back office</span>
+              </div>
             </div>
-          </div>
-          <svg className="signin-wave" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <path d="M0 34 C 70 0, 150 10, 215 30 S 340 62, 400 22 L 400 60 L 0 60 Z" />
-          </svg>
-        </header>
+            <svg className="signin-wave" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+              <path d="M0 34 C 70 0, 150 10, 215 30 S 340 62, 400 22 L 400 60 L 0 60 Z" />
+            </svg>
+          </header>
 
-        <form className="signin-body" onSubmit={submit}>
-          <h1>Sign in</h1>
-          <p className="signin-lead">For Noorcom Branding staff.</p>
+          <form className="signin-body" onSubmit={submit}>
+            <h1>Sign in</h1>
+            <p className="signin-lead">For Noorcom Branding staff.</p>
 
-          <div className="line-field">
-            <label htmlFor="email">Email</label>
-            <div className="line-input">
-              <Mail aria-hidden="true" />
-              <input id="email" name="email" type="email" autoComplete="username" placeholder="you@noorcombranding.co.ke" required />
+            <div className="line-field">
+              <label htmlFor="email">Email</label>
+              <div className="line-input">
+                <Mail aria-hidden="true" />
+                <input id="email" name="email" type="email" autoComplete="username" placeholder="you@noorcombranding.co.ke" required />
+              </div>
             </div>
-          </div>
 
-          <div className="line-field">
-            <label htmlFor="password">Password</label>
-            <div className="line-input">
-              <Lock aria-hidden="true" />
-              <input id="password" name="password" type={show ? 'text' : 'password'} autoComplete="current-password" required />
-              <button
-                type="button"
-                className="eye"
-                onClick={() => setShow((s) => !s)}
-                aria-label={show ? 'Hide password' : 'Show password'}
-                aria-pressed={show}
-              >
-                {show ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+            <div className="line-field">
+              <label htmlFor="password">Password</label>
+              <div className="line-input">
+                <Lock aria-hidden="true" />
+                <input id="password" name="password" type={show ? 'text' : 'password'} autoComplete="current-password" required />
+                <button
+                  type="button"
+                  className="eye"
+                  onClick={() => setShow((s) => !s)}
+                  aria-label={show ? 'Hide password' : 'Show password'}
+                  aria-pressed={show}
+                >
+                  {show ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="signin-row">
+              <button type="button" className="text-link" onClick={() => setHelp((h) => !h)} aria-expanded={help} aria-controls="forgot-help">
+                Forgot password?
               </button>
             </div>
-          </div>
-
-          <div className="signin-row">
-            <button type="button" className="text-link" onClick={() => setHelp((h) => !h)} aria-expanded={help} aria-controls="forgot-help">
-              Forgot password?
-            </button>
-          </div>
-          <p id="forgot-help" className="signin-help" hidden={!help}>
-            Ask the admin to set a new one for you (Staff, in the back office). You’ll be signed out everywhere else when they do.
-          </p>
-
-          {error && (
-            <p className="error" role="alert">
-              {error}
+            <p id="forgot-help" className="signin-help" hidden={!help}>
+              Ask the admin to set a new one for you (Staff, in the back office). You’ll be signed out everywhere else when they do.
             </p>
-          )}
-          <button className="primary signin-submit" type="submit" disabled={busy}>
-            <LogIn aria-hidden="true" />
-            {busy ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
+
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            <button className="primary signin-submit" type="submit" disabled={busy}>
+              <LogIn aria-hidden="true" />
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+        </div>
       </div>
+      <footer className="signin-foot">
+        <p className="signin-tagline">Every order, from brief to handover.</p>
+        <p className="signin-small">
+          <span className="cmyk" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          Design | Print | Brand · Loita Street, Nairobi
+        </p>
+      </footer>
     </main>
+  );
+}
+
+/**
+ * A closed contour line: a circle whose radius wanders with a few slow waves, like a hill on a map.
+ * @param {number} cx @param {number} cy @param {number} r @param {number} seed @param {number} squash
+ */
+function ring(cx, cy, r, seed, squash = 0.7) {
+  const pts = [];
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    const k = 1 + 0.09 * Math.sin(3 * a + seed) + 0.06 * Math.sin(5 * a + seed * 1.7) + 0.04 * Math.sin(2 * a - seed * 0.6);
+    pts.push([cx + Math.cos(a) * r * k, cy + Math.sin(a) * r * k * squash]);
+  }
+  // A smooth closed curve through the points (Catmull-Rom as cubic Béziers).
+  const p = (i) => pts[(i + pts.length) % pts.length];
+  let d = `M${p(0)[0].toFixed(1)} ${p(0)[1].toFixed(1)}`;
+  for (let i = 0; i < pts.length; i++) {
+    const [p0, p1, p2, p3] = [p(i - 1), p(i), p(i + 1), p(i + 2)];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return `${d} Z`;
+}
+
+/** Hills of contour lines: [centre x, centre y, rings, spacing, seed, red]. */
+const HILLS = [
+  [1260, 120, 11, 34, 1.3, true],
+  [170, 820, 10, 36, 4.1, true],
+  [720, 470, 14, 46, 2.2, false],
+  [1380, 840, 6, 40, 5.4, false],
+  [40, 90, 6, 38, 0.4, false],
+];
+const BACKDROP = HILLS.flatMap(([cx, cy, n, gap, seed, red]) =>
+  Array.from({ length: n }, (_, i) => ({ d: ring(cx, cy, 18 + i * gap, seed + i * 0.35), red, i })),
+);
+
+/** The page behind the card: Noorcom black with contour lines, two of the hills in red. */
+function Backdrop() {
+  return (
+    <svg className="signin-backdrop" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id="glow" cx="78%" cy="8%" r="60%">
+          <stop offset="0" stopColor="#d7000f" stopOpacity="0.32" />
+          <stop offset="1" stopColor="#d7000f" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="1440" height="900" fill="url(#glow)" />
+      <g fill="none">
+        {BACKDROP.map(({ d, red, i }, n) => (
+          <path key={n} d={d} stroke={red ? '#d7000f' : '#ffffff'} strokeOpacity={red ? 0.75 - i * 0.05 : 0.07} strokeWidth={red && i < 3 ? 1.6 : 1} />
+        ))}
+      </g>
+    </svg>
   );
 }
 
