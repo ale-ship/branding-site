@@ -7,6 +7,7 @@ import { requireStaff } from './middleware/staffAuth.js';
 import { backofficeRoutes } from './modules/backoffice/routes.js';
 import { capacityRoutes } from './modules/capacity/routes.js';
 import { catalogueRoutes } from './modules/catalogue/routes.js';
+import { contentRoutes, mediaRoutes, staffContentRoutes } from './modules/content/routes.js';
 import { fileRoutes } from './modules/files/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { orderRoutes } from './modules/orders/routes.js';
@@ -45,13 +46,15 @@ export function createApp(config, { limits = {}, ...deps }) {
 
   app.use('/api/health', healthRoutes({ pool, redis, build: config.build, integrations: config.integrations }));
   app.use('/api/payments/absa', absaCallbackRoutes(all, config.absa.secret));
+  app.use('/api/media', mediaRoutes(all));
 
   // Everything else under /api: a general per-IP ceiling (routes add their own, section 8.1).
   app.use('/api', rateLimit(redis, { name: 'api', limit: 300, windowSec: 60, ...limits.api }));
 
   // The modules (docs/BACKEND_RUNBOOK.md, section 13): B1 catalogue and pricing; B2 orders and the
-  // capacity calendar; B3 payments; B4 the back office, with the admin's reports and customer accounts.
+  // capacity calendar; B3 payments; B4 the back office, with the admin's reports and customer accounts, and the website editor.
   app.use('/api/catalogue', catalogueRoutes({ pool, redis }));
+  app.use('/api/content', contentRoutes(all));
   app.use('/api/quotes', pricingRoutes({ pool, redis }));
   app.use('/api/capacity', capacityRoutes({ pool }));
   app.use('/api/orders', orderRoutes(all), proofRoutes(all));
@@ -60,7 +63,7 @@ export function createApp(config, { limits = {}, ...deps }) {
   // B4: the back office. Sign-in is open; everything else needs a staff session (checked once).
   app.use('/api/staff/auth', staffAuthRoutes(all));
   const staff = Router();
-  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all), staffProofRoutes(all), staffProductRoutes(all), staffReportRoutes(all));
+  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all), staffProofRoutes(all), staffProductRoutes(all), staffReportRoutes(all), staffContentRoutes(all));
   app.use('/api/staff', staff);
   // A made-up Paybill payment, for trying the flow: only while Absa is fake, never in production.
   if (config.integrations.absa === 'fake' && config.env !== 'production') app.use('/api/dev', devRoutes(all));

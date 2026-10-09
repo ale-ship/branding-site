@@ -23,7 +23,8 @@ describe('config', () => {
     expect(() => parseConfig({ NODE_ENV: 'production' })).toThrow(/DATABASE_URL: required in production; REDIS_URL: required in production/);
     const prod = { NODE_ENV: 'production', DATABASE_URL: 'postgres://u:p@127.0.0.1:5432/nb', REDIS_URL: 'redis://nb:p@127.0.0.1:6379', FILES_SECRET: 'f'.repeat(32) };
     expect(() => parseConfig(prod)).toThrow(/ABSA_CALLBACK_SECRET/);
-    expect(parseConfig({ ...prod, ABSA_CALLBACK_SECRET: 'x'.repeat(32) }).env).toBe('production');
+    expect(() => parseConfig({ ...prod, ABSA_CALLBACK_SECRET: 'x'.repeat(32) })).toThrow(/REVALIDATE_SECRET/);
+    expect(parseConfig({ ...prod, ABSA_CALLBACK_SECRET: 'x'.repeat(32), REVALIDATE_SECRET: 'r'.repeat(32) }).env).toBe('production');
   });
 
   it('refuses live mode for clients that are not built yet', () => {

@@ -1,4 +1,21 @@
-import { BookUser, CreditCard, FileText, KanbanSquare, LayoutDashboard, LogOut, Menu, Package, Search, Users } from 'lucide-react';
+import {
+  BookUser,
+  BriefcaseBusiness,
+  CreditCard,
+  FileText,
+  Handshake,
+  Images,
+  KanbanSquare,
+  Layers,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  PanelsTopLeft,
+  Search,
+  ShoppingBag,
+  Tags,
+  Users,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api, may } from './api.js';
 import { ROLE } from './format.js';
@@ -12,10 +29,16 @@ import { SignIn } from './pages/SignIn.jsx';
 import { StaffPage } from './pages/StaffPage.jsx';
 import { Unmatched } from './pages/Unmatched.jsx';
 import { initials } from './ui.jsx';
+import { ClientsPage } from './website/clients.jsx';
+import { ProjectEditor, ServiceEditor, ServiceList, ShopEditor, ShopList, WorkList } from './website/editors.jsx';
+import { MediaLibrary } from './website/media.jsx';
+import { PageEditor, PagesIndex } from './website/pages.jsx';
 
 /**
  * The route lives in the hash: #/dashboard, #/orders (?q=…), #/orders/NB-123456, #/payments,
- * #/reports/<kind>, #/accounts, #/accounts/<email>, #/products, #/staff.
+ * #/reports/<kind>, #/accounts, #/accounts/<email>, #/products, #/staff, and the website editor:
+ * #/website/pages[/home|about], #/website/work[/<slug>|new], #/website/services[/<slug>],
+ * #/website/shop[/<slug>|new], #/website/clients, #/website/media.
  */
 function useHashRoute() {
   const read = () => window.location.hash.replace(/^#\/?/, '') || 'dashboard';
@@ -61,7 +84,9 @@ export function App() {
   if (!staff) return <SignIn onSignedIn={setStaff} />;
 
   const [path, query = ''] = route.split('?');
-  const [page, param] = path.split('/');
+  const [page, param, item] = path.split('/');
+  // A sidebar link is current when the route is it or under it (#/website/work/… is "Our work").
+  const current = (href) => path === href || path.startsWith(`${href}/`);
   const signOut = async () => {
     await api.post('/staff/auth/sign-out').catch(() => {});
     setStaff(null);
@@ -82,7 +107,18 @@ export function App() {
         ['accounts', 'Customer accounts', BookUser, may(staff, 'finance')],
       ],
     ],
-    ['Catalogue', [['products', 'Products', Package, true]]],
+    [
+      'Website',
+      [
+        ['website/pages', 'Pages', PanelsTopLeft, true],
+        ['website/work', 'Our work', BriefcaseBusiness, true],
+        ['website/services', 'Services', Layers, true],
+        ['website/shop', 'Shop', ShoppingBag, true],
+        ['website/clients', 'Clients', Handshake, true],
+        ['website/media', 'Media library', Images, true],
+      ],
+    ],
+    ['Catalogue', [['products', 'Prices & minimums', Tags, true]]],
     ['Settings', [['staff', 'Staff', Users, staff.role === 'admin']]],
   ];
   const search = (e) => {
@@ -109,7 +145,7 @@ export function App() {
               <div key={group}>
                 <div className="side-group">{group}</div>
                 {shown.map(([href, label, Icon, , count]) => (
-                  <a key={href} className="side-link" href={`#/${href}`} aria-current={page === href ? 'page' : undefined}>
+                  <a key={href} className="side-link" href={`#/${href}`} aria-current={current(href) ? 'page' : undefined}>
                     <Icon aria-hidden="true" />
                     {label}
                     {count > 0 && (
@@ -166,7 +202,8 @@ export function App() {
           {['reports', 'accounts'].includes(page) && !may(staff, 'finance') && <p>Reports and customer accounts are for the admin.</p>}
           {page === 'products' && <ProductsPage me={staff} onAuthLost={onAuthLost} />}
           {page === 'staff' && <StaffPage me={staff} onAuthLost={onAuthLost} />}
-          {!['dashboard', 'orders', 'payments', 'reports', 'accounts', 'products', 'staff'].includes(page) && (
+          {page === 'website' && <Website key={path} section={param} item={item} me={staff} onAuthLost={onAuthLost} />}
+          {!['dashboard', 'orders', 'payments', 'reports', 'accounts', 'products', 'staff', 'website'].includes(page) && (
             <p>
               No such page. <a href="#/dashboard">Back to the dashboard</a>.
             </p>
@@ -175,4 +212,30 @@ export function App() {
       </div>
     </div>
   );
+}
+
+/** The website editor's pages (owner, 8 Oct 2026: the admin and the designers). */
+function Website({ section, item, me, onAuthLost }) {
+  const slug = item ? decodeURIComponent(item) : null;
+  const props = { onAuthLost };
+  switch (section) {
+    case 'pages':
+      return slug ? <PageEditor slug={slug} {...props} /> : <PagesIndex />;
+    case 'work':
+      return slug ? <ProjectEditor slug={slug} {...props} /> : <WorkList {...props} />;
+    case 'services':
+      return slug ? <ServiceEditor slug={slug} {...props} /> : <ServiceList {...props} />;
+    case 'shop':
+      return slug ? <ShopEditor slug={slug} {...props} /> : <ShopList {...props} />;
+    case 'clients':
+      return <ClientsPage {...props} />;
+    case 'media':
+      return <MediaLibrary me={me} {...props} />;
+    default:
+      return (
+        <p>
+          No such page. <a href="#/website/pages">Back to the website pages</a>.
+        </p>
+      );
+  }
 }

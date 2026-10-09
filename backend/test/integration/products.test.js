@@ -105,4 +105,35 @@ describe.skipIf(!dbUrl)('product minimums', () => {
     const firstTiers = await knex.raw("SELECT min(t.min_qty)::integer AS first FROM price_tiers t JOIN products p ON p.id = t.product_id WHERE p.slug IN ('mug-branding', 'hoodie-branding') GROUP BY p.slug");
     expect(firstTiers.rows.map((r) => r.first)).toEqual([10, 10]);
   });
+
+  const change = (role, slug, body) => as[role].patch(`/api/staff/products/${slug}`).set('x-requested-with', 'nb-admin').send(body);
+
+  it('lets an admin set the prices, which the order price follows at once', async () => {
+    const res = await change('admin', 'mug-branding', { tiers: [{ minQty: 100, unitPrice: 300 }, { minQty: 10, unitPrice: 400 }] });
+    expect(res.status).toBe(200);
+    expect(res.body.product.tiers).toEqual([{ minQty: 10, unitPrice: 400 }, { minQty: 100, unitPrice: 300 }]);
+    cache.clear();
+    const at = async (n) => (await request(app).post('/api/quotes/price').send(priceBody(n))).body;
+    expect((await at(10)).lines[0]).toMatchObject({ unitPrice: 400 });
+    expect((await at(150)).lines[0]).toMatchObject({ unitPrice: 300 });
+    const trail = await knex('audit_log').where({ action: 'prices-changed' }).first();
+    expect(trail.detail.to).toEqual([{ minQty: 10, unitPrice: 400 }, { minQty: 100, unitPrice: 300 }]);
+  });
+
+  it('refuses prices that leave a quantity without one', async () => {
+    expect((await change('admin', 'mug-branding', { tiers: [{ minQty: 50, unitPrice: 300 }] })).body.message).toBe('The first price must start at 10 pieces or fewer, so the minimum order has a price.');
+    expect((await change('admin', 'mug-branding', { tiers: [{ minQty: 10, unitPrice: 300 }, { minQty: 10, unitPrice: 200 }] })).body.message).toBe('Each price starts at more pieces than the one before it.');
+    expect((await change('admin', 'mug-branding', { tiers: [{ minQty: 10, unitPrice: 0 }] })).status).toBe(400);
+    expect((await change('admin', 'mug-branding', {})).status).toBe(400);
+    // Raising the minimum past the first price is fine; lowering it below is not.
+    expect((await change('admin', 'mug-branding', { minQuantity: 5 })).body.message).toBe('The first price must start at 5 pieces or fewer, so the minimum order has a price.');
+  });
+
+  it('takes a product off sale and back', async () => {
+    expect((await change('designer', 'mug-branding', { active: false })).status).toBe(403);
+    expect((await change('admin', 'mug-branding', { active: false })).body.product.active).toBe(false);
+    cache.clear();
+    expect((await request(app).get('/api/catalogue')).body.products.map((p) => p.slug)).not.toContain('mug-branding');
+    expect((await change('admin', 'mug-branding', { active: true })).body.product.active).toBe(true);
+  });
 });

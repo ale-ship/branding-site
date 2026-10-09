@@ -2,10 +2,11 @@
   "name": "@noorcom-branding/shared",
   "version": "0.1.0",
   "private": true,
-  "description": "Code the site and the backend share: the order contract and the pure rules (pricing, dates, C2B routing, capacity, …).",
+  "description": "Code the site and the backend share: the order contract, the pure rules (pricing, dates, C2B routing, capacity, …) and the starting content.",
   "type": "module",
   "exports": {
     "./catalogue/*": "./catalogue/*",
+    "./content/*": "./content/*",
     "./contract/*": "./contract/*",
     "./rules/*": "./rules/*"
   },

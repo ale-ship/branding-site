@@ -484,8 +484,10 @@ Read today (B3; `backend/.env.example` has each with a note): the database and R
 `PUBLIC_URL`, the four modes, `ABSA_CALLBACK_SECRET` (24+ characters, required in production),
 `ABSA_PAYBILL`, `FAKE_STK_DELAY_MS`, `MAIL_FROM`, `SMTP_*` (email is live when `SMTP_HOST` is
 set), `MAIL_OUTBOX_DIR` and `WHATSAPP_OUTBOX_DIR`; from B4, `FILES_SECRET` (24+ characters,
-required in production) and `STORAGE_DIR` (the fake storage's folder). The rest join with the
-clients that read them.
+required in production) and `STORAGE_DIR` (the fake storage's folder); with the website editor,
+`SITE_INTERNAL_URL` (the site on this machine: `http://127.0.0.1:4301` on the VPS) and
+`REVALIDATE_SECRET` (24+ characters, required in production; the same value in the site's env).
+The rest join with the clients that read them.
 
 ## 12. What the site itself needs
 
@@ -771,7 +773,50 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
     accounts** (search, then a customer's statement). Designers don't see the Finance group.
   - Tests: `reports.test.js` (each report's figures, PDF and CSV downloads, a planted formula,
     bad periods, statements with a balance brought forward, admin only), `unit/documents.test.js`.
-- **Not yet:** the rest of the price manager (prices, tiers, deadline and delivery fees), expenses (so profit can be reported), the job card with
+- **The website editor** (owner, 8 Oct 2026: "so we don't need to come to the code every time";
+  the admin and the designers). Everything the public site shows that isn't code is in the database
+  and edited in the back office under **Website**:
+  - **Pages:** the home and About pages section by section (the opening headings, the workshop band
+    and its facts, behind the scenes, how a job runs, the clients heading, the closing call to
+    action; the About page's story, principles and workshop photos). The layout stays in the site's
+    components, so an edit can change words and photos but can't break a page.
+  - **Our work** (projects as case studies: add, edit, hide as a draft, feature, order, delete),
+    **Services** (edit and order; the seven are fixed, each has its page), **Shop** (add, edit, hide,
+    order, delete), **Clients** (names and logos on the ticker) and the **Media library**.
+  - **Storage:** `content_items` (migration 008: kind, slug, the item as JSONB in the contract's
+    shapes from `shared/contract/content.d.ts`, position, published) and `media`. The starting
+    content moved from the site's `src/lib/api/data` to `shared/content/` (services, projects and
+    clients, products, pages); migration 008 inserts it once and never overwrites staff changes. The
+    mock still serves `shared/content` as it is.
+  - **Rules** (`modules/content/schemas.js`): every save is checked (lengths, counts such as three
+    to six steps, at least one service per project, colours as hex), errors come back in words, and
+    photos may only be the site's own images or uploads, never another site. Every change is in
+    `audit_log`.
+  - **Photos** (`content/media.service.js`, sharp): an upload (JPEG, PNG, WebP or AVIF, up to
+    15 MB) is turned the right way up, stripped of what the camera recorded (location included),
+    shrunk to 2400 px on the long side and saved as JPEG (PNG when it has see-through parts, such as
+    a logo), with a 480 px WebP thumbnail for the back office. They are public at
+    `GET /api/media/<name>`, cached for a year (each name is random and never reused), mounted before
+    the rate limit; the site's image optimiser resizes them like its own photos. A photo the site
+    shows can't be deleted.
+  - **The site** reads it all from `GET /api/content` (cached 5 minutes in Redis, `nb:content:site`)
+    in one call, cached under the `content` tag (`src/lib/api/live.ts`). After every change the API
+    queues `refresh-site`; the worker calls the site's `POST /revalidate` (on this machine, not
+    through nginx, which sends `/api/` to the API) with `REVALIDATE_SECRET`, and the site expires
+    the tag, so the next visit shows the change. Shop products that are also on the order form take
+    their price and minimum from it.
+  - **Prices & minimums** (the price manager; admin only): each quantity-run product's minimum,
+    its price per piece at each quantity (one to eight tiers, each starting above the last, the
+    first at or below the minimum) and whether it is on sale (`PATCH /api/staff/products/:slug`
+    `{ minQuantity?, tiers?, active? }`, audited). The order form, the price, the shop and new orders
+    follow at once; orders already placed keep their price.
+  - Tests: `content.test.js` (the shipped content passes the rules; the site's content and live shop
+    prices; saving, refreshing, adding, renaming, hiding, ordering, removing; fixed services and
+    pages; photos cleaned, resized, served, refused and kept while used), `products.test.js` (prices
+    and on sale), the site's `revalidate/route.test.ts` and `live.test.ts`. Checked in a browser
+    with the site built in live mode: an edit to the home page and a new cover photo were on the site
+    at the next visit, and axe found nothing on any editor screen.
+- **Not yet:** the rest of the price manager (deadline and delivery fees, site jobs' prices), business details (phone, address, hours) in the back office, expenses (so profit can be reported), the job card with
   its QR code, mockups on proofs, the pre-production sample, partial deliveries, site jobs'
   survey, quote and installation steps, and accounts on the API (B5).
 

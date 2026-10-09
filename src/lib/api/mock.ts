@@ -1,6 +1,7 @@
 import { nairobiToday } from '../quote';
 import { estimatePrice } from '../pricing';
 import { orderCategories, orderProducts } from './data/order-catalogue';
+import { pages } from './data/pages';
 import { products } from './data/products';
 import { clients, projects } from './data/projects';
 import { services } from './data/services';
@@ -59,6 +60,9 @@ export const mockApi: SiteApi = {
   },
   async listClients() {
     return structuredClone(clients);
+  },
+  async getPageContent() {
+    return structuredClone(pages);
   },
   async submitQuote(request) {
     const reference = newReference('NB');

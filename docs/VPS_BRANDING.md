@@ -141,6 +141,10 @@ they can be checked:
   build time: a change needs a deploy, not a restart.
 - From B1, `/etc/noorcom-branding/api.env` (`docs/BACKEND_RUNBOOK.md` section 11), secrets made on
   the box with `openssl rand -hex 32` and never shown, as electronics did.
+- With the website editor, both need `REVALIDATE_SECRET` (the same value: the API asks the site to
+  refresh after staff change the website), and `api.env` has `SITE_INTERNAL_URL=http://127.0.0.1:4301`.
+  The site's `POST /revalidate` is outside `/api/`, so nginx sends it to the site; only the API, on
+  this machine, calls it. Uploaded photos live under `STORAGE_DIR` until R2 and belong in the backup.
 
 ---
 

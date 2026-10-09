@@ -1,9 +1,9 @@
 // @ts-check
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 
 /**
- * File storage (docs/BACKEND_RUNBOOK.md, section 2.3): proofs, and later logos, artwork and photos.
+ * File storage (docs/BACKEND_RUNBOOK.md, section 2.3): proofs and the website's photos, and later artwork.
  * The fake keeps files on disk under `STORAGE_DIR` with the same interface R2 will have; links to
  * files are signed by lib/signedUrl.js and served by the API either way. config.js refuses
  * STORAGE_MODE=live until the R2 client exists (step B5).
@@ -12,6 +12,7 @@ import { dirname, join, resolve, sep } from 'node:path';
  * @property {'fake' | 'live'} mode
  * @property {(key: string, body: Buffer | string, type: string) => Promise<void>} put
  * @property {(key: string) => Promise<{ body: Buffer; type: string } | null>} get
+ * @property {(key: string) => Promise<void>} remove Nothing happens when the file is already gone.
  */
 
 const KEY = /^[a-z0-9][a-z0-9/_.-]{0,200}$/i;
@@ -45,6 +46,10 @@ export function createStorage({ dir }) {
       } catch {
         return null;
       }
+    },
+    async remove(key) {
+      const p = pathOf(key);
+      await Promise.all([rm(p, { force: true }), rm(`${p}.type`, { force: true })]);
     },
   };
 }

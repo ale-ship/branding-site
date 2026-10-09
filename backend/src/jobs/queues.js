@@ -7,7 +7,7 @@ import { Redis } from 'ioredis';
  * `nb:bull`. The API adds jobs after its transactions commit; the worker (src/worker.js) runs them
  * with the handlers in ./handlers. One queue, jobs told apart by name.
  *
- * @typedef {'settle-stk' | 'stk-query' | 'process-c2b' | 'send-notification' | 'expire-unpaid' | 'outbox-sweep'} JobName
+ * @typedef {'settle-stk' | 'stk-query' | 'process-c2b' | 'send-notification' | 'expire-unpaid' | 'outbox-sweep' | 'refresh-site'} JobName
  *
  * @typedef {object} Jobs
  * @property {(name: JobName, data: Record<string, unknown>, options?: { delayMs?: number; jobId?: string }) => Promise<void>} enqueue

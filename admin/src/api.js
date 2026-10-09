@@ -32,6 +32,8 @@ export const api = {
   get: (path) => call('GET', path),
   post: (path, body = {}) => call('POST', path, body),
   patch: (path, body) => call('PATCH', path, body),
+  put: (path, body) => call('PUT', path, body),
+  del: (path) => call('DELETE', path),
   /** Sends a file as the raw body (proofs: PNG or JPEG). */
   async upload(path, file, headers = {}) {
     const res = await fetch(`/api${path}`, {
@@ -61,6 +63,15 @@ export const MAY = {
   finance: [],
   staff: [],
 };
+
+/**
+ * The public website, for "View on site" links and its own photos (/images/…). On the VPS the back
+ * office and the site share a domain; in development the site runs on port 3000.
+ */
+export const SITE_URL = import.meta.env.VITE_SITE_URL ?? (import.meta.env.DEV ? 'http://localhost:3000' : '');
+
+/** A photo's address as the back office can load it: uploads come through /api, the site's own from the site. */
+export const photoUrl = (src) => (src?.startsWith('/api/') ? src : `${SITE_URL}${src ?? ''}`);
 
 /** A link to download a report or statement (GET, with the session cookie). */
 export const fileUrl = (path, params) => `/api${path}?${new URLSearchParams(params)}`;

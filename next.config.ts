@@ -26,7 +26,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   images: {
     formats: ['image/avif', 'image/webp'],
-    localPatterns: [{ pathname: '/images/**' }, { pathname: '/brand/**' }],
+    // /api/media: photos staff upload in the back office (the API serves them; nginx on the VPS).
+    localPatterns: [{ pathname: '/images/**' }, { pathname: '/brand/**' }, { pathname: '/api/media/**' }],
   },
   poweredByHeader: false,
   /**
@@ -47,13 +48,17 @@ const nextConfig: NextConfig = {
     ];
   },
   /**
-   * In live mode, links to stored files (proof images: /api/files/…, signed by the API) go to the API.
-   * On the VPS nginx sends /api/ to the API first; this is for running the site and the API locally.
+   * In live mode, links to stored files (proof images: /api/files/…, signed by the API) and the
+   * website's photos (/api/media/…) go to the API. On the VPS nginx sends /api/ to the API first;
+   * this is for running the site and the API locally.
    */
   async rewrites() {
     if (process.env.NEXT_PUBLIC_API_MODE !== 'live') return [];
     const api = process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:4300';
-    return [{ source: '/api/files/:path*', destination: `${api}/api/files/:path*` }];
+    return [
+      { source: '/api/files/:path*', destination: `${api}/api/files/:path*` },
+      { source: '/api/media/:path*', destination: `${api}/api/media/:path*` },
+    ];
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

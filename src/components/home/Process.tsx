@@ -1,32 +1,30 @@
+import { api } from '@/lib/api';
 import { pad2 } from '@/lib/format';
 import { Container } from '../ui/Container';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from './SectionHeading';
 
-/** TODO(business): confirm the steps and typical turnaround with Noorcom. */
-const steps = [
-  { name: 'Brief', text: 'Tell us what you need, how many and by when. We reply the same working day.' },
-  { name: 'Design', text: 'Our studio designs it, or prepares your artwork so it prints perfectly.' },
-  { name: 'Proof', text: 'You approve a digital proof, or a physical sample for bigger runs.' },
-  { name: 'Print', text: 'Made in our workshop on our own machines, checked piece by piece.' },
-  { name: 'Install', text: 'Delivered or installed by the same team, anywhere in Kenya.' },
-];
+/** Columns on a wide screen for 3 to 6 steps (full class names, so Tailwind finds them). */
+const WIDE = { 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5', 6: 'lg:grid-cols-6' } as Record<number, string>;
 
-/** The page's one dark section. */
-export function Process() {
+/** The page's one dark section. Steps from Website → Pages in the back office. */
+export async function Process() {
+  const { eyebrow, title, steps } = (await api.getPageContent()).home.process;
+  // Two columns on tablets: an odd last step spans both.
+  const odd = steps.length % 2 === 1;
   return (
     <section aria-labelledby="process-title" className="bg-dark py-20 text-on-dark sm:py-32">
       <Container>
         <SectionHeading
           id="process-title"
           tone="on-dark"
-          eyebrow="How a job runs"
-          title="From brief to installed, in five steps"
+          eyebrow={eyebrow}
+          title={title}
           link={{ href: '/quote', label: 'Start with a brief' }}
         />
-        <ol className="grid grid-cols-1 gap-px bg-on-dark/15 sm:grid-cols-2 lg:grid-cols-5">
+        <ol className={`grid grid-cols-1 gap-px bg-on-dark/15 sm:grid-cols-2 ${WIDE[steps.length] ?? 'lg:grid-cols-5'}`}>
           {steps.map((step, i) => (
-            <Reveal as="li" key={step.name} delay={i * 90} className="flex flex-col gap-10 bg-dark p-6 last:sm:col-span-2 sm:p-8 lg:last:col-span-1">
+            <Reveal as="li" key={i} delay={i * 90} className={`flex flex-col gap-10 bg-dark p-6 sm:p-8 ${odd ? 'last:sm:col-span-2 lg:last:col-span-1' : ''}`}>
               <span className="text-sm font-semibold text-on-dark-muted tabular-nums">{pad2(i + 1)}</span>
               <span>
                 <span className="block font-display text-3xl font-bold text-on-dark">{step.name}</span>

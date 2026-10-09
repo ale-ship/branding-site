@@ -41,6 +41,10 @@ const schema = z.object({
   FILES_SECRET: z.string().default(''),
   // Fake storage: files on disk here, until R2 (STORAGE_MODE=live).
   STORAGE_DIR: z.string().min(1).default('.storage'),
+  // The site's own address on this machine, and the secret it wants before it drops its cached
+  // content (staff edit the website in the back office; the site refreshes at once).
+  SITE_INTERNAL_URL: z.string().url().default('http://127.0.0.1:3000'),
+  REVALIDATE_SECRET: z.string().default(''),
 });
 
 /** The live site: fakes must never answer for it (section 2.3, rule 2). */
@@ -62,6 +66,7 @@ const LIVE_HOSTS = ['noorcombranding.co.ke', 'www.noorcombranding.co.ke'];
  * @property {{ from: string; outboxDir: string; smtp: { host: string; port: number; user: string; pass: string } | null }} mail
  * @property {{ outboxDir: string }} whatsapp
  * @property {{ secret: string; dir: string }} files
+ * @property {{ internalUrl: string; revalidateSecret: string }} site
  */
 
 /**
@@ -80,6 +85,7 @@ export function parseConfig(env = process.env) {
     if (missing.length) throw new Error(`Invalid configuration: ${missing.map((k) => `${k}: required in production`).join('; ')}`);
     if (c.ABSA_CALLBACK_SECRET.length < 24) throw new Error('Invalid configuration: ABSA_CALLBACK_SECRET: at least 24 characters in production');
     if (c.FILES_SECRET.length < 24) throw new Error('Invalid configuration: FILES_SECRET: at least 24 characters in production');
+    if (c.REVALIDATE_SECRET.length < 24) throw new Error('Invalid configuration: REVALIDATE_SECRET: at least 24 characters in production');
   }
   // Clients that aren't built yet can't be switched on (section 2.3, rule 3).
   for (const [k, why] of /** @type {const} */ ([
@@ -114,5 +120,6 @@ export function parseConfig(env = process.env) {
     },
     whatsapp: { outboxDir: c.WHATSAPP_OUTBOX_DIR },
     files: { secret: c.FILES_SECRET || 'dev-files-secret', dir: c.STORAGE_DIR },
+    site: { internalUrl: c.SITE_INTERNAL_URL.replace(/\/$/, ''), revalidateSecret: c.REVALIDATE_SECRET || 'dev-revalidate-secret' },
   };
 }

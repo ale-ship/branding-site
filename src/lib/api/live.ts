@@ -2,7 +2,22 @@ import { headers } from 'next/headers';
 import type { CapacityCalendar } from '../capacity';
 import { mockApi } from './mock';
 import { OrderError } from './order-types';
-import type { Order, OrderAccess, OrderCategory, OrderErrorCode, OrderPayment, OrderProduct, PriceEstimate, SiteApi } from './types';
+import type {
+  Client,
+  ListOptions,
+  Order,
+  OrderAccess,
+  OrderCategory,
+  OrderErrorCode,
+  OrderPayment,
+  OrderProduct,
+  PageContent,
+  PriceEstimate,
+  Product,
+  Project,
+  Service,
+  SiteApi,
+} from './types';
 
 /**
  * SiteApi over HTTP to our backend (docs/BACKEND_RUNBOOK.md, section 12), chosen in index.ts when
@@ -14,7 +29,9 @@ import type { Order, OrderAccess, OrderCategory, OrderErrorCode, OrderPayment, O
  *   B2  placing and reading orders (createOrder, getOrder by token or order number + phone) and the
  *       capacity calendar (getCapacity)
  *   B3  paying by M-Pesa (startPayment; the order page then follows the payment through getOrder)
- *   B4  answering a proof (approveProof, requestChanges); proof images are signed /api/files links
+ *   B4  answering a proof (approveProof, requestChanges); proof images are signed /api/files links;
+ *       the website's content (services, our work, the shop, clients, the home and About pages),
+ *       which staff edit in the back office; its photos are /api/media links
  *
  * The sample, early deliveries, surveys and installation arrive with B5: until then those methods
  * answer that it isn't available online yet, rather than looking for the order in the mock, which
@@ -65,8 +82,21 @@ const forVisitor = async <T>(path: string, init: Parameters<typeof call>[1] = {}
 
 type Catalogue = { categories: OrderCategory[]; products: OrderProduct[] };
 
-/** Cached for a minute; from B4 the API clears it through /revalidate when staff change a product. */
+/** Cached for a minute; the API clears it through /revalidate when staff change a product. */
 const catalogue = () => call<Catalogue>('/api/catalogue', { next: { revalidate: 60, tags: ['catalogue'] } });
+
+type Content = { services: Service[]; projects: Project[]; products: Product[]; clients: Client[]; pages: PageContent };
+
+/**
+ * The website's content, in one call. Cached until staff change something: the API then asks
+ * /revalidate to drop it, so the next visit shows the change (and every 10 minutes regardless).
+ */
+const content = () => call<Content>('/api/content', { next: { revalidate: 600, tags: ['content'] } });
+
+function pick<T extends { featured: boolean }>(items: T[], { featured, limit }: ListOptions = {}): T[] {
+  const filtered = featured === undefined ? items : items.filter((item) => item.featured === featured);
+  return limit === undefined ? filtered : filtered.slice(0, limit);
+}
 
 /** Null for "no such order, or not yours": the API answers both the same way. */
 async function orNull(read: Promise<Order>): Promise<Order | null> {
@@ -96,6 +126,32 @@ const notYet = async (): Promise<never> => {
 
 export const liveApi: SiteApi = {
   ...mockApi,
+
+  // The website's content, edited in the back office.
+  async listServices() {
+    return (await content()).services;
+  },
+  async getService(slug) {
+    return (await content()).services.find((s) => s.slug === slug) ?? null;
+  },
+  async listProjects(options) {
+    return pick((await content()).projects, options);
+  },
+  async getProject(slug) {
+    return (await content()).projects.find((p) => p.slug === slug) ?? null;
+  },
+  async listProducts(options) {
+    return pick((await content()).products, options);
+  },
+  async getProduct(slug) {
+    return (await content()).products.find((p) => p.slug === slug) ?? null;
+  },
+  async listClients() {
+    return (await content()).clients;
+  },
+  async getPageContent() {
+    return (await content()).pages;
+  },
 
   // B1: catalogue and pricing.
   async listOrderCategories() {

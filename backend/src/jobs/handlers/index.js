@@ -1,4 +1,5 @@
 // @ts-check
+import { refreshSite } from '../../modules/content/service.js';
 import { sendNotification, sweepOutbox } from '../../modules/notifications/service.js';
 import { expireUnpaid } from '../../modules/orders/service.js';
 import { processC2B } from '../../modules/payments/c2b.service.js';
@@ -21,6 +22,7 @@ export const handlers = {
   'send-notification': (deps, { id }) => sendNotification(deps, id),
   'expire-unpaid': (deps) => expireUnpaid(deps),
   'outbox-sweep': (deps) => sweepOutbox(deps),
+  'refresh-site': (deps, { tags }) => refreshSite(deps, tags),
 };
 
 /**

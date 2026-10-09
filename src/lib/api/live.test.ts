@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const visitorHeaders = new Headers();
 vi.mock('next/headers', () => ({ headers: async () => visitorHeaders }));
 import { orderCategories, orderProducts } from './data/order-catalogue';
+import { pages } from './data/pages';
+import { products } from './data/products';
+import { clients, projects } from './data/projects';
+import { services } from './data/services';
 import { liveApi } from './live';
 import { mockApi } from './mock';
 import { OrderError } from './order-types';
@@ -69,9 +73,24 @@ describe('liveApi (step B1)', () => {
     expect(String(await liveApi.listOrderCategories().catch((e: unknown) => e))).toContain('not answering');
   });
 
-  it('leaves the site content on the mock', () => {
-    expect(liveApi.listServices).toBe(mockApi.listServices);
+  it('leaves accounts on the mock', () => {
     expect(liveApi.requestSignInCode).toBe(mockApi.requestSignInCode);
+  });
+});
+
+describe('liveApi (the website editor)', () => {
+  it('reads the content from GET /api/content, cached under the content tag', async () => {
+    const fetchMock = stubFetch(() => json(200, { services, projects, products, clients, pages }));
+    expect(await liveApi.listServices()).toEqual(services);
+    expect(await liveApi.getService('apparel')).toEqual(services.find((s) => s.slug === 'apparel'));
+    expect(await liveApi.listProjects({ featured: true, limit: 2 })).toEqual(projects.filter((p) => p.featured).slice(0, 2));
+    expect(await liveApi.getProject('nope')).toBeNull();
+    expect(await liveApi.listProducts()).toEqual(products);
+    expect(await liveApi.listClients()).toEqual(clients);
+    expect((await liveApi.getPageContent()).home.process.steps).toHaveLength(5);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('http://127.0.0.1:4300/api/content');
+    expect((init as RequestInit & { next?: unknown }).next).toEqual({ revalidate: 600, tags: ['content'] });
   });
 });
 

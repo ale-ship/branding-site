@@ -26,93 +26,25 @@ import type {
 } from './order-types';
 
 
-import type { ArtworkFile, Photo, ServiceSlug } from '@shared/contract/content';
+import type {
+  AboutPage,
+  ArtworkFile,
+  CaptionedPhoto,
+  Client,
+  HomePage,
+  PageContent,
+  Photo,
+  Product,
+  ProductCategory,
+  ProductOption,
+  Project,
+  Service,
+  ServiceSlug,
+} from '@shared/contract/content';
 
-export type { ArtworkFile, Photo, ServiceSlug };
+/** The content types live in shared/ (the backend stores them; staff edit them in the back office). */
+export type { AboutPage, ArtworkFile, CaptionedPhoto, Client, HomePage, PageContent, Photo, Product, ProductCategory, ProductOption, Project, Service, ServiceSlug };
 
-export type Service = {
-  slug: ServiceSlug;
-  name: string;
-  /** One line for lists. */
-  summary: string;
-  /** A short paragraph for the service page. */
-  intro: string;
-  /** Things we make under this service, shown as tags. */
-  includes: string[];
-  materials: string[];
-  /** Typical time from approved proof to finished job, e.g. "3 to 5 working days". */
-  turnaround: string;
-  /** Smallest job we take, e.g. "50 pieces" or "One sign". */
-  minimum: string;
-  /** Shop categories that belong to this service, for "Ready to brand" on its page. */
-  productCategories: ProductCategory[];
-  faqs: { question: string; answer: string }[];
-  image: Photo;
-};
-
-/** A photo with an optional line under it. */
-export type CaptionedPhoto = Photo & { caption?: string };
-
-/**
- * A job, told as a case study (Mindsparkle's order): brief, idea, colours, applications,
- * behind the scenes, before and after (rebrands only), result.
- */
-export type Project = {
-  slug: string;
-  title: string;
-  client: string;
-  industry: string;
-  year: number;
-  location: string;
-  services: ServiceSlug[];
-  /** One or two sentences for cards and the case-study intro. */
-  summary: string;
-  cover: Photo;
-  /** The job's colours as hex values, shown as swatch chips. */
-  palette: string[];
-  brief: string;
-  idea: string;
-  result: string;
-  /** Short numbers worth bragging about: `{ label: 'Vans wrapped', value: '12' }`. */
-  facts: { label: string; value: string }[];
-  /** Materials and finishes, the details a print buyer cares about. */
-  materials: string[];
-  /** The work in use: signage up, vans on the road, gifts on desks. */
-  applications: CaptionedPhoto[];
-  /** Production: machines, proofs, installation. */
-  behindTheScenes: CaptionedPhoto[];
-  /** Only for rebrands. */
-  beforeAfter: { before: Photo; after: Photo } | null;
-  featured: boolean;
-  /** True for placeholder projects that must be replaced with real work before launch. */
-  sample: boolean;
-};
-
-export type ProductCategory = 'stationery' | 'print' | 'apparel' | 'gifts' | 'display';
-
-/** A choice the customer makes on the product page, e.g. Finish: Matte, Gloss. */
-export type ProductOption = { name: string; values: string[] };
-
-export type Product = {
-  slug: string;
-  name: string;
-  category: ProductCategory;
-  /** The service it belongs to, for turnaround and "how we make it". */
-  service: ServiceSlug;
-  /** Price per piece in whole shillings. */
-  pricePerPiece: number;
-  /** Minimum order quantity in pieces. */
-  minQuantity: number;
-  summary: string;
-  /** A short paragraph for the product page. */
-  description: string;
-  /** The first value of each option is the default. */
-  options: ProductOption[];
-  image: Photo;
-  featured: boolean;
-};
-
-export type Client = { name: string; logo: Photo | null };
 
 export type ListOptions = { featured?: boolean; limit?: number };
 
@@ -162,6 +94,8 @@ export interface SiteApi {
   listProducts(options?: ListOptions): Promise<Product[]>;
   getProduct(slug: string): Promise<Product | null>;
   listClients(): Promise<Client[]>;
+  /** The words and photos of the home and About pages' sections. */
+  getPageContent(): Promise<PageContent>;
   submitQuote(request: QuoteRequest): Promise<QuoteReceipt>;
   sendMessage(message: ContactMessage): Promise<QuoteReceipt>;
 
