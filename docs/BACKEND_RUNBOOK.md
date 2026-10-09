@@ -722,7 +722,10 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   month against the same days last month, orders this month, money waiting, what needs a hand
   (overdue, flagged, unmatched payments), money received per day for 30 days (one line with a
   hover tooltip and a table for screen readers), orders by category, the pipeline by stage and the
-  newest orders. The board also has a list view. axe finds nothing on any screen.
+  newest orders. The board also has a list view. axe finds nothing on any screen. Sign-in is one card
+  (owner’s reference, 9 Oct 2026): a red header with contour lines and the logo that curves into the
+  form, underlined fields with icons, a show-password button and a note that the admin resets
+  passwords; full screen on a phone.
 - **The site** in live mode: `approveProof` and `requestChanges` go to the API; proof images load
   through `/api/files` (nginx on the VPS, a rewrite in `next.config.ts` locally). Orders reached by
   a signed-in email answer `not_found` on the API until accounts move (B5), so the site falls back
