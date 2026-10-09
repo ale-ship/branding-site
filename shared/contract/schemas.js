@@ -67,12 +67,13 @@ export const customerSchema = z.object({
 });
 
 /**
- * POST /api/orders: `OrderInput`. `company` is not accepted from the request: a company order comes
- * from the signed-in account, which moves to the API with accounts (step B5).
+ * POST /api/orders: `OrderInput`. `company` asks for a company order; the company itself comes from
+ * the signed-in member's session (`X-Account-Session`), never from the request, so its id is ignored.
  */
 export const orderInputSchema = priceRequestSchema.extend({
   common: commonBriefSchema,
   customer: customerSchema,
+  company: z.object({ id: z.string().max(20).default(''), poNumber: z.string().trim().max(40).default('') }).optional(),
 });
 
 /** POST /api/orders/lookup: the order number and the phone it was placed with. */

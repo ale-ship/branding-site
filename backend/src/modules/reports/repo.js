@@ -156,7 +156,7 @@ export async function accounts(db, q) {
 export async function statementOf(db, email) {
   const orders = await db.query(
     `SELECT o.id, o.order_no, i.invoice_no, o.status, o.total, o.estimate, o.amount_paid, o.product, o.created_at,
-            o.customer_name, o.customer_company, o.customer_phone
+            o.customer_name, o.customer_company, o.customer_phone, o.company_po
      FROM orders o JOIN invoices i ON i.order_id = o.id
      WHERE o.customer_email = $1 ORDER BY o.created_at, o.id`,
     [email],

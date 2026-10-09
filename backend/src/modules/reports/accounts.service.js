@@ -41,6 +41,29 @@ export async function accountList(deps, q) {
   }));
 }
 
+/**
+ * A customer's orders and payments (repo.statementOf) as a statement, by the site's own rule.
+ * @param {Record<string, any>[]} orders
+ * @param {Record<string, any>[]} payments
+ */
+export const statementFrom = (orders, payments) =>
+  buildStatement(
+    orders.map((o) => /** @type {any} */ ({
+      ref: o.order_no,
+      invoiceNo: o.invoice_no,
+      status: o.status,
+      total: o.total,
+      estimate: o.estimate,
+      amountPaid: o.amount_paid,
+      createdAt: new Date(o.created_at).toISOString(),
+      product: o.product,
+      company: o.company_po ? { poNumber: o.company_po } : null,
+      payments: payments
+        .filter((p) => p.order_id === o.id)
+        .map((p) => ({ status: 'confirmed', settledAt: new Date(p.created_at).toISOString(), receiptNo: p.receipt_no, method: p.method, mpesaReceipt: p.mpesa_receipt, amount: p.amount })),
+    })),
+  );
+
 /** The Nairobi day of a moment. */
 const dayOf = (/** @type {string} */ iso) => nairobiToday(new Date(iso));
 
@@ -59,22 +82,7 @@ export async function statement(deps, email, q, now = new Date()) {
   const latest = orders.at(-1);
   if (!latest) throw new AppError(404, 'not_found', 'No orders were placed with that email.');
 
-  const all = buildStatement(
-    orders.map((o) => /** @type {any} */ ({
-      ref: o.order_no,
-      invoiceNo: o.invoice_no,
-      status: o.status,
-      total: o.total,
-      estimate: o.estimate,
-      amountPaid: o.amount_paid,
-      createdAt: new Date(o.created_at).toISOString(),
-      product: o.product,
-      company: null,
-      payments: payments
-        .filter((p) => p.order_id === o.id)
-        .map((p) => ({ status: 'confirmed', settledAt: new Date(p.created_at).toISOString(), receiptNo: p.receipt_no, method: p.method, mpesaReceipt: p.mpesa_receipt, amount: p.amount })),
-    })),
-  );
+  const all = statementFrom(orders, payments);
   const before = all.lines.filter((l) => dayOf(l.date) < period.from);
   const opening = before.at(-1)?.balance ?? 0;
   const lines = all.lines.filter((l) => dayOf(l.date) >= period.from && dayOf(l.date) <= period.to);

@@ -293,6 +293,9 @@ backend/
 | 004 ✓ | staff (B4) | `staff_users` (email, role, scrypt hash, active), `staff_sessions` (token hash, sliding expiry), `audit_log`, `production_logs`; orders gain `pickup_code`, `dispatch`, `handed_over` |
 | 005 ✓ | proofs (B4) | `proofs` (version unique per order, status, note, the watermarked and original file keys, customer comments, pins, the checklist ticked, who uploaded); brought forward from B5 so staff can run an order through |
 | 006 ✓ | minimum ten | Data only: quantity runs still on the old stand-in minimum of 50 go to 10 (owner, 8 Oct 2026), and a first price tier at 50 starts at 10; a minimum staff set themselves stays |
+| 007 ✓ | two roles | Staff roles become `admin` and `designer` only (owner, 8 Oct 2026) |
+| 008 ✓ | content | `content_items` (kind, slug, data JSONB, position, published), `media`; the starting content inserted once |
+| 009 ✓ | accounts (B5) | `customer_profiles` (email, lower case: the account; name, phone, company, brand kit JSONB, addresses JSONB), `sign_in_codes` (one per email: the code's hash, tries, sent and expiry times), `customer_sessions` (token hash, email, expiry), `companies` (`CO-` + 6 digits, name, KRA PIN), `company_members` (email unique, role: owner, approver, member); orders gain `company_id` and `company_po`. The planned `people` row below, as built: the account is its email, so orders aren't linked to it |
 | 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
 | 003 | people | `customers` (email unique, lower case: the account; name, phone, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, email unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
 | 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
@@ -396,12 +399,14 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | `bookSurvey` | `POST /api/orders/:no/survey` | After the survey fee |
 | `acceptSiteQuote` | `POST /api/orders/:no/quote/accept` | Within its validity; sets the total and the deposit |
 | `bookInstall` | `POST /api/orders/:no/install` | Two working days' notice, working days only |
-| `requestSignInCode`, `verifySignInCode` | `POST /api/auth/code`, `/api/auth/verify` | Emailed code (owner, 8 Oct 2026); session cookie set by the site |
-| `getAccount`, `updateAccount`, `signOut` | `GET`, `PATCH /api/account`; `POST /api/auth/sign-out` | Session required |
-| `saveBrandKit`, `saveAddress`, `removeAddress` | `PUT /api/account/brand-kit`; `/api/account/addresses` | |
-| `reorderDraft` | `GET /api/account/orders/:no/reorder` | The account's own A orders with an approved proof |
-| `getStatement` | `GET /api/account/statement` (`?format=csv`) | Built by shared/rules/statement.js |
-| `createCompany`, `addCompanyMember`, `removeCompanyMember` | `POST /api/account/company`, `/members`, `DELETE /members/:phone` | Owner only for members |
+| `requestSignInCode`, `verifySignInCode` | `POST /api/account/code` `{ email }`, `POST /api/account/verify` `{ email, code }` | Emailed code (owner, 8 Oct 2026), never returned; verify answers `{ session }`, which the site keeps in its `nb-session` cookie |
+| `getAccount` | `GET /api/account` | Every call below takes the session in `X-Account-Session`; an expired one is 404 `not_found` ("Please sign in again") |
+| `updateAccount`, `signOut` | `PUT /api/account/details`, `POST /api/account/sign-out` | |
+| `saveBrandKit`, `saveAddress`, `removeAddress` | `PUT /api/account/brand-kit`, `POST /api/account/addresses` (with an `id` to change one), `DELETE /api/account/addresses/:id` | Cleaned by shared/rules/account.js |
+| `reorderDraft` | `GET /api/account/reorder/:no` | The account's own A orders with an approved proof |
+| `getStatement` | `GET /api/account/statement` | Built by shared/rules/statement.js (the site makes the CSV) |
+| `createCompany`, `addCompanyMember`, `removeCompanyMember` | `POST /api/account/company`, `POST /api/account/company/members`, `DELETE /api/account/company/members/:email` | Owner only for members |
+| (orders by account) | `X-Account-Session` on `GET /api/orders/:no`, the payment and the proofs | The order's own email, or an owner or approver of its company; on `POST /api/orders`, it makes `company` a company order for a signed-in member |
 | (documents) | `GET /api/orders/:no/invoice.pdf`, `/receipts/:receiptNo.pdf` | Signed, short-lived links |
 | (uploads) | `POST /api/uploads` | Presigned PUT to R2 |
 | `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | |
@@ -421,8 +426,8 @@ Per IP, 429 `rate_limited` beyond them, Redis keys `nb:rl:<name>:<ip>` (Noorcom 
 | `POST /api/payments/stk` | 10 per 10 minutes, and one pending prompt per order (`nb:stk:lock:*`) |
 | `POST /api/uploads` | 30 per 10 minutes |
 | `POST /api/requests/quote`, `/contact` | 5 per hour, with a hidden honeypot field |
-| `POST /api/auth/code` | 5 per hour per IP and 1 per minute per email (`nb:otp:*`) |
-| `POST /api/auth/verify` | 20 per 10 minutes per IP; 5 tries per code |
+| `POST /api/account/code` | 10 per 10 minutes per IP, and 1 a minute per email (in Postgres) |
+| `POST /api/account/verify` | 20 per 10 minutes per IP; 5 tries per code |
 | Document downloads | 60 per 10 minutes |
 | Absa callbacks | Not limited (Absa's few addresses; a wrong secret stores nothing) |
 
@@ -436,6 +441,10 @@ link), never the phone number.
   checked when Absa provides one. The raw body is kept for audit.
 - The order's secret token is stored hashed; lookups by phone are rate limited and answer the same
   way whether or not the order exists.
+- Customers sign in with a code emailed to them: only the code's hash is kept (with its email), it
+  lasts ten minutes and five tries, and it is never returned or logged. Sessions are random tokens
+  stored as hashes; the site keeps them in its httpOnly cookie and the API takes the email from
+  the session, never from a request.
 - Staff: scrypt hashes, httpOnly secure cookies, two roles (Admin and Designer, owner 8 Oct
   2026); every staff change in `audit_log`. Reports and customer accounts are the admin's alone.
 - Logs mask phone numbers and never include tokens or provider credentials.
@@ -823,7 +832,43 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
     at the next visit, and axe found nothing on any editor screen.
 - **Not yet:** the rest of the price manager (deadline and delivery fees, site jobs' prices), business details (phone, address, hours) in the back office, expenses (so profit can be reported), the job card with
   its QR code, mockups on proofs, the pre-production sample, partial deliveries, site jobs'
-  survey, quote and installation steps, and accounts on the API (B5).
+  survey, quote and installation steps (B5).
+
+### Step B5, part 1: customer accounts, done 9 Oct 2026
+
+- **Migration 009** (section 5) and `modules/accounts`: `session.service.js` (sign-in),
+  `service.js` (the account), `company.service.js` (companies), with `repo.js` and
+  `company.repo.js`. The site's mock (`src/lib/api/mock-accounts.ts`) was the specification;
+  the API answers in the same shapes with the same words.
+- **Sign-in:** `POST /api/account/code` emails a six-digit code. It goes straight to the mailer,
+  not the outbox: it is useless once expired, and that keeps it out of the database (only
+  `sha256(email:code)` is stored). A code lasts ten minutes and five tries, a new one can be asked
+  for after a minute, and a code that failed to send is dropped so the customer can ask again at
+  once. `POST /api/account/verify` uses the code up (one sign-in per code, however many arrive at
+  once) and answers a 64-character session for thirty days. Without `SMTP_HOST` the email is an
+  `.eml` file in `backend/.mail-outbox/`: that is where to find the code on a development machine.
+- **The account** (`GET /api/account`): every order placed with the email, guest orders included,
+  newest first; the details (from the latest order until the customer edits them), the brand kit
+  and up to five addresses; credit; and the company with the colleagues' orders for owners and
+  approvers. Reorders (`GET /api/account/reorder/:no`) and the statement come from the account's
+  own orders; the statement uses the same mapping as the admin's (`statementFrom` in
+  `reports/accounts.service.js`).
+- **Orders by session:** `X-Account-Session` opens an order (read, pay, answer a proof) placed with
+  the session's email, or one placed for a company the email owns or approves for. A company order
+  is placed only by a signed-in member with their own email (`company: { poNumber }` in the order
+  plus the session); anything else is refused. Its proofs are approved only by an owner or approver,
+  and the order page names them.
+- **The site** in live mode: every account method goes to the API (`apiMode` is now `live` there,
+  so the demo code is gone); an order reached through the account sends the session from the
+  `nb-session` cookie, never the email.
+- **Tests:** `accounts.test.js` (the code emailed and only its hash kept; resends; one use; five
+  tries; the account from guest orders; orders by session and not others'; sign-out; details, brand
+  kit and addresses with their limits; reorder and statement; a company's members, company orders,
+  who sees and approves them, and removal), the site's `live.test.ts`. 124 backend tests.
+- **Checked in a browser** with the site built in live mode against the API: a guest order, sign-in
+  with the code from the emailed `.eml`, the order on the account and opened by the session alone,
+  a company set up through the account page, and sign-out ending the session in Postgres. axe found
+  nothing on the account page at 390 and 1440 px.
 
 ### Setting up Postgres and Redis on a development machine
 

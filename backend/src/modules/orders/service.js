@@ -11,6 +11,8 @@ import { AppError } from '../../lib/errors.js';
 import { hashToken, newOrderNo, newToken, tokenMatches } from '../../lib/ids.js';
 import { nextNumber } from '../../lib/numbering.js';
 import { signedPath } from '../../lib/signedUrl.js';
+import { approvalOf, approvesFor, companyForOrder } from '../accounts/company.service.js';
+import { emailFromSession } from '../accounts/session.service.js';
 import { book, bookedFrom, lockCalendar, release } from '../capacity/repo.js';
 import { getProduct } from '../catalogue/service.js';
 import { queueNotifications } from '../notifications/service.js';
@@ -32,6 +34,7 @@ import { toOrder } from './view.js';
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderProduct} OrderProduct
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').OrderProgress} OrderProgress
  * @typedef {import('../../deps.js').Deps} Deps
+ * @typedef {import('../../middleware/customerAccess.js').Access} Access
  */
 
 const NOT_FOUND = 'We couldn’t find that order.';
@@ -65,9 +68,10 @@ function initialProgress(p, quantity) {
  * @param {Deps} deps
  * @param {OrderInput} input Already shaped by `orderInputSchema`.
  * @param {Date} [now]
+ * @param {{ session?: string }} [signedIn] The account's session: a company order needs a member's.
  * @returns {Promise<{ ref: string; token: string }>}
  */
-export async function createOrder(deps, input, now = new Date()) {
+export async function createOrder(deps, input, now = new Date(), { session = '' } = {}) {
   const pool = need(deps.pool);
   const product = await getProduct(deps, input.product);
   if (!product) throw new OrderError('invalid', 'That item can’t be ordered online.');
@@ -76,6 +80,8 @@ export async function createOrder(deps, input, now = new Date()) {
   if (!phone) throw new OrderError('invalid', 'Enter a Kenyan mobile number, like 0722 530 301.');
   const email = normaliseEmail(input.customer.email);
   if (!email) throw new OrderError('invalid', 'Enter a valid email address.');
+  // A company order only for a signed-in member ordering with their own email.
+  const company = input.company ? { id: (await companyForOrder(deps, session, email)).id, po: input.company.poNumber.trim().slice(0, 40) } : null;
 
   const quantity = product.mechanism === 'A' ? input.quantity : 1;
   const today = nairobiToday(now);
@@ -101,6 +107,7 @@ export async function createOrder(deps, input, now = new Date()) {
       urgency: estimate.urgency.code,
       handover: input.handover,
       customer: { name: input.customer.name, company: input.customer.company, phone, email },
+      company,
       estimate,
       total: estimate.total,
       dueNow: estimate.dueNow.amount,
@@ -161,11 +168,26 @@ export async function expireUnpaid(deps, now = new Date(), orderId) {
 }
 
 /**
+ * Whether the access opens the order: the link's token, the phone it was placed with, or a session
+ * for the email it was placed with or for an owner or approver of the company it was placed for.
+ * @param {Deps} deps
+ * @param {Record<string, any>} row
+ * @param {Access} access
+ */
+async function opens(deps, row, access) {
+  if ('token' in access) return !!access.token && tokenMatches(access.token, row.token_hash);
+  if ('phone' in access) return normaliseKenyanPhone(access.phone) === row.customer_phone;
+  const email = await emailFromSession(deps, access.session).catch(() => null);
+  if (!email) return false;
+  return email === row.customer_email || (!!row.company_id && (await approvesFor(deps, row.company_id, email)));
+}
+
+/**
  * The order for its customer: by the secret link's token, or by the phone it was placed with (order
  * number + phone). The same not_found either way, so neither can be used to find which orders exist.
  * @param {Deps} deps
  * @param {string} ref
- * @param {{ token: string } | { phone: string }} access
+ * @param {Access} access
  * @param {Date} [now]
  * @returns {Promise<Record<string, any>>} The order row, expired first if its time is up.
  */
@@ -173,10 +195,7 @@ export async function findOrderFor(deps, ref, access, now = new Date()) {
   const pool = need(deps.pool);
   const orderNo = ref.trim().toUpperCase();
   let row = await repo.findByOrderNo(pool, orderNo);
-  const ok =
-    row &&
-    ('token' in access ? !!access.token && tokenMatches(access.token, row.token_hash) : normaliseKenyanPhone(access.phone) === row.customer_phone);
-  if (!row || !ok) throw new OrderError('not_found', NOT_FOUND);
+  if (!row || !(await opens(deps, row, access))) throw new OrderError('not_found', NOT_FOUND);
   if (row.status === 'awaiting_payment' && row.expires_at && new Date(row.expires_at) < now) {
     await expireUnpaid(deps, now, row.id);
     row = await repo.findByOrderNo(pool, orderNo);
@@ -189,11 +208,12 @@ export async function findOrderFor(deps, ref, access, now = new Date()) {
  * The order as the customer sees it (`Order`): see `findOrderFor` for the access.
  * @param {Deps} deps
  * @param {string} ref
- * @param {{ token: string } | { phone: string }} access
+ * @param {Access} access
  * @param {Date} [now]
  * @returns {Promise<Order>}
  */
 export async function getOrder(deps, ref, access, now = new Date()) {
   const row = await findOrderFor(deps, ref, access, now);
-  return toOrder(row, await repo.historyOf(need(deps.pool), row.id), signerFor(deps));
+  const company = row.company_id ? await approvalOf(deps, row.company_id) : null;
+  return toOrder(row, await repo.historyOf(need(deps.pool), row.id), signerFor(deps), company);
 }

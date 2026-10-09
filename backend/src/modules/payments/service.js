@@ -44,7 +44,7 @@ function needAll(deps) {
  * Sends the M-Pesa prompt for what is due now. A second tap returns the prompt already on its way.
  * @param {Deps} deps
  * @param {string} ref
- * @param {{ token: string } | { phone: string }} access
+ * @param {import('../../middleware/customerAccess.js').Access} access
  * @param {string} phone The number to pay from, as typed.
  * @param {Date} [now]
  * @returns {Promise<OrderPayment>}

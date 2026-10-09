@@ -66,8 +66,8 @@ export default async function AccountPage() {
           </h2>
           <p className="mt-2 text-sm text-body">
             {account.orders.length
-              ? `${account.orders.length} order${account.orders.length === 1 ? '' : 's'}, ${open.length} open. Orders placed with your number join your account by themselves.`
-              : 'Nothing yet. Orders placed with your number show here.'}
+              ? `${account.orders.length} order${account.orders.length === 1 ? '' : 's'}, ${open.length} open. Orders placed with this email join your account by themselves.`
+              : 'Nothing yet. Orders placed with this email show here.'}
           </p>
           {account.orders.length > 0 && (
             <p className="mt-2">

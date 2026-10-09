@@ -4,6 +4,7 @@ import { errorHandler, notFoundHandler } from './lib/errors.js';
 import { rateLimit } from './middleware/rateLimit.js';
 import { requestContext } from './middleware/requestId.js';
 import { requireStaff } from './middleware/staffAuth.js';
+import { accountRoutes } from './modules/accounts/routes.js';
 import { backofficeRoutes } from './modules/backoffice/routes.js';
 import { capacityRoutes } from './modules/capacity/routes.js';
 import { catalogueRoutes } from './modules/catalogue/routes.js';
@@ -60,6 +61,8 @@ export function createApp(config, { limits = {}, ...deps }) {
   app.use('/api/orders', orderRoutes(all), proofRoutes(all));
   app.use('/api/files', fileRoutes(all));
   app.use('/api/payments', paymentRoutes(all));
+  // B5: customer accounts (sign-in by an emailed code, the account, companies).
+  app.use('/api/account', accountRoutes(all));
   // B4: the back office. Sign-in is open; everything else needs a staff session (checked once).
   app.use('/api/staff/auth', staffAuthRoutes(all));
   const staff = Router();

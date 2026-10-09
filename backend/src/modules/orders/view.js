@@ -3,8 +3,8 @@ import { paymentsOf } from '../payments/view.js';
 
 /**
  * A stored order as the contract's `Order` (shared/contract/order-types.d.ts): what the site's order
- * page reads. Proof images are short-lived signed links. Early deliveries, the site quote and company
- * orders come with step B5; until then they are empty.
+ * page reads. Proof images are short-lived signed links. Early deliveries and the site quote come with
+ * the rest of step B5; until then they are empty.
  *
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').Order} Order
  * @typedef {Record<string, any>} Row
@@ -41,9 +41,10 @@ const iso = (t) => (t == null ? null : new Date(t).toISOString());
  * @param {Row} r The order row, with `invoice_no`.
  * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[]; logs?: Row[]; proofs?: Row[] }} history
  * @param {(key: string) => string} [sign] A stored file's short-lived link (lib/signedUrl.js).
+ * @param {{ name: string; approvers: string[] } | null} [company] A company order's company and who approves for it.
  * @returns {Order}
  */
-export function toOrder(r, { events, notifications, requests = [], payments = [], logs = [], proofs = [] }, sign = () => '') {
+export function toOrder(r, { events, notifications, requests = [], payments = [], logs = [], proofs = [] }, sign = () => '', company = null) {
   return {
     ref: r.order_no,
     invoiceNo: r.invoice_no,
@@ -93,6 +94,6 @@ export function toOrder(r, { events, notifications, requests = [], payments = []
     pickupCode: r.pickup_code ?? null,
     deliveries: deliveriesOf(r),
     handedOver: r.handed_over ? { at: r.handed_over.at, method: r.handed_over.method, detail: r.handed_over.detail } : null,
-    company: null,
+    company: r.company_id && company ? { id: r.company_id, name: company.name, poNumber: r.company_po, approvers: company.approvers } : null,
   };
 }

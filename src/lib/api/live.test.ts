@@ -1,15 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// The visitor's request headers, as next/headers would give them inside a request.
+// The visitor's request headers and cookies, as next/headers would give them inside a request.
 const visitorHeaders = new Headers();
-vi.mock('next/headers', () => ({ headers: async () => visitorHeaders }));
+const visitorCookies = new Map<string, string>();
+vi.mock('next/headers', () => ({
+  headers: async () => visitorHeaders,
+  cookies: async () => ({ get: (name: string) => (visitorCookies.has(name) ? { name, value: visitorCookies.get(name) } : undefined) }),
+}));
 import { orderCategories, orderProducts } from './data/order-catalogue';
 import { pages } from './data/pages';
 import { products } from './data/products';
 import { clients, projects } from './data/projects';
 import { services } from './data/services';
 import { liveApi } from './live';
-import { mockApi } from './mock';
 import { OrderError } from './order-types';
 import type { OrderInput, PriceRequest } from './types';
 
@@ -24,6 +27,7 @@ function stubFetch(answer: (url: string, init?: RequestInit) => Response | Promi
 afterEach(() => {
   vi.unstubAllGlobals();
   visitorHeaders.delete('x-forwarded-for');
+  visitorCookies.clear();
 });
 
 const priceRequest: PriceRequest = {
@@ -73,9 +77,6 @@ describe('liveApi (step B1)', () => {
     expect(String(await liveApi.listOrderCategories().catch((e: unknown) => e))).toContain('not answering');
   });
 
-  it('leaves accounts on the mock', () => {
-    expect(liveApi.requestSignInCode).toBe(mockApi.requestSignInCode);
-  });
 });
 
 describe('liveApi (the website editor)', () => {
@@ -127,7 +128,7 @@ describe('liveApi (step B2)', () => {
     expect(JSON.parse(String(init?.body))).toEqual({ ref: placed.ref, phone: '+254722530301' });
   });
 
-  it('answers null for an order that isn’t found or isn’t yours, and for access the API can’t check yet', async () => {
+  it('answers null for an order that isn’t found or isn’t yours, or with no session for a signed-in email', async () => {
     const fetchMock = stubFetch(() => json(404, { error: 'not_found', message: 'We couldn’t find that order.' }));
     expect(await liveApi.getOrder(placed.ref, { token: 'f'.repeat(32) })).toBeNull();
     expect(await liveApi.getOrder(placed.ref, { phone: '+254700000000' })).toBeNull();
@@ -199,10 +200,83 @@ describe('liveApi (step B4)', () => {
     expect(init?.headers).toMatchObject({ 'x-order-phone': '+254722530301' });
   });
 
-  it('answers not_found for access by a signed-in email, so the site falls back to the link', async () => {
-    const fetchMock = stubFetch(() => json(200, {}));
+  it('sends a signed-in account’s session, never its email, and answers not_found without one', async () => {
+    let fetchMock = stubFetch(() => json(200, {}));
     const err = await liveApi.approveProof(placed.ref, { email: 'amina@example.co.ke' }, 1, checklist).catch((e: unknown) => e);
     expect(err).toMatchObject({ code: 'not_found' });
     expect(fetchMock).not.toHaveBeenCalled();
+
+    visitorCookies.set('nb-session', 's'.repeat(64));
+    fetchMock = stubFetch(() => json(200, { ref: placed.ref }));
+    await liveApi.approveProof(placed.ref, { email: 'amina@example.co.ke' }, 1, checklist);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('http://127.0.0.1:4300/api/orders/NB-123456/proofs/1/approve');
+    expect(init?.headers).toMatchObject({ 'x-account-session': 's'.repeat(64) });
+    expect(JSON.stringify(init)).not.toContain('amina@example.co.ke');
+  });
+});
+
+describe('liveApi (step B5: accounts)', () => {
+  const session = 'a'.repeat(64);
+  const account = { email: 'amina@example.co.ke', name: 'Amina', orders: [] };
+
+  it('asks the API to email a code and never gets one back', async () => {
+    const fetchMock = stubFetch(() => json(200, { sentTo: 'am•••@example.co.ke' }));
+    expect(await liveApi.requestSignInCode('amina@example.co.ke')).toEqual({ sentTo: 'am•••@example.co.ke' });
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('http://127.0.0.1:4300/api/account/code');
+    expect(JSON.parse(String(init?.body))).toEqual({ email: 'amina@example.co.ke' });
+  });
+
+  it('verifies the code and passes the API’s refusal on', async () => {
+    stubFetch(() => json(200, { session }));
+    expect(await liveApi.verifySignInCode('amina@example.co.ke', '123456')).toEqual({ session });
+    stubFetch(() => json(400, { error: 'invalid', message: 'That code isn’t right, or it has expired. Ask for a new one.' }));
+    expect(await liveApi.verifySignInCode('amina@example.co.ke', '000000').catch((e: unknown) => e)).toBeInstanceOf(OrderError);
+  });
+
+  it('reads the account with the session in a header, and null once it has expired', async () => {
+    let fetchMock = stubFetch(() => json(200, account));
+    expect(await liveApi.getAccount(session)).toEqual(account);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('http://127.0.0.1:4300/api/account');
+    expect(init?.headers).toMatchObject({ 'x-account-session': session });
+    expect(init?.cache).toBe('no-store');
+    fetchMock = stubFetch(() => json(404, { error: 'not_found', message: 'Please sign in again.' }));
+    expect(await liveApi.getAccount(session)).toBeNull();
+  });
+
+  it('sends each change to its endpoint', async () => {
+    const fetchMock = stubFetch(() => json(200, account));
+    await liveApi.updateAccount(session, { name: 'Amina', phone: '0722530301', company: '' });
+    await liveApi.saveBrandKit(session, { colours: [], typography: 'from-logo', fonts: '', logos: [], notes: '' });
+    await liveApi.saveAddress(session, { label: 'Office', address: 'Loita Street', zone: 'cbd' });
+    await liveApi.removeAddress(session, 'ADR-123456');
+    await liveApi.reorderDraft(session, 'NB-123456');
+    await liveApi.getStatement(session);
+    await liveApi.createCompany(session, { name: 'Acme', kraPin: '' });
+    await liveApi.addCompanyMember(session, { email: 'brian@example.co.ke', name: 'Brian', role: 'member' });
+    await liveApi.removeCompanyMember(session, 'brian@example.co.ke');
+    await liveApi.signOut(session);
+    expect(fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${String(url).replace('http://127.0.0.1:4300', '')}`)).toEqual([
+      'PUT /api/account/details',
+      'PUT /api/account/brand-kit',
+      'POST /api/account/addresses',
+      'DELETE /api/account/addresses/ADR-123456',
+      'GET /api/account/reorder/NB-123456',
+      'GET /api/account/statement',
+      'POST /api/account/company',
+      'POST /api/account/company/members',
+      'DELETE /api/account/company/members/brian%40example.co.ke',
+      'POST /api/account/sign-out',
+    ]);
+    for (const [, init] of fetchMock.mock.calls) expect(init?.headers).toMatchObject({ 'x-account-session': session });
+  });
+
+  it('places a company order with the member’s session', async () => {
+    visitorCookies.set('nb-session', session);
+    const fetchMock = stubFetch(() => json(201, { ref: 'NB-123456', token: 't'.repeat(32) }));
+    await liveApi.createOrder({ product: 'mug-branding', company: { id: 'CO-123456', poNumber: 'PO-1' } } as unknown as OrderInput);
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({ 'x-account-session': session });
   });
 });

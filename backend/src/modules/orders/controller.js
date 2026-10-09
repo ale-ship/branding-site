@@ -19,7 +19,8 @@ const noStore = (res) => res.set('Cache-Control', 'no-store');
  */
 export const postOrder = (deps) => async (req, res) => {
   const input = orderInputSchema.parse(req.body);
-  noStore(res).status(201).json(await createOrder({ ...deps, logger: req.log }, input));
+  // A company order needs the member's session, which the site passes on from its cookie.
+  noStore(res).status(201).json(await createOrder({ ...deps, logger: req.log }, input, undefined, { session: req.get('x-account-session') ?? '' }));
 };
 
 /**

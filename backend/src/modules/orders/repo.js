@@ -21,16 +21,17 @@ export async function insertOrder(trx, o) {
   const { rows } = await trx.query(
     `INSERT INTO orders (order_no, token_hash, status, mechanism, product_id, product, quantity, brief, common,
        needs_design, urgency, handover, customer_name, customer_company, customer_phone, customer_email,
-       estimate, total, due_now, due_purpose, progress, survey, sample, daily_capacity, expires_at, created_at, updated_at)
+       estimate, total, due_now, due_purpose, progress, survey, sample, daily_capacity, expires_at, created_at, updated_at,
+       company_id, company_po)
      VALUES ($1, $2, 'awaiting_payment', $3, (SELECT id FROM products WHERE slug = $4), $5, $6, $7, $8,
-       $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $25)
+       $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $25, $26, $27)
      ON CONFLICT (order_no) DO NOTHING
      RETURNING id`,
     [
       o.orderNo, o.tokenHash, o.mechanism, o.product.slug, json(o.product), o.quantity, json(o.brief), json(o.common),
       o.needsDesign, o.urgency, json(o.handover), o.customer.name, o.customer.company, o.customer.phone, o.customer.email,
       json(o.estimate), o.total, o.dueNow, o.duePurpose, json(o.progress), json(o.survey), json(o.sample), o.dailyCapacity, o.expiresAt,
-      o.createdAt,
+      o.createdAt, o.company?.id ?? null, o.company?.po ?? '',
     ],
   );
   return rows[0]?.id ?? null;

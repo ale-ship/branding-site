@@ -5,6 +5,8 @@ import { randomBytes } from 'node:crypto';
 import { withTransaction } from '../../db/pool.js';
 import { AppError } from '../../lib/errors.js';
 import { imageInfo, watermarkSvg } from '../../lib/images.js';
+import { approvalOf, approvesFor } from '../accounts/company.service.js';
+import { emailFromSession } from '../accounts/session.service.js';
 import { updateOrder } from '../backoffice/repo.js';
 import { queueNotifications } from '../notifications/service.js';
 import { findByOrderNo, insertEvent, insertNotifications } from '../orders/repo.js';
@@ -104,7 +106,7 @@ export async function uploadProof(deps, staff, ref, image, note, now = new Date(
  * The customer answers the newest proof.
  * @param {Deps} deps
  * @param {string} ref
- * @param {{ token: string } | { phone: string }} access
+ * @param {import('../../middleware/customerAccess.js').Access} access
  * @param {(order: Record<string, any>, proof: Record<string, any> | null, today: string) => decide.Outcome & { comments?: string }} rule
  * @param {(proof: Record<string, any>, o: decide.Outcome & { comments?: string }) => Parameters<typeof repo.decide>[2]} record
  * @param {Date} now
@@ -126,18 +128,36 @@ async function answer(deps, ref, access, rule, record, now) {
 /**
  * @param {Deps} deps
  * @param {string} ref
- * @param {{ token: string } | { phone: string }} access
+ * @param {import('../../middleware/customerAccess.js').Access} access
  * @param {number} version
  * @param {import('@noorcom-branding/shared/contract/order-types.js').ApprovalChecklist} checklist
  * @param {Date} [now]
  */
-export const approveProof = (deps, ref, access, version, checklist, now = new Date()) =>
-  answer(deps, ref, access, (o, p, today) => decide.approve(o, p, version, checklist, today), () => ({ status: 'approved', checklist, at: now }), now);
+export async function approveProof(deps, ref, access, version, checklist, now = new Date()) {
+  const order = await findOrderFor(deps, ref, access, now);
+  if (order.company_id) await checkApprover(deps, order, access);
+  return answer(deps, ref, access, (o, p, today) => decide.approve(o, p, version, checklist, today), () => ({ status: 'approved', checklist, at: now }), now);
+}
+
+/**
+ * A company order's proof is approved by the company's owner or an approver (spec, "company
+ * accounts"): the signed-in account, or, by the link or phone, the member who ordered.
+ * @param {Deps} deps
+ * @param {Record<string, any>} order
+ * @param {import('../../middleware/customerAccess.js').Access} access
+ */
+async function checkApprover(deps, order, access) {
+  const who = 'session' in access ? await emailFromSession(deps, access.session) : order.customer_email;
+  if (await approvesFor(deps, order.company_id, who)) return;
+  const company = await approvalOf(deps, order.company_id);
+  const by = company?.approvers.join(' or ') || 'the company’s approver';
+  throw new OrderError('invalid_state', `Proofs for ${company?.name ?? 'this company'} are approved by ${by}. Ask them to sign in and approve.`);
+}
 
 /**
  * @param {Deps} deps
  * @param {string} ref
- * @param {{ token: string } | { phone: string }} access
+ * @param {import('../../middleware/customerAccess.js').Access} access
  * @param {number} version
  * @param {string} comments
  * @param {import('@noorcom-branding/shared/contract/order-types.js').ProofPin[]} pins

@@ -79,8 +79,13 @@ next. Update it at the end of every task.
   controls. The first admin: `npm run staff:add` in `backend/`.
 - **8 Oct 2026, the minimum run is 10 pieces** (was 50) across the shop, the order form and the
   service pages; admins set a product's own minimum in the back office (Products).
-- **Next (owner, 7 Oct 2026: the VPS waits):** step B5 (accounts on the API, the sample, partial
-  deliveries, site jobs, the price manager and reports), or B3b once Absa's documentation arrives.
+- **9 Oct 2026, customer accounts on the API** (backend step B5, part 1): with
+  `NEXT_PUBLIC_API_MODE=live`, sign-in codes are emailed by the API (no demo code), and the account,
+  brand kit, addresses, reorders, statement and company accounts are in Postgres. Orders reached
+  through the account are opened by the session, which the site passes on from its `nb-session`
+  cookie; the API takes the email from it.
+- **Next (owner, 7 Oct 2026: the VPS waits):** the rest of step B5 (the sample, partial deliveries,
+  site jobs' survey, quote and installation, the job card), or B3b once Absa's documentation arrives.
   Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS record, deploy key,
   first deploy) and section 8 (Postgres and Redis), plus the API and worker units and nginx's
   `/admin/`. Ask Absa for the items in its section 14. Then the launch checklist.
@@ -827,6 +832,7 @@ Newest first.
 
 | Date | Decision | Why |
 | --- | --- | --- |
+| 9 Oct 2026 | Backend B5, accounts: the site passes the account's session to the API (`X-Account-Session`), never an email, and the API decides whose orders it opens; the sign-in code is emailed straight from the API rather than through the outbox, and only its hash is stored; a company order needs the member's session | The API never trusts an email it is sent; a code is useless once expired, so retrying it from an outbox gains nothing and would keep it in the database |
 | 8 Oct 2026 | **The minimum run is 10 pieces** (was a stand-in 50), on the shop, the order form and the service pages; the first price tier starts at 10 at the old 50-piece price; staff set a product's own minimum in the back office (Products, admins only) | Owner's decision |
 | 8 Oct 2026 | Backend B4: the back office is its own app (`admin/`, Vite + React) on the same origin under `/admin/`, with a staff cookie scoped to `/api/staff`; staff passwords use scrypt from Node itself; proofs were built now rather than in B5 and are watermarked as an SVG around the image; every staff step is audited with who did it | "Staff run an order through" needs proofs; same-origin keeps the cookie strict and CSRF simple; no native modules to build on the VPS |
 | 8 Oct 2026 | Backend B3: every payment goes through one ledger function in one transaction (order locked, M-Pesa receipt unique, RCT number, status move, messages in the outbox); callbacks are stored before they are acted on and settled by a separate worker (BullMQ under `nb:bull`); Absa's bodies are read as Daraja's until Absa's samples arrive; receipt PDFs move to a step B3b with the live Absa client | Money can't be counted twice or lost if a process dies mid-way; Absa always gets a fast answer; nothing waits on Absa's paperwork that doesn't have to |

@@ -1,8 +1,11 @@
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { SESSION_COOKIE } from '../account';
 import type { CapacityCalendar } from '../capacity';
 import { mockApi } from './mock';
 import { OrderError } from './order-types';
 import type {
+  Account,
+  AccountSession,
   Client,
   ListOptions,
   Order,
@@ -15,8 +18,10 @@ import type {
   PriceEstimate,
   Product,
   Project,
+  ReorderDraft,
   Service,
   SiteApi,
+  Statement,
 } from './types';
 
 /**
@@ -32,11 +37,13 @@ import type {
  *   B4  answering a proof (approveProof, requestChanges); proof images are signed /api/files links;
  *       the website's content (services, our work, the shop, clients, the home and About pages),
  *       which staff edit in the back office; its photos are /api/media links
+ *   B5  accounts: sign-in by an emailed code, the account, brand kit, addresses, reorders, the
+ *       statement and company accounts; orders reached through a signed-in account (`{ email }`)
+ *       go to the API with the session (`X-Account-Session`), and the API takes the email from it
  *
- * The sample, early deliveries, surveys and installation arrive with B5: until then those methods
- * answer that it isn't available online yet, rather than looking for the order in the mock, which
- * doesn't have it. Accounts stay on the mock until B5, so an order
- * reached through a signed-in account (`{ email }`) isn't found in live mode until then.
+ * The sample, early deliveries, surveys and installation arrive later in B5: until then those
+ * methods answer that it isn't available online yet, rather than looking for the order in the mock,
+ * which doesn't have it.
  */
 
 const API = process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:4300';
@@ -108,17 +115,32 @@ async function orNull(read: Promise<Order>): Promise<Order | null> {
   }
 }
 
-/** The order's access as the API reads it: headers, never the URL. */
-const accessHeaders = (access: { token: string } | { phone: string }): Record<string, string> =>
-  'token' in access ? { 'x-order-token': access.token } : { 'x-order-phone': access.phone };
+/** This visitor's account session, from the site's own cookie; empty outside a request. */
+async function sessionCookie(): Promise<string> {
+  try {
+    return (await cookies()).get(SESSION_COOKIE)?.value ?? '';
+  } catch {
+    return '';
+  }
+}
 
 /**
- * Orders reached through a signed-in account (`{ email }`) can't be found on the API until accounts
- * move there (B5): the same not_found as getOrder's null, so callers fall back to the link or phone.
+ * The order's access as the API reads it: headers, never the URL. A signed-in account's access
+ * (`{ email }`, built from the session on this server) goes as the session itself: the API takes the
+ * email from it, so it never has to trust one it is sent. Not signed in: the same not_found as an
+ * order that isn't yours.
  */
-const notFoundByEmail = async (): Promise<never> => {
-  throw new OrderError('not_found', 'We couldn’t find that order.');
-};
+async function accessHeaders(access: OrderAccess): Promise<Record<string, string>> {
+  if ('token' in access) return { 'x-order-token': access.token };
+  if ('phone' in access) return { 'x-order-phone': access.phone };
+  const session = await sessionCookie();
+  if (!session) throw new OrderError('not_found', 'We couldn’t find that order.');
+  return { 'x-account-session': session };
+}
+
+/** A call for a signed-in account, with its session in a header. */
+const asAccount = <T>(session: string, path: string, init: Parameters<typeof call>[1] = {}) =>
+  forVisitor<T>(`/api/account${path}`, { ...init, headers: { ...init.headers, 'x-account-session': session } });
 
 const notYet = async (): Promise<never> => {
   throw new OrderError('invalid_state', 'This isn’t available online yet. Please WhatsApp us and we’ll sort it out.');
@@ -172,36 +194,81 @@ export const liveApi: SiteApi = {
     return call<CapacityCalendar>('/api/capacity', { cache: 'no-store' });
   },
   async createOrder(input) {
-    return forVisitor<{ ref: string; token: string }>('/api/orders', { method: 'POST', body: JSON.stringify(input) });
+    // A company order counts only with the member's session, which the API checks.
+    const session = input.company ? await sessionCookie() : '';
+    return forVisitor<{ ref: string; token: string }>('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: session ? { 'x-account-session': session } : {},
+    });
   },
   async getOrder(ref, access) {
     // The token travels in a header, never in the URL.
-    if ('token' in access) {
-      if (!access.token) return null;
-      return orNull(forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}`, { headers: accessHeaders(access) }));
-    }
+    if ('token' in access && !access.token) return null;
     if ('phone' in access) return orNull(forVisitor<Order>('/api/orders/lookup', { method: 'POST', body: JSON.stringify({ ref, phone: access.phone }) }));
-    // `{ email }` comes from a session, and sessions move to the API with accounts (B5).
-    return null;
+    return orNull(accessHeaders(access).then((headers) => forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}`, { headers })));
   },
 
   // B3: the M-Pesa prompt. The order moves only when Absa's callback confirms it (the API's worker).
   async startPayment(ref, access: OrderAccess, phone) {
-    if ('email' in access) return notFoundByEmail();
-    return forVisitor<OrderPayment>('/api/payments/stk', { method: 'POST', body: JSON.stringify({ ref, phone }), headers: accessHeaders(access) });
+    return forVisitor<OrderPayment>('/api/payments/stk', { method: 'POST', body: JSON.stringify({ ref, phone }), headers: await accessHeaders(access) });
   },
 
   // B4: the customer's answer to a proof. The API locks the artwork on approval.
   async approveProof(ref, access, version, checklist) {
-    if ('email' in access) return notFoundByEmail();
-    return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/proofs/${version}/approve`, { method: 'POST', body: JSON.stringify({ checklist }), headers: accessHeaders(access) });
+    return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/proofs/${version}/approve`, { method: 'POST', body: JSON.stringify({ checklist }), headers: await accessHeaders(access) });
   },
   async requestChanges(ref, access, version, comments, pins) {
-    if ('email' in access) return notFoundByEmail();
-    return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/proofs/${version}/changes`, { method: 'POST', body: JSON.stringify({ comments, pins }), headers: accessHeaders(access) });
+    return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/proofs/${version}/changes`, { method: 'POST', body: JSON.stringify({ comments, pins }), headers: await accessHeaders(access) });
   },
 
-  // B5: the sample, deliveries, site jobs.
+  // B5: accounts. The code is emailed by the API and never comes back here.
+  async requestSignInCode(email) {
+    return forVisitor<{ sentTo: string }>('/api/account/code', { method: 'POST', body: JSON.stringify({ email }) });
+  },
+  async verifySignInCode(email, code) {
+    return forVisitor<AccountSession>('/api/account/verify', { method: 'POST', body: JSON.stringify({ email, code }) });
+  },
+  async getAccount(session) {
+    try {
+      return await asAccount<Account>(session, '');
+    } catch (e) {
+      if (e instanceof OrderError && e.code === 'not_found') return null;
+      throw e;
+    }
+  },
+  async updateAccount(session, details) {
+    return asAccount<Account>(session, '/details', { method: 'PUT', body: JSON.stringify(details) });
+  },
+  async saveBrandKit(session, kit) {
+    return asAccount<Account>(session, '/brand-kit', { method: 'PUT', body: JSON.stringify(kit) });
+  },
+  async saveAddress(session, address) {
+    return asAccount<Account>(session, '/addresses', { method: 'POST', body: JSON.stringify(address) });
+  },
+  async removeAddress(session, id) {
+    return asAccount<Account>(session, `/addresses/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+  async reorderDraft(session, ref) {
+    return asAccount<ReorderDraft>(session, `/reorder/${encodeURIComponent(ref)}`);
+  },
+  async signOut(session) {
+    await asAccount<unknown>(session, '/sign-out', { method: 'POST' });
+  },
+  async getStatement(session) {
+    return asAccount<Statement>(session, '/statement');
+  },
+  async createCompany(session, details) {
+    return asAccount<Account>(session, '/company', { method: 'POST', body: JSON.stringify(details) });
+  },
+  async addCompanyMember(session, member) {
+    return asAccount<Account>(session, '/company/members', { method: 'POST', body: JSON.stringify(member) });
+  },
+  async removeCompanyMember(session, email) {
+    return asAccount<Account>(session, `/company/members/${encodeURIComponent(email)}`, { method: 'DELETE' });
+  },
+
+  // Later in B5: the sample, deliveries, site jobs.
   reviewSample: notYet,
   requestPartialDelivery: notYet,
   bookSurvey: notYet,
