@@ -241,11 +241,6 @@ td a.ref:hover { text-decoration: underline; }
 @media (min-width: 700px) { .wide-only { display: block; } .tall-only { display: none; } }
 .signin-frame { position: relative; width: 100%; max-width: 24rem; margin: auto 0; padding: 2.25rem 0.25rem; }
 @media (min-width: 560px) { .signin-frame { padding: 2.75rem 2.5rem; max-width: 29rem; } }
-.crop { position: absolute; width: 22px; height: 22px; border: 0 solid rgb(255 255 255 / 0.5); }
-.crop.tl { top: 0; left: 0; border-top-width: 1px; border-left-width: 1px; }
-.crop.tr { top: 0; right: 0; border-top-width: 1px; border-right-width: 1px; }
-.crop.bl { bottom: 0; left: 0; border-bottom-width: 1px; border-left-width: 1px; }
-.crop.br { bottom: 0; right: 0; border-bottom-width: 1px; border-right-width: 1px; }
 .signin-brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.25rem; color: #fff; }
 .signin-brand img { width: 46px; height: 46px; border-radius: 12px; background: #fff; padding: 4px; }
 .signin-brand strong { display: block; font-size: 1.05rem; }

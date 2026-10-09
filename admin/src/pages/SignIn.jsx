@@ -6,8 +6,7 @@ import { Contours } from '../contours.jsx';
 /**
  * Staff sign-in, straight on the page (owner, 9 Oct 2026: no card, part of the background): Noorcom
  * black with contour lines and two red hills, the logo, the form in light lines with the red button,
- * crop marks around it as on a print proof, and the tagline and CMYK dots at the foot. The same on a
- * phone. There is no "remember me": a session lasts 14 days from the last use anyway. Passwords are
+ * and the tagline and CMYK dots at the foot. The same on a phone. There is no "remember me": a session lasts 14 days from the last use anyway. Passwords are
  * reset by an admin (Staff page), so "Forgot password?" says so rather than leading nowhere.
  */
 export function SignIn({ onSignedIn }) {
@@ -39,12 +38,6 @@ export function SignIn({ onSignedIn }) {
       <Contours preset="signin" className="signin-backdrop wide-only" />
       <Contours preset="signinTall" className="signin-backdrop tall-only" />
       <div className="signin-frame">
-        {/* Crop marks around the form, as on a print proof. */}
-        <span className="crop tl" aria-hidden="true" />
-        <span className="crop tr" aria-hidden="true" />
-        <span className="crop bl" aria-hidden="true" />
-        <span className="crop br" aria-hidden="true" />
-
         <div className="signin-brand">
           <img src={`${import.meta.env.BASE_URL}nb-mark.png`} alt="" />
           <div>
