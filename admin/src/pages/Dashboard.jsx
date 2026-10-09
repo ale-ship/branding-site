@@ -1,8 +1,9 @@
 import { AlertTriangle, Banknote, CheckCircle2, Clock, CreditCard, Factory, Flag, PackageCheck, PenTool, ShoppingBag, Truck, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ApiError, api } from '../api.js';
+import { ApiError, api, may } from '../api.js';
+import { Contours } from '../contours.jsx';
 import { day, kes, when } from '../format.js';
-import { PageHead, Stat, StatusPill, Trend } from '../ui.jsx';
+import { Stat, StatusPill, Trend } from '../ui.jsx';
 import { RevenueChart } from './RevenueChart.jsx';
 
 const STAGES = [
@@ -19,7 +20,7 @@ const STAGES = [
  * The back office's home: this month's money and orders against the same days last month, the last
  * 30 days of payments, where orders are, what needs a hand, what sells, and the newest orders.
  */
-export function Dashboard({ onAuthLost }) {
+export function Dashboard({ me, onAuthLost }) {
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
 
@@ -46,7 +47,7 @@ export function Dashboard({ onAuthLost }) {
 
   return (
     <>
-      <PageHead title="Dashboard">How the workshop is doing in {month}, and what needs a hand today.</PageHead>
+      <Welcome me={me} today={d.today} month={month} />
 
       <div className="grid kpis">
         <Stat
@@ -206,5 +207,38 @@ export function Dashboard({ onAuthLost }) {
         )}
       </section>
     </>
+  );
+}
+
+/** Good morning, afternoon or evening in Nairobi. */
+const greeting = () => {
+  const hour = Number(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Nairobi', hour: '2-digit', hour12: false }));
+  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+};
+
+/** The dashboard's opening: a dark band with the contour lines, the date, a greeting and shortcuts. */
+function Welcome({ me, today, month }) {
+  const date = new Date(`${today}T12:00:00+03:00`).toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return (
+    <section className="welcome" aria-labelledby="welcome-title">
+      <Contours preset="banner" faint={0.08} />
+      <div>
+        <p className="welcome-date">{date}</p>
+        <h1 id="welcome-title">
+          {greeting()}, {me.name.split(/\s+/)[0]}
+        </h1>
+        <p className="lead">How the workshop is doing in {month}, and what needs a hand today.</p>
+      </div>
+      <div className="welcome-actions">
+        <a className="button primary" href="#/orders">
+          Order board
+        </a>
+        {may(me, 'proofs') && (
+          <a className="button" href="#/website/work/new">
+            Add a project
+          </a>
+        )}
+      </div>
+    </section>
   );
 }

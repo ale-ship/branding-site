@@ -722,11 +722,13 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   month against the same days last month, orders this month, money waiting, what needs a hand
   (overdue, flagged, unmatched payments), money received per day for 30 days (one line with a
   hover tooltip and a table for screen readers), orders by category, the pipeline by stage and the
-  newest orders. The board also has a list view. axe finds nothing on any screen. Sign-in is one card
-  (owner’s reference, 9 Oct 2026): a red header with contour lines and the logo that curves into the
-  form, underlined fields with icons, a show-password button and a note that the admin resets
-  passwords. On a wider screen it sits on a black page of contour lines with two red hills,
-  crop marks at its corners and CMYK dots by the footer; on a phone the card is the whole page.
+  newest orders. The board also has a list view. axe finds nothing on any screen. **Contour lines** (owner, 9 Oct 2026; `admin/src/contours.jsx`)
+  are its signature: hills of wandering lines like a topographic map, drawn as one SVG. Sign-in has
+  no card: the form sits straight on Noorcom black with contour lines and two red hills, inside
+  crop marks as on a print proof, with the tagline and CMYK dots at the foot (the same on a phone).
+  The sidebar has faint lines and a red hill at its foot, the page faint warm-grey lines behind the
+  cards, and the dashboard opens on a dark welcome band (the date, a greeting, shortcuts to the
+  board and to adding a project).
 - **The site** in live mode: `approveProof` and `requestChanges` go to the API; proof images load
   through `/api/files` (nginx on the VPS, a rewrite in `next.config.ts` locally). Orders reached by
   a signed-in email answer `not_found` on the API until accounts move (B5), so the site falls back

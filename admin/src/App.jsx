@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api, may } from './api.js';
+import { Contours } from './contours.jsx';
 import { ROLE } from './format.js';
 import { Accounts, Statement } from './pages/Accounts.jsx';
 import { Board } from './pages/Board.jsx';
@@ -130,6 +131,7 @@ export function App() {
   return (
     <div className="shell">
       <aside className={`sidebar${menuOpen ? ' open' : ''}`} aria-label="Back office">
+        <Contours preset="side" className="side-contours" faint={0.06} />
         <div className="side-brand">
           <img src={`${import.meta.env.BASE_URL}nb-mark.png`} alt="" />
           <div>
@@ -165,6 +167,7 @@ export function App() {
       {menuOpen && <button type="button" className="scrim" aria-label="Close the menu" onClick={() => setMenuOpen(false)} />}
 
       <div className="content">
+        <Contours preset="page" className="page-contours" ink="#8a8170" faint={0.14} />
         <header className="topbar">
           <button type="button" className="icon-btn menu-btn" aria-label="Open the menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
             <Menu aria-hidden="true" />
@@ -192,7 +195,7 @@ export function App() {
           </div>
         </header>
         <main>
-          {page === 'dashboard' && <Dashboard onAuthLost={onAuthLost} />}
+          {page === 'dashboard' && <Dashboard me={staff} onAuthLost={onAuthLost} />}
           {page === 'orders' && param && <OrderPage key={param} orderRef={param} staff={staff} onAuthLost={onAuthLost} />}
           {page === 'orders' && !param && <Board key={query} initialQuery={new URLSearchParams(query).get('q') ?? ''} onAuthLost={onAuthLost} />}
           {page === 'payments' && <Unmatched onAuthLost={onAuthLost} />}
