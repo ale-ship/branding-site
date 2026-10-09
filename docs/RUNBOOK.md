@@ -103,6 +103,13 @@ next. Update it at the end of every task.
 
 The placeholder photos are committed in `public/images/placeholder` (`npm run photos` re-downloads them).
 
+**Contour lines (9 Oct 2026):** the back office's topographic lines are on the site too
+(`Contours` in `components/ui/PrintMarks.tsx`): faint with a red hill on the dark "How a job runs"
+band, white on the red call to action, faded to the right of inner page headers, and faint in the
+footer. They are two SVG drawings in `public/contours` (`npm run contours` redraws them) used as
+CSS masks, so their colour is a token, they cost nothing per page once cached, and they show
+without JavaScript; they are hidden in print and in forced-colours mode.
+
 **Changing the site's content (8 Oct 2026):** projects, services, the shop, clients and the words and
 photos of the home and About pages are edited in the back office (**Website**), with photos uploaded
 to its media library, once the site runs in live mode (`docs/BACKEND_RUNBOOK.md`, "The website

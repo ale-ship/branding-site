@@ -1,6 +1,7 @@
 import { api } from '@/lib/api';
 import { pad2 } from '@/lib/format';
 import { Container } from '../ui/Container';
+import { Contours } from '../ui/PrintMarks';
 import { Reveal } from '../ui/Reveal';
 import { SectionHeading } from './SectionHeading';
 
@@ -13,18 +14,18 @@ export async function Process() {
   // Two columns on tablets: an odd last step spans both.
   const odd = steps.length % 2 === 1;
   return (
-    <section aria-labelledby="process-title" className="bg-dark py-20 text-on-dark sm:py-32">
+    <section aria-labelledby="process-title" className="relative isolate bg-dark py-20 text-on-dark sm:py-32">
+      <Contours field="text-on-dark/[0.07]" hill="text-brand-red/80" />
       <Container>
-        <SectionHeading
-          id="process-title"
-          tone="on-dark"
-          eyebrow={eyebrow}
-          title={title}
-          link={{ href: '/quote', label: 'Start with a brief' }}
-        />
+        <SectionHeading id="process-title" tone="on-dark" eyebrow={eyebrow} title={title} link={{ href: '/quote', label: 'Start with a brief' }} />
         <ol className={`grid grid-cols-1 gap-px bg-on-dark/15 sm:grid-cols-2 ${WIDE[steps.length] ?? 'lg:grid-cols-5'}`}>
           {steps.map((step, i) => (
-            <Reveal as="li" key={i} delay={i * 90} className={`flex flex-col gap-10 bg-dark p-6 sm:p-8 ${odd ? 'last:sm:col-span-2 lg:last:col-span-1' : ''}`}>
+            <Reveal
+              as="li"
+              key={i}
+              delay={i * 90}
+              className={`flex flex-col gap-10 bg-dark p-6 sm:p-8 ${odd ? 'last:sm:col-span-2 lg:last:col-span-1' : ''}`}
+            >
               <span className="text-sm font-semibold text-on-dark-muted tabular-nums">{pad2(i + 1)}</span>
               <span>
                 <span className="block font-display text-3xl font-bold text-on-dark">{step.name}</span>

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { mainNav, quoteHref, site } from '@/lib/site';
 import { Container } from '../ui/Container';
-import { CmykDots } from '../ui/PrintMarks';
+import { CmykDots, Contours } from '../ui/PrintMarks';
 import { Logo } from './Logo';
 
 const linkClass = 'inline-flex min-h-11 items-center text-body transition-colors hover:text-heading';
@@ -10,7 +10,8 @@ const linkClass = 'inline-flex min-h-11 items-center text-body transition-colors
 export async function Footer() {
   const services = await api.listServices();
   return (
-    <footer className="border-t border-border bg-paper print:hidden">
+    <footer className="relative isolate border-t border-border bg-paper print:hidden">
+      <Contours field="text-border-strong/25" />
       {/* Extra bottom space so the floating WhatsApp button never covers the last line. */}
       <Container className="pt-16 pb-24 sm:pt-24 sm:pb-28">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1.2fr]">

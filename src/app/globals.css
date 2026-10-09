@@ -21,7 +21,7 @@
  * Direction: a studio with a print shop, in the logo's colours (red and black, 6 Oct 2026). White
  * and warm paper pages, black type, the logo's red as the one accent, black underlined links,
  * square corners, real photography. At most one dark section per page. Print-production details
- * (crop marks, CMYK dots) are the signature.
+ * (crop marks, CMYK dots) and contour lines (9 Oct 2026, shared with the back office) are the signature.
  *
  * Contrast: text on a red fill is white (--on-accent); red text on white uses --accent-ink. The
  * accent is a shade deeper than the logo's pure red so white text on it passes AA (5.3:1).
@@ -156,6 +156,52 @@
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 3px;
+  }
+}
+
+/*
+ * Contour lines (components/ui/PrintMarks.tsx `Contours`; owner, 9 Oct 2026): the drawings in
+ * public/contours (npm run contours) used as masks, so the lines take the colour of a token through
+ * `currentColor` and the files are cached once. Gone in print and in forced colours.
+ */
+@layer components {
+  .contour-field,
+  .contour-hill {
+    position: absolute;
+    pointer-events: none;
+    background-color: currentColor;
+  }
+  .contour-field {
+    inset: 0;
+    -webkit-mask: url('/contours/field.svg') center / cover no-repeat;
+    mask: url('/contours/field.svg') center / cover no-repeat;
+  }
+  /* The hill stays inside its own box (a corner of the section), drawn larger than the box and
+     cut by it, so nothing it could sit behind is outside that box. */
+  .contour-hill {
+    -webkit-mask: url('/contours/hill.svg') no-repeat;
+    mask: url('/contours/hill.svg') no-repeat;
+    -webkit-mask-size: 56rem 56rem;
+    mask-size: 56rem 56rem;
+  }
+  .contour-hill-tr {
+    -webkit-mask-position: right -21rem top -24rem;
+    mask-position: right -21rem top -24rem;
+  }
+  .contour-hill-bl {
+    -webkit-mask-position: left -21rem bottom -24rem;
+    mask-position: left -21rem bottom -24rem;
+  }
+  /* Lines only towards the right, clear of the words on the left. */
+  .contour-fade {
+    -webkit-mask-image: linear-gradient(to right, transparent 35%, #000 85%);
+    mask-image: linear-gradient(to right, transparent 35%, #000 85%);
+  }
+}
+@media (forced-colors: active) {
+  .contour-field,
+  .contour-hill {
+    display: none;
   }
 }
 

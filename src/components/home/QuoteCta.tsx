@@ -2,7 +2,7 @@ import { api } from '@/lib/api';
 import { quoteHref, site } from '@/lib/site';
 import { ButtonLink } from '../ui/ButtonLink';
 import { Container } from '../ui/Container';
-import { CropMarks, Eyebrow } from '../ui/PrintMarks';
+import { Contours, CropMarks, Eyebrow } from '../ui/PrintMarks';
 import { Reveal } from '../ui/Reveal';
 
 /** The orange "Have a job in mind?" block. `href` lets a service page preselect its service. */
@@ -11,7 +11,8 @@ export async function QuoteCta({ href = quoteHref }: { href?: string }) {
   return (
     <section aria-labelledby="cta-title" className="pb-20 sm:pb-32">
       <Container>
-        <Reveal className="relative bg-accent px-6 py-16 sm:px-12 sm:py-24 lg:px-20">
+        <Reveal className="relative isolate bg-accent px-6 py-16 sm:px-12 sm:py-24 lg:px-20">
+          <Contours field="text-on-accent/20" />
           <CropMarks className="text-on-accent" />
           <Eyebrow className="text-on-accent">{eyebrow}</Eyebrow>
           <h2 id="cta-title" className="mt-5 max-w-4xl text-[clamp(2.5rem,7vw,6.5rem)] leading-[0.95] font-extrabold text-on-accent">

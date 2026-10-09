@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "photos": "node scripts/fetch-placeholder-photos.mjs",
+    "contours": "node scripts/make-contours.mjs",
     "a11y": "node scripts/check-a11y.mjs",
     "devices": "node scripts/check-devices.mjs",
     "menu": "node scripts/check-menu.mjs",
