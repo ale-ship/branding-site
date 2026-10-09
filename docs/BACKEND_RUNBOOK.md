@@ -1,9 +1,11 @@
 # Noorcom Branding Backend Runbook
 
-Last updated 8 Oct 2026. The design of the backend behind the website: the stack, the file layout,
-the database, the API, the payment flows and the order to build it in. **Steps B0 to B4 are built**
-(section 13: the skeleton and `shared/`, the catalogue and price, orders, payments against the
-fakes, the staff back office with proofs); the rest is the plan to build from. Read
+Last updated 9 Oct 2026. The design of the backend behind the website: the stack, the file layout,
+the database, the API, the payment flows and the order to build it in. **Steps B0 to B4 and the
+first part of B5 are built** (section 13: the skeleton and `shared/`, the catalogue and price,
+orders, payments against the fakes, the staff back office with proofs, reports, the website editor
+and the price manager, and customer accounts); the rest is the plan to build from. Sections 4 to
+12 mark what is built (✓ or "built") and what is still planned. Read
 `docs/RUNBOOK.md` (the site) and `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow) first.
 
 ## 1. What the backend does
@@ -16,7 +18,8 @@ The website already works end to end against a mock (`src/lib/api/mock.ts`). The
 - Issues **invoices (INV00001…) and receipts (RCT00001…)** as numbered records and PDFs.
 - Sends WhatsApp (Cloud API templates) and email; never SMS.
 - Stores uploads (logos, artwork, proofs, photos) in object storage behind signed URLs.
-- Serves the staff back office (order board, production logging, unmatched payments, prices).
+- Serves the staff back office (order board, production logging, unmatched payments, prices,
+  reports, the website's content) and customer accounts (sign-in by an emailed code).
 
 The rules it must keep are the spec's "Rules the backend must enforce" and the site's own: the
 server prices every order; an order moves only on a confirmed callback; a receipt number credits
@@ -37,11 +40,13 @@ one team can work on both.
 | Redis | Redis 7 through `ioredis`, our own ACL user `nb`, every key `nb:*` (section 2.2) | Queues, rate limits, short locks, cache, the fakes' state |
 | Jobs | BullMQ on that Redis (`prefix: 'nb:bull'`), a separate worker process | Callbacks are acknowledged fast; work happens after commit |
 | Files | S3-compatible storage (Cloudflare R2), `@aws-sdk/client-s3` presigned URLs | Proofs and logos never public |
-| PDFs | Playwright (Chromium) printing the same HTML templates the site shows | One design for screen and PDF |
+| PDFs | Reports and statements: pdfkit (`lib/pdf.js`, built). Invoices and receipts (B3b): Playwright (Chromium) printing the site's own pages | Reports need no browser; documents keep one design for screen and PDF |
+| Images | sharp: the website editor's photo uploads (turned upright, metadata stripped, resized, WebP thumbnails) | Built with the website editor |
 | Email | nodemailer over SMTP from `info@noorcombranding.co.ke` | |
 | WhatsApp | Meta WhatsApp Business Platform (Cloud API), approved templates | Spec, "Notifications" |
 | Staff auth | Sessions in Postgres, httpOnly cookie, scrypt password hashes (node:crypto) | Built at B4 with scrypt instead of the argon2 package: no native build, which npm now holds back |
 | Logs | pino (JSON), request ids | |
+| Customer auth | A six-digit code emailed to the customer, sessions in Postgres (only hashes kept); the site holds the token in its httpOnly `nb-session` cookie | Built at B5 (owner, 8 Oct 2026: email is free) |
 | Tests | Vitest; supertest for HTTP; a separate test database and Redis database | |
 | Lint | ESLint with an import rule for the layers (section 2.1) and `max-lines: 250` | Keeps files small and the layers honest | |
 
@@ -86,12 +91,14 @@ in Redis is the only copy of anything that matters.
 | `nb:bull:*` | BullMQ queues and jobs (`prefix: 'nb:bull'` on every queue and worker) | Kept by BullMQ: completed jobs trimmed to the last 1,000, failed kept 7 days |
 | `nb:rl:<name>:<ip>` | Rate-limit counters (section 8.1) | The limit's window |
 | `nb:stk:lock:<orderNo>` | One M-Pesa prompt at a time per order (`SET NX EX 75`) | 75 s, or deleted when the callback lands |
-| `nb:callback:seen:<receipt>` | Fast drop of a repeated callback before it reaches the database (the unique column stays the authority) | 24 h |
+| `nb:callback:seen:<receipt>` | Planned: fast drop of a repeated callback before the database (the unique column is the authority and is what's built) | 24 h |
 | `nb:cache:catalogue` | The catalogue answer; deleted when staff change a product, price or tier | 10 min |
-| `nb:order:events:<orderNo>` | Pub/sub channel: the API publishes when an order changes, so the order page can update live (server-sent events) instead of polling every 3 s | Not stored |
-| `nb:otp:<email>` | A sign-in code's hash, tries left and when it was sent (code 6 digits, 5 tries, resend after 60 s) | 10 min |
-| `nb:session:<hash>` | A customer session (phone); the cookie holds the token, Redis only its hash | 30 days, sliding |
-| `nb:fake:*` | The fakes' state in development and staging (section 2.3) | 1 day |
+| `nb:content:site` | The website's content (`GET /api/content`); deleted on every change in the website editor | 5 min |
+| `nb:fake:absa:*` | The Absa fake's prompts in development and staging (section 2.3) | 1 day |
+| `nb:order:events:<orderNo>` | Planned: a pub/sub channel so the order page updates live (server-sent events) instead of polling | Not stored |
+
+Built: `nb:bull:*`, `nb:rl:*`, `nb:stk:lock:*`, the two caches and the Absa fake. Sign-in codes and
+customer sessions are in Postgres (migration 009), not Redis, so a Redis restart signs nobody out.
 
 `/api/health` pings Redis and reports it. If Redis is down, the API still answers reads; anything
 that needs a queue or a lock answers 503 `try_again`, and nothing is lost because the callbacks are
@@ -99,8 +106,9 @@ stored in Postgres first.
 
 ### 2.3 Integration modes: fakes until each goes live
 
-Absa, Daraja, WhatsApp and email are built against **fakes** that behave like the real services,
-keep their state in Redis (`nb:fake:*`) and fail on request. Each goes live on its own, proven with
+Absa, WhatsApp, email and file storage are built against **fakes** that behave like the real
+services (the Absa fake keeps its prompts in Redis, `nb:fake:absa:*`). Daraja, the fallback, is not
+built. Each goes live on its own, proven with
 one small real transaction on staging.
 
 | Integration | Mode variable | Fake behaviour |
@@ -109,14 +117,15 @@ one small real transaction on staging.
 | Absa C2B | `ABSA_MODE` | `POST /api/dev/c2b` (fake mode only) posts an Absa-shaped confirmation through the real route, so routing, the unmatched queue and receipts are tested end to end |
 | Daraja (fallback) | `DARAJA_MODE` | As Absa |
 | WhatsApp | `WHATSAPP_MODE` | Messages written as JSON to `WHATSAPP_OUTBOX_DIR` |
-| Email | `SMTP_HOST` empty | Messages written as `.eml` files to `.mail-outbox/` |
+| Email | `SMTP_HOST` empty | Messages written as `.eml` files to `.mail-outbox/` (`MAIL_OUTBOX_DIR`), including customers' sign-in codes: **the live site needs `SMTP_HOST`, or nobody can sign in** |
 | Files (R2) | `STORAGE_MODE` | Files kept on disk under `.storage/` with the same signed-URL interface |
 
-Each integration has `live.js`, `fake.js` and an `index.js` that picks one; services import only
-`index.js`. Rules that keep fakes safe:
+Each integration has an `index.js` that picks the live or fake client (Absa also has `live.js` and
+`fake.js`); services import only `index.js`. Rules that keep fakes safe:
 
 1. `/api/health` reports every mode, and the staff back office shows a banner when any is `fake`.
-2. `config.js` refuses to start when a mode is `fake` and `PUBLIC_URL` is the live site.
+2. `config.js` refuses to start when Absa, Daraja or WhatsApp is `fake` and `PUBLIC_URL` is the
+   live site. Email isn't in that check yet: set `SMTP_HOST` before the launch.
 3. `config.js` refuses to start when a mode is `live` and its credentials are missing.
 4. Live credentials exist only on the VPS, never on a developer's machine.
 
@@ -143,16 +152,20 @@ noorcom-branding/
 │  ├─ rules/                    calendar, phone, format, pricing, capacity, c2b, proof, production, site-quote,
 │  │                            statement, account, artwork-check (moved from src/lib at step B0)
 │  ├─ contract/                 order-types.d.ts and content.d.ts (the types both sides read), errors.js
-│  │                            (OrderError); the zod schemas join them as the endpoints need them (B1, B2)
-│  └─ documents/                invoice, receipt and job-card HTML templates (site pages and PDFs)
-├─ admin/                       the staff back office, Vite + React in JavaScript (later, step B4)
+│  │                            (OrderError), schemas.js (the request schemas, zod)
+│  ├─ catalogue/                order-catalogue.js: the order form's categories and products (the seed)
+│  └─ content/                  services, projects and clients, products, pages: the website's starting
+│                               content (migration 008 inserts it once)
+├─ admin/                       the staff back office, Vite + React in JavaScript (built at B4)
 ├─ deploy/                      nginx, systemd, env templates, scripts (section 10)
 ├─ docs/                        RUNBOOK.md, ORDER_WORKFLOW_SPEC.md, BACKEND_RUNBOOK.md
 └─ package.json                 the site's; npm workspaces: backend, admin, shared
 ```
 
 **Debugging each side.** `npm run dev` at the root runs the site (port 3000) against the mock, as
-today. `npm run dev` in `backend/` runs the API (port 4300) and `npm run worker` the job worker.
+today. `npm run backend` and `npm run backend:worker` at the root (or `npm run dev` and
+`npm run worker:dev` in `backend/`) run the API (port 4300) and the job worker; `npm run admin`
+the back office (port 3300).
 Setting `NEXT_PUBLIC_API_MODE=live` points the site at the local API, so a problem can be narrowed
 to one side at a time. Logs from the API carry a request id that the site passes along.
 
@@ -167,145 +180,125 @@ extensions (Node's resolution needs them; the site's accepts them). The rules' t
 
 ## 4. The backend (`backend/`), file by file
 
+As built (9 Oct 2026). Planned pieces are listed after the tree.
+
 ```text
 backend/
-├─ package.json            scripts: dev, start, worker, migrate, migrate:make, seed, test, check
+├─ package.json            scripts: dev, start, worker, worker:dev, test, lint, typecheck, check,
+│                          migrate, migrate:rollback, migrate:status, migrate:make, seed, staff:add
 ├─ jsconfig.json           checkJs, strict
-├─ knexfile.js             DATABASE_URL / TEST_DATABASE_URL
-├─ .env.example            every variable in section 11, no values
+├─ knexfile.js             DATABASE_URL / TEST_DATABASE_URL (migrations and seeds only)
+├─ eslint.config.js        the layer rules (section 2.1), max-lines 250, no site imports
+├─ .env.example            every variable the config reads, with a note each
+├─ assets/nb-logo.png      the logo on report PDFs
 ├─ src/
 │  ├─ server.js            entry: builds the app, listens on 127.0.0.1:4300, graceful shutdown
-│  ├─ worker.js            entry: starts the BullMQ workers in src/jobs
+│  ├─ worker.js            entry: the BullMQ worker on the queue `work`
 │  ├─ app.js               Express app: middleware in order, routes mounted under /api, error handler
 │  ├─ config.js            the ONLY place process.env is read; validated with zod at start-up
+│  ├─ deps.js              what the API and worker are built from: pool, Redis, jobs, integrations
+│  ├─ redis.js             the one ioredis connection (user nb), `key()` adds `nb:`
+│  ├─ cli/add-staff.js     `npm run staff:add`: the first admin
 │  │
 │  ├─ db/
-│  │  ├─ pool.js           the `pg` pool, `withTransaction(pool, fn)`, `dbHealthy`; dates come back as text
-│  │  ├─ migrations/       one file per change, numbered (section 5)
-│  │  └─ seeds/
-│  │     ├─ 01-catalogue.js       categories, products, tiers from shared/contract's catalogue
-│  │     ├─ 02-settings.js        urgency tiers, delivery zones, deposit rule, Paybill details
-│  │     └─ 03-owner.js           the first admin (password typed at the prompt)
+│  │  ├─ pool.js           the `pg` pool, `withTransaction(pool, fn)`, `dbHealthy`
+│  │  ├─ migrations/       001 to 009 (section 5)
+│  │  └─ seeds/01-catalogue.js  categories, products and tiers from shared/catalogue (adds, never overwrites)
 │  │
-│  ├─ lib/                 small, pure helpers
-│  │  ├─ errors.js         AppError(code, status, message); the error handler maps them to JSON
-│  │  ├─ ids.js            order numbers (NB-+6 digits, unique), secret tokens, payment ids
+│  ├─ lib/                 small helpers
+│  │  ├─ errors.js         AppError; OrderError and zod errors mapped to { error, message, details }
+│  │  ├─ ids.js            order numbers (NB- + 6 digits), secret tokens, SHA-256 hashes
 │  │  ├─ numbering.js      next invoice / receipt number inside a transaction (section 7)
-│  │  ├─ money.js          whole shillings, formatting
-│  │  ├─ phone.js          Kenyan phone normalisation (from shared/rules)
-│  │  ├─ time.js           Nairobi time, working days (from shared/rules)
-│  │  └─ logger.js         pino, with phone numbers masked
+│  │  ├─ passwords.js      scrypt for staff passwords
+│  │  ├─ signedUrl.js      links to stored files, signed for an hour
+│  │  ├─ images.js         proof images: size check and the PROOF watermark (SVG)
+│  │  ├─ pdf.js, csv.js    report and statement downloads (pdfkit; CSV with a BOM, formulas made inert)
+│  │  ├─ letterhead.js     the company's details on PDFs (keep in step with src/lib/site.ts)
+│  │  └─ logger.js         pino, phones masked, secrets redacted
 │  │
 │  ├─ middleware/
 │  │  ├─ requestId.js      x-request-id on every request and log line
-│  │  ├─ rawBody.js        keeps the raw body for provider callbacks (signature checks, audit)
-│  │  ├─ validate.js       zod schema per route: body, params, query
 │  │  ├─ rateLimit.js      Redis-backed limits (`nb:rl:*`), section 8.1
-│  │  ├─ customerAccess.js the order's secret token, order number + phone, or the session's phone
-│  │  │                    (the customer's own orders, and a company approver's colleagues')
-│  │  ├─ customerSession.js the `nb-session` token → customer (hash looked up in Redis)
-│  │  ├─ staffAuth.js      session cookie → staff user + role; `requireRole('production')`
-│  │  └─ providerGuard.js  callbacks: secret path segment, Absa IP allowlist, signature if offered
+│  │  ├─ customerAccess.js the order's token (X-Order-Token), phone (X-Order-Phone) or account
+│  │  │                    session (X-Account-Session)
+│  │  ├─ staffAuth.js      staff cookie → staff member; `requireRole('admin')`; X-Requested-With check
+│  │  └─ providerGuard.js  Absa's callbacks: the secret path segment
 │  │
-│  ├─ modules/             one folder per domain: routes.js → controller.js → service.js → repo.js (section 2.1)
-│  │  ├─ catalogue/        GET /api/catalogue
+│  ├─ modules/             routes.js → controller.js → service.js → repo.js (section 2.1)
+│  │  ├─ health/           GET /api/health
+│  │  ├─ catalogue/        GET /api/catalogue (cached in Redis)
 │  │  ├─ pricing/          POST /api/quotes/price, using shared/rules/pricing.js
-│  │  ├─ orders/
-│  │  │  ├─ routes.js      POST /api/orders, GET /api/orders/:no, POST /api/orders/lookup
-│  │  │  ├─ service.js     create (re-validate + re-price), read for the customer, cancel
-│  │  │  ├─ status.js      the state machine: allowed moves only (spec, "Order statuses")
-│  │  │  ├─ expiry.js      unpaid after 48 h → Expired (called by a job)
-│  │  │  └─ repo.js
-│  │  ├─ payments/
-│  │  │  ├─ routes.js      POST /api/payments/stk; provider callbacks (below)
-│  │  │  ├─ stk.service.js start a prompt: one pending at a time per order; store the request id
-│  │  │  ├─ ledger.js      THE place money is recorded (section 6): lock order, insert payment,
-│  │  │  │                 unique receipt, receipt number, amounts, status move, all in one transaction
-│  │  │  ├─ c2b.service.js store the raw confirmation, route it (shared/rules/c2b.js), record or hold
-│  │  │  ├─ unmatched.js   the unmatched-payments queue: list, assign to an order, refund-flag
-│  │  │  ├─ repo.js
-│  │  │  └─ providers/
-│  │  │     ├─ absa/
-│  │  │     │  ├─ client.js     OAuth token, STK Push request, STK status query
-│  │  │     │  ├─ stk.js        STK callback body → { requestId, result, receipt, amount, phone }
-│  │  │     │  └─ c2b.js        `fromAbsaC2B(body)` → C2BConfirmation; register URLs helper
-│  │  │     └─ daraja/          the same three files, as the fallback provider
-│  │  ├─ documents/
-│  │  │  ├─ invoices.js    an invoice per order (INV), its lines frozen from the order's price
-│  │  │  ├─ receipts.js    a receipt per confirmed payment (RCT), created by the ledger
-│  │  │  └─ pdf.js         render shared/documents templates to PDF; store in R2; signed link
-│  │  ├─ proofs/           upload (staff, with mockup), approve with the checklist / request changes with pins
-│  │  │                    (customer), versions, the pre-production sample; company approver rule
-│  │  ├─ production/       staff log pieces or stages; ETA from shared/rules/production.js
-│  │  ├─ capacity/         GET /api/capacity; reserve on order, release on expiry (shared/rules/capacity.js)
-│  │  ├─ surveys/          Mechanism B: book the survey, the quote builder (shared/rules/site-quote.js),
-│  │  │                    accept, installation date, sign-off
-│  │  ├─ deliveries/       pickup codes, rider or courier records, partial deliveries
-│  │  ├─ accounts/         sign-in codes (by email), sessions in Redis, profile, brand kit, addresses,
-│  │  │                    reorder, statement (shared/rules/statement.js)
-│  │  ├─ companies/        company, members and roles; who may approve a company's proofs
-│  │  ├─ uploads/          POST /api/uploads → presigned PUT; file records; size and type checks
-│  │  ├─ notifications/
-│  │  │  ├─ outbox.js      write a message row in the same transaction as the event
-│  │  │  ├─ whatsapp.js    send by Meta template name + variables
-│  │  │  ├─ email.js       send with nodemailer; attach the receipt or invoice PDF
-│  │  │  └─ templates/     one file per event: order-placed, payment-confirmed, proof-ready, …
-│  │  ├─ requests/         the existing quote form and contact messages (submitQuote, sendMessage)
-│  │  ├─ staff/            sign in / out, users, roles, audit log
-│  │  └─ reports/          staff: revenue by category, on-time rate, outstanding balances, machine load
+│  │  ├─ capacity/         GET /api/capacity; machine time booked on order, released on expiry
+│  │  ├─ orders/           place (checks.js, re-priced), read by token, phone or session (view.js), expiry;
+│  │  │                    company orders
+│  │  ├─ payments/         STK Push (service.js), Paybill C2B (c2b.service.js, c2b.repo.js), the ledger
+│  │  │                    (ledger.js, apply.js: THE place money is recorded, section 6), view.js,
+│  │  │                    providers/absa/{stk,c2b}.js (Absa's bodies → our shapes)
+│  │  ├─ proofs/           staff upload; the customer approves or asks for changes (decide.js); the
+│  │  │                    company approver rule
+│  │  ├─ files/            GET /api/files/<key>?exp&sig: stored files behind signed links
+│  │  ├─ notifications/    the outbox: send WhatsApp and email (service.js), the words (templates.js)
+│  │  ├─ staff/            staff sign-in and out, staff accounts, the audit log
+│  │  ├─ backoffice/       the order board, an order, the staff steps (steps.js), unmatched payments,
+│  │  │                    the dashboard (dashboard.service.js)
+│  │  ├─ products/         the price manager: minimums, price tiers, on sale (admin)
+│  │  ├─ reports/          sales, payments, money owed, by product, Paybill suspense; customer accounts
+│  │  │                    and statements (accounts.service.js); PDF and CSV (files.js, labels.js)
+│  │  ├─ content/          the website editor: content items (schemas.js), photos (media.service.js),
+│  │  │                    GET /api/content and /api/media
+│  │  └─ accounts/         customer accounts: sign-in codes and sessions (session.service.js), the
+│  │                       account (service.js), companies (company.service.js, company.repo.js)
 │  │
 │  ├─ jobs/
-│  │  ├─ queues.js         queue names and options (BullMQ `prefix: 'nb:bull'`)
-│  │  ├─ handlers/         one file per job below; handlers only call services
-│  │  ├─ settleCallback.js apply a stored STK callback through the ledger
-│  │  ├─ processC2B.js     route and record a stored C2B confirmation
-│  │  ├─ stkQuery.js       no callback 60 s after a prompt → ask Absa for the status
-│  │  ├─ expireUnpaid.js   every 15 min: expire unpaid orders, release capacity
-│  │  ├─ sendNotification.js deliver the outbox (WhatsApp, email), retries with backoff
-│  │  ├─ renderDocument.js PDFs for invoices and receipts, after commit
-│  │  └─ proofReminders.js reminders at 5 working days, On hold at 14
+│  │  ├─ queues.js         the queue `work` (prefix `nb:bull`), repeating jobs
+│  │  └─ handlers/index.js settle-stk, stk-query, process-c2b, send-notification, expire-unpaid,
+│  │                       outbox-sweep, refresh-site; handlers only call services
 │  │
-│  ├─ redis.js             the one ioredis connection (user nb), key helper that adds `nb:`
-│  │
-│  └─ integrations/        thin clients only, no business rules; each: live.js, fake.js, index.js
-│     ├─ absa/             STK Push, status query, C2B URL registration (fake: section 2.3)
-│     ├─ daraja/           the fallback provider, same shape
-│     ├─ storage/          R2 / S3: presign, head, delete (fake: local disk)
-│     ├─ whatsapp/         Cloud API client (fake: JSON outbox)
-│     ├─ mailer/           SMTP (fake: .eml outbox)
-│     └─ chromium.js       one Playwright browser, reused
+│  └─ integrations/        thin clients, no business rules; services import only each index.js
+│     ├─ absa/             STK Push (fake.js: answers through the real callback route; live.js: refused
+│     │                    at start-up until Absa's documentation arrives)
+│     ├─ whatsapp/         fake: JSON files in WHATSAPP_OUTBOX_DIR
+│     ├─ mailer/           nodemailer: SMTP when SMTP_HOST is set, else .eml files
+│     ├─ storage/          fake: files on disk under STORAGE_DIR (R2 later)
+│     └─ site/             tells the website to refresh (POST /revalidate with REVALIDATE_SECRET)
 │
 └─ test/
-   ├─ unit/                pure modules: ledger rules, status machine, numbering, adapters
-   ├─ integration/         supertest against a test database: create → pay → callback → receipt
-   └─ fixtures/
-      ├─ absa/             real (anonymised) STK and C2B bodies, once Absa sends samples
-      └─ daraja/
+   ├─ unit/                config, logger, the money rules (apply), files, report documents
+   └─ integration/         supertest against the test database: one file per module, and the
+                           real BullMQ worker on Memurai (worker.test.js)
 ```
+
+**Still planned:** the live Absa client and `POST /api/payments/absa/c2b/confirm` registration with
+Absa (B3b), Daraja as the fallback, invoice and receipt PDFs (Playwright), R2 storage and
+`POST /api/uploads`, live WhatsApp templates, the sample, partial deliveries, surveys, site quotes
+and installation (`modules/surveys`, `deliveries`), the job card, proof reminders, the quote and
+contact forms (`modules/requests`), and order updates by server-sent events.
 
 ## 5. Database (migrations, in order)
 
 | # | Migration | Tables and key points |
 | --- | --- | --- |
 | 001 ✓ | catalogue (B1) | `categories`, `products` (mechanism A/B/C, brief_schema JSONB, min_qty, lead days, setup and design fees, survey fee, package price, active), `price_tiers` |
-| 002 ✓ | orders (B2) | `orders` (as placed: product, brief, common brief, handover and estimate in JSONB; status, money, customer email and phone, expiry in columns; token hash), `order_events`, `invoices`, `counters`, `capacity_bookings`, `notifications` (the outbox). Built ahead of the settings and people tables below, which come with B4 and B5; the planned rows that follow keep their order but take the next free numbers |
+| 002 ✓ | orders (B2) | `orders` (as placed: product, brief, common brief, handover and estimate in JSONB; status, money, customer email and phone, expiry in columns; token hash), `order_events`, `invoices`, `counters`, `capacity_bookings`, `notifications` (the outbox) |
 | 003 ✓ | payments (B3) | `payment_requests` (STK prompts: public id, provider request id **unique**, one pending per order by a partial unique index, timeout), `payments` (**mpesa_receipt unique**, receipt_no unique, the prompt it answers), `provider_callbacks` (every STK body as received), `c2b_confirmations` (**trans_id unique**, route, reason, staff action); `orders.attention`. Receipt PDFs (the planned `receipts` table) come with the PDFs |
 | 004 ✓ | staff (B4) | `staff_users` (email, role, scrypt hash, active), `staff_sessions` (token hash, sliding expiry), `audit_log`, `production_logs`; orders gain `pickup_code`, `dispatch`, `handed_over` |
 | 005 ✓ | proofs (B4) | `proofs` (version unique per order, status, note, the watermarked and original file keys, customer comments, pins, the checklist ticked, who uploaded); brought forward from B5 so staff can run an order through |
 | 006 ✓ | minimum ten | Data only: quantity runs still on the old stand-in minimum of 50 go to 10 (owner, 8 Oct 2026), and a first price tier at 50 starts at 10; a minimum staff set themselves stays |
 | 007 ✓ | two roles | Staff roles become `admin` and `designer` only (owner, 8 Oct 2026) |
 | 008 ✓ | content | `content_items` (kind, slug, data JSONB, position, published), `media`; the starting content inserted once |
-| 009 ✓ | accounts (B5) | `customer_profiles` (email, lower case: the account; name, phone, company, brand kit JSONB, addresses JSONB), `sign_in_codes` (one per email: the code's hash, tries, sent and expiry times), `customer_sessions` (token hash, email, expiry), `companies` (`CO-` + 6 digits, name, KRA PIN), `company_members` (email unique, role: owner, approver, member); orders gain `company_id` and `company_po`. The planned `people` row below, as built: the account is its email, so orders aren't linked to it |
-| 002 | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
-| 003 | people | `customers` (email unique, lower case: the account; name, phone, company, credit_balance), `brand_kits` (colours, typography, fonts, logo files, notes), `addresses` (label, address, zone; 5 per customer), `companies` (name, KRA PIN), `company_members` (company, email unique, role: owner, approver, member), `staff_users` (role), `staff_sessions` |
-| 004 | orders | `orders` (order_no unique, secret token hash, status, mechanism, urgency, handover JSONB, totals, amount_paid, credit, due_now, due_purpose, started_on, promised_date, expires_at, company, po_number, install_date), `order_items` (product, quantity, brief JSONB, qty_completed), `order_events`, `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at) |
-| 005 | files | `files` (owner, kind: logo, inspiration, artwork, proof, final, photo; R2 key; size; type) |
-| 006 | proofs | `proofs` (version, status, file, mockup file, decided_at, approved_by and the checklist ticked), `proof_comments` (x, y nullable for a note on the whole proof, text), `samples` (pre-production sample: photo, status, comments) |
-| 007 | payments | `payment_requests` (STK attempts: provider request id **unique**, phone, amount, status, timeout_at), `payments` (purpose, method, amount, **mpesa_receipt unique**, receipt_no unique, raw callback JSONB), `c2b_confirmations` (raw body, **trans_id unique**, route result, unmatched reason, assigned_by) |
-| 008 | documents | `invoices` (invoice_no unique, order, lines JSONB, totals, pdf file), `receipts` (receipt_no unique, payment, pdf file), `counters` (name, value) |
-| 009 | production | `production_logs` (qty_added or stage, photo, staff), `stages` (Mechanism B), `deliveries` (batch qty, partial, status, rider, rider phone, waybill, recipient, delivered_at), `handovers` (method, detail, pickup code checked, collector name, photos) |
-| 010 | operations | `machines` (code, daily units), `capacity_bookings` (machine, date, units, order: reserved at order, released on expiry), `notifications` (outbox: channel, template, payload, status, attempts), `audit_log` |
-| 011 | requests | `quote_requests`, `contact_messages` (the forms the site already has) |
+| 009 ✓ | accounts (B5) | `customer_profiles` (email, lower case: the account; name, phone, company, brand kit JSONB, addresses JSONB), `sign_in_codes` (one per email: the code's hash, tries, sent and expiry times), `customer_sessions` (token hash, email, expiry), `companies` (`CO-` + 6 digits, name, KRA PIN), `company_members` (email unique, role: owner, approver, member); orders gain `company_id` and `company_po`. The account is its email, so orders aren't linked to it by id |
+
+Planned (from the original design; they take the next free numbers when built):
+
+| # | Migration | Tables and key points |
+| --- | --- | --- |
+| – | settings | `urgency_tiers`, `delivery_zones`, `settings` (deposit rule, expiry hours, Paybill details) |
+| – | site jobs | `site_quotes` (Mechanism B: items JSONB, lines JSONB, total, deposit, valid_until, survey notes, accepted_at); the install date on the order |
+| – | files | `files` (owner, kind: logo, inspiration, artwork, proof, final, photo; R2 key; size; type) |
+| – | samples | `samples` (pre-production sample: photo, status, comments) |
+| – | documents | `receipts` (receipt_no, payment, pdf file) and the invoices' pdf file |
+| – | deliveries | `deliveries` (batch qty, partial, status, rider, rider phone, waybill, recipient, delivered_at); today one delivery is the order's `dispatch` and `handed_over` |
+| – | requests | `quote_requests`, `contact_messages` (the forms the site already has) |
 
 Money is whole shillings in `integer` columns. Every table has `created_at`; anything staff can
 change has `updated_at` and an `audit_log` row.
@@ -380,7 +373,8 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 
 | Site (`SiteApi`) | Method and path | Notes |
 | --- | --- | --- |
-| `listServices`, `listProjects`, `listProducts`, `listClients` | `GET /api/content/*` | Site content; stays static in the site until the back office edits it |
+| `listServices`, `getService`, `listProjects`, `getProject`, `listProducts`, `getProduct`, `listClients`, `getPageContent` | `GET /api/content` (one call) | Built: edited in the back office; cached in Redis and on the site under the `content` tag |
+| (photos) | `GET /api/media/<name>` | Built: the website editor's uploads, public, cached a year |
 | `listOrderCategories`, `listOrderProducts`, `getOrderProduct` | `GET /api/catalogue` | Cached; prices from the database |
 | `priceEstimate` | `POST /api/quotes/price` | shared/rules/pricing.js |
 | `createOrder` | `POST /api/orders` | Re-validates, re-prices, opens the order; returns number + secret token |
@@ -410,7 +404,7 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | (documents) | `GET /api/orders/:no/invoice.pdf`, `/receipts/:receiptNo.pdf` | Signed, short-lived links |
 | (uploads) | `POST /api/uploads` | Presigned PUT to R2 |
 | `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | |
-| (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`; `dashboard`; `products` (admin changes a minimum); `reports/:kind` and `accounts`, `accounts/statement` (admin; `?format=pdf` or `csv` downloads). Role-checked; changes need `X-Requested-With: nb-admin`. Prices come later |
+| (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`; `dashboard`; `products` (the price manager, admin: minimum, tiers, on sale); `reports/:kind` and `accounts`, `accounts/statement` (admin; `?format=pdf` or `csv` downloads); `content` and `media` (the website editor). Role-checked; changes need `X-Requested-With: nb-admin` |
 | (files) | `GET /api/files/<key>?exp&sig` | Stored files (proofs) behind links signed for an hour (`lib/signedUrl.js`) |
 
 ### 8.1 Rate limits
@@ -480,7 +474,7 @@ from Nairobi, so put Cloudflare in front at the DNS cutover (an African edge) fo
 
 ## 11. Environment (`/etc/noorcom-branding/api.env`)
 
-`NODE_ENV`, `PORT=4300`, `PUBLIC_URL`, `DATABASE_URL`, `REDIS_URL` (user `nb`), `SESSION_SECRET`,
+`NODE_ENV`, `PORT=4300`, `PUBLIC_URL`, `DATABASE_URL`, `REDIS_URL` (user `nb`),
 `ABSA_MODE`, `DARAJA_MODE`, `WHATSAPP_MODE`, `WHATSAPP_OUTBOX_DIR`, `STORAGE_MODE`,
 `ABSA_BASE_URL`, `ABSA_CLIENT_ID`, `ABSA_CLIENT_SECRET`, `ABSA_STK_SHORTCODE`, `ABSA_PAYBILL=303030`,
 `ABSA_ACCOUNT=2055268420`, `ABSA_CALLBACK_SECRET`, `ABSA_ALLOWED_IPS`, `DARAJA_*` (fallback),
@@ -496,22 +490,27 @@ set), `MAIL_OUTBOX_DIR` and `WHATSAPP_OUTBOX_DIR`; from B4, `FILES_SECRET` (24+ 
 required in production) and `STORAGE_DIR` (the fake storage's folder); with the website editor,
 `SITE_INTERNAL_URL` (the site on this machine: `http://127.0.0.1:4301` on the VPS) and
 `REVALIDATE_SECRET` (24+ characters, required in production; the same value in the site's env).
-The rest join with the clients that read them.
+Customer accounts (B5) add no variable, but their sign-in codes go by email, so production needs
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM`. The rest join with the clients
+that read them.
 
 ## 12. What the site itself needs
 
 The site doesn't talk to Redis or the database; everything goes through the API. It needs:
 
-- `src/lib/api/live.ts`: every `SiteApi` method over HTTP, server-side to `API_INTERNAL_URL`, the
-  order token or phone passed along, errors turned back into `OrderError`. `index.ts` picks it when
-  `NEXT_PUBLIC_API_MODE=live`, and `apiMode` then switches the demo controls off.
+- `src/lib/api/live.ts` (built): the `SiteApi` methods over HTTP, server-side to `API_INTERNAL_URL`,
+  the order's token, phone or account session passed along in headers, errors turned back into
+  `OrderError`. `index.ts` picks it when `NEXT_PUBLIC_API_MODE=live`; `apiMode` is then `live`
+  (no sign-in demo code) and the demo controls are off. Still on the "not online yet" answer: the
+  sample, early deliveries, surveys, site quotes and installation; the quote and contact forms
+  still use the mock.
 - `next.config.ts` rewrites `/api/*` to the API in development (nginx does it on the VPS), as
   Noorcom Computers' storefront does.
-- `src/app/revalidate/route.ts`: the API POSTs here with `REVALIDATE_SECRET` when staff change the
+- `src/app/revalidate/route.ts` (built): the API POSTs here with `REVALIDATE_SECRET` when staff change the
   catalogue or content, so pages refresh at once instead of waiting.
-- The order page: server-sent events from `/api/orders/:no/events` (fed by the Redis channel in
+- Planned: the order page: server-sent events from `/api/orders/:no/events` (fed by the Redis channel in
   2.2) instead of polling every 3 s; polling stays as the fallback.
-- Upload fields that send files straight to R2 with the presigned URL from `POST /api/uploads`.
+- Planned: upload fields that send files straight to R2 with the presigned URL from `POST /api/uploads`.
 - Its own checks unchanged: `lint`, `typecheck`, `test`, `build`, `a11y`, `devices`, `menu`, plus
   an end-to-end run against the API with fakes before each deploy.
 
@@ -527,8 +526,8 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 | B2 ✓ | Orders: create, read, lookup, expiry; invoices (INV); WhatsApp and email outbox with "order placed" | An order placed on staging appears in the database with its invoice |
 | B3 ✓ (fakes) | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; the worker and the outbox; receipt and invoice PDFs (moved to B3b) | Against the fakes: done. The real KES 1 payment on staging waits for Absa's documentation (section 14) and the VPS |
 | B3b | Receipt and invoice PDFs (Playwright printing the site's pages), live Absa client, live WhatsApp templates | A real KES 1 payment on staging confirms the order and sends the receipt with its PDF, by both STK and Paybill |
-| B4 ✓ | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger; proofs (brought forward from B5) | Staff run an order through without the demo controls: done in browsers on 8 Oct 2026 |
-| B5 | Spec Phase 2 to 4: proofs and approval, production and deliveries, accounts and brand kits, surveys and firm quotes, capacity calendar, reports | As in the spec |
+| B4 ✓ | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger; proofs (brought forward from B5); then reports and customer accounts, the website editor and the price manager | Staff run an order through without the demo controls: done in browsers on 8 Oct 2026 |
+| B5 | Spec Phase 2 to 4. **Part 1 ✓ (9 Oct 2026): customer accounts**, brand kits, addresses, reorders, statements, company accounts. Still to build: the pre-production sample, partial deliveries, surveys and firm quotes, installation, the job card, mockups on proofs | As in the spec |
 
 ### Step B0, done 6 Oct 2026
 
@@ -611,7 +610,7 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   /api/orders/lookup`** `{ ref, phone }` (30 per 10 minutes): both answer the contract's `Order`
   (`view.js`), and the same 404 for a wrong token, a wrong phone and no such order. Payments,
   proofs, deliveries, the site quote and the company are empty until their steps (B3, B5).
-  Access by a signed-in account's email comes with sessions (B5).
+  Access by a signed-in account came with sessions (B5, part 1).
 - **Expiry:** an unpaid order past 48 hours becomes `expired`, nothing is due, its machine time is
   released and an event says why. It happens when the order is read, and a sweep every 15 minutes in
   `server.js` catches the rest (it moves to the worker with the queues, B3).
@@ -739,8 +738,7 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   board and to adding a project).
 - **The site** in live mode: `approveProof` and `requestChanges` go to the API; proof images load
   through `/api/files` (nginx on the VPS, a rewrite in `next.config.ts` locally). Orders reached by
-  a signed-in email answer `not_found` on the API until accounts move (B5), so the site falls back
-  to the order's link or phone.
+  a signed-in email answered `not_found` on the API until accounts moved there (B5, part 1, 9 Oct).
 - **Tests:** `backoffice.test.js` (sign-in, the cookie, the same answer for every failure, CSRF,
   sign-out; staff accounts and the last admin; the board, search and overdue; pickup and delivery
   run-throughs with the customer's view, messages and audit; cancelling; unmatched payments),

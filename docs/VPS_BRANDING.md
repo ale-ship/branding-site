@@ -145,6 +145,13 @@ they can be checked:
   refresh after staff change the website), and `api.env` has `SITE_INTERNAL_URL=http://127.0.0.1:4301`.
   The site's `POST /revalidate` is outside `/api/`, so nginx sends it to the site; only the API, on
   this machine, calls it. Uploaded photos live under `STORAGE_DIR` until R2 and belong in the backup.
+- When the site runs on the API, `web.env` gains `NEXT_PUBLIC_API_MODE=live` and
+  `API_INTERNAL_URL=http://127.0.0.1:4300` (a deploy, as above: the build reads the catalogue from
+  the API, so the API must be up first).
+- Customer accounts (B5) sign in with a code sent by email, so `api.env` needs the mailbox's SMTP
+  (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM=info@noorcombranding.co.ke`).
+  Without `SMTP_HOST` the mail is only written to `MAIL_OUTBOX_DIR` on the box and **nobody can sign
+  in**; the config doesn't refuse that yet, so check it before the site goes live on the API.
 
 ---
 
@@ -188,7 +195,10 @@ port 80 to HTTPS (and the ACME challenge), the site proxied to `127.0.0.1:4301`,
 previous one is put back. The other security headers come from the site (`next.config.ts`).
 
 From B1, `/api/` goes to the API on 4300 (`docs/BACKEND_RUNBOOK.md` section 10), with Absa's IP
-ranges allowed on the callback paths.
+ranges allowed on the callback paths. `/api/media/` (the website's photos) can be cached by nginx
+for a year like `/_next/static`: each name is never reused. From B4, `/admin/` serves the back
+office's build (`admin/dist/`, made by `npm run admin:build` in the deploy) as static files, with
+`try_files $uri /admin/index.html`.
 
 ---
 
@@ -311,9 +321,9 @@ After the launch checklist in `docs/RUNBOOK.md`:
 5. `smoke-branding.sh https://noorcombranding.co.ke`, then the rest of the launch checklist (Search
    Console, Google Business Profile, a WhatsApp link preview). Keep the Lovable project and its
    Firebase site a week.
-6. SPF's `+a` now authorises `144.91.76.57` instead of Firebase. Nothing sends mail from the box
-   yet; when the backend does, it sends through the mailbox's SMTP (as electronics does), and the
-   SPF record is reviewed then. Check mail to and from `info@noorcombranding.co.ke` still works.
+6. SPF's `+a` now authorises `144.91.76.57` instead of Firebase. The backend sends mail (sign-in
+   codes and order messages) through the mailbox's SMTP (as electronics does), so the SPF record
+   must allow that server, and DKIM should be on, or the codes land in spam. Check mail to and from `info@noorcombranding.co.ke` still works.
 
 **Rollback** (minutes, the TTL is 300): `@` A back to `199.36.158.100`; delete the `www` A record
 and put back the CNAME to `noorcom-branding.web.app`.

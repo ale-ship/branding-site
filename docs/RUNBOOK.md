@@ -1,6 +1,6 @@
 # Noorcom Branding Website Runbook
 
-Last updated 8 Oct 2026. This is the handover document: read it first in a new chat or on a new
+Last updated 9 Oct 2026. This is the handover document: read it first in a new chat or on a new
 machine. It records what the project is, what we found, every decision and why, and what comes
 next. Update it at the end of every task.
 
@@ -15,10 +15,13 @@ next. Update it at the end of every task.
 - **6 Oct 2026:** the site now uses the logo's red and black; payments get numbered receipts (RCT); Paybill
   payments route through Absa C2B (built and tested against the mock, ready for Absa's details); invoices
   start afresh at INV00001. The backend is designed in `docs/BACKEND_RUNBOOK.md`.
-- **The site still runs on the mock.** Every page and form works, but no payment, message or upload
-  is real yet. Data comes through one interface (`SiteApi`); our own backend, in `backend/` in this
-  repo, will implement it step by step (B0 to B5) without page changes. No Supabase, nothing from
-  Lovable.
+- **Two ways to run the site.** By default (and on Vercel today) it runs on the mock: every page
+  and form works, but no payment, message or upload is real. With `NEXT_PUBLIC_API_MODE=live` it
+  runs on our own backend (`backend/`, steps B0 to B5 in `docs/BACKEND_RUNBOOK.md`): the catalogue
+  and prices, orders, M-Pesa payments (against Absa's fake until B3b), proofs, the website's content
+  and customer accounts come from Postgres, and staff work in the back office (`admin/`). The data
+  goes through one interface (`SiteApi`), so no page changes between the two. No Supabase, nothing
+  from Lovable.
 - **Pages:** `/`, `/work`, `/work/[slug]`, `/services`, `/services/[slug]`, `/shop`, `/shop/[slug]`,
   `/quote`, `/order`, `/order/new`, `/order/[ref]`, `/order/[ref]/invoice`, `/order/[ref]/receipt/[no]`,
   `/account`, `/account/statement` (+ `.csv`), `/about`, `/contact`,
@@ -79,11 +82,23 @@ next. Update it at the end of every task.
   controls. The first admin: `npm run staff:add` in `backend/`.
 - **8 Oct 2026, the minimum run is 10 pieces** (was 50) across the shop, the order form and the
   service pages; admins set a product's own minimum in the back office (Products).
+- **8 Oct 2026, the back office grew** (`docs/BACKEND_RUNBOOK.md`, "Step B4"): a redesign after the
+  owner's reference dashboards (black sidebar, dashboard with money and work waiting); **two staff
+  roles**, admin and designer (the designers do every other job); **reports** for the admin (sales,
+  payments, money owed, sales by product, Paybill suspense) and **customer accounts** with
+  statements, each as a PDF or CSV; the **website editor** (pages, our work, services, shop,
+  clients, media library: the site changes without touching code); and the **price manager**
+  (minimums, price tiers, on sale).
+- **9 Oct 2026, contour lines:** the back office's sign-in is the form straight on Noorcom black with
+  topographic lines and red hills (no card, no crop marks), the lines run through the back office,
+  and the public site has them too ("Contour lines" below).
 - **9 Oct 2026, customer accounts on the API** (backend step B5, part 1): with
-  `NEXT_PUBLIC_API_MODE=live`, sign-in codes are emailed by the API (no demo code), and the account,
-  brand kit, addresses, reorders, statement and company accounts are in Postgres. Orders reached
-  through the account are opened by the session, which the site passes on from its `nb-session`
-  cookie; the API takes the email from it.
+  `NEXT_PUBLIC_API_MODE=live`, sign-in codes are emailed by the API (no demo code; on a development
+  machine the email is an `.eml` file in `backend/.mail-outbox/`), and the account, brand kit,
+  addresses, reorders, statement and company accounts are in Postgres. Orders reached through the
+  account are opened by the session, which the site passes on from its `nb-session` cookie; the API
+  takes the email from it. Checks: 124 backend tests; the site's 230 tests, build, `a11y`,
+  `devices` and `menu`.
 - **Next (owner, 7 Oct 2026: the VPS waits):** the rest of step B5 (the sample, partial deliveries,
   site jobs' survey, quote and installation, the job card), or B3b once Absa's documentation arrives.
   Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS record, deploy key,
@@ -107,6 +122,22 @@ next. Update it at the end of every task.
      the open menu covers the whole screen.
 
 The placeholder photos are committed in `public/images/placeholder` (`npm run photos` re-downloads them).
+
+**Running the backend and the back office on this machine** (once per machine, Postgres and Memurai
+as in `docs/BACKEND_RUNBOOK.md`, "Setting up Postgres and Redis"; `backend/.env` from
+`backend/.env.example`):
+
+1. `cd backend`, `npm run migrate` and `npm run seed` (after a pull that adds a migration, just
+   `npm run migrate`); the first admin with `npm run staff:add -- --email … --name "…" --role admin`.
+2. At the root, each in its own terminal: `npm run backend` (the API, http://127.0.0.1:4300),
+   `npm run backend:worker` (payments, messages, expiry, site refreshes) and `npm run admin` (the
+   back office, http://localhost:3300/admin/).
+3. The site on the API: `NEXT_PUBLIC_API_MODE=live` and the same `REVALIDATE_SECRET` as the API in
+   `.env.local`, then `npm run build` and `npx next start -p 3200` (a live build needs the API
+   running). Sign-in codes, order emails and WhatsApp messages land in `backend/.mail-outbox/` and
+   `backend/.whatsapp-outbox/`.
+4. `npm run backend:check` runs the backend's lint, types and tests (`TEST_DATABASE_URL` and
+   `TEST_REDIS_URL` in `backend/.env`).
 
 **Contour lines (9 Oct 2026):** the back office's topographic lines are on the site too
 (`Contours` in `components/ui/PrintMarks.tsx`): faint with a red hill on the dark "How a job runs"
@@ -346,8 +377,7 @@ Credits in `public/images/placeholder/CREDITS.md`.
 the check: the hero badge sat in the page flow, the header quote button showed on phones, the 5th
 process step was orphaned at tablet width, and the footer email broke mid-word at 1024 px.
 
-**Not yet:** an automated accessibility (axe) check like Noorcom Computers' `npm run a11y`; add it in
-Phase 5. Real logo, photos, client logos and confirmed wording (`TODO(business)` in the code).
+**Not yet** (at the time): an automated accessibility (axe) check; `npm run a11y` came in Phase 5. Real logo, photos, client logos and confirmed wording (`TODO(business)` in the code).
 
 ## Phase 2: what was built (3 Oct 2026)
 
@@ -677,7 +707,8 @@ Still mocked. With this the order workflow spec's four phases are all on the sit
 
 ## Online ordering, Phase 3: accounts and site jobs (6 Oct 2026)
 
-Still mocked (`src/lib/api/mock-accounts.ts`, `mock-orders.ts`).
+Built on the mock (`src/lib/api/mock-accounts.ts`, `mock-orders.ts`). Accounts moved to the API
+on 9 Oct 2026 (backend step B5, part 1); site jobs are still on the mock.
 
 - **Sign-in** (`/account`, `components/account/SignInForm.tsx`): email, then a six-digit code sent
   there; no passwords. (Built with a WhatsApp code on 6 Oct; switched to email on 8 Oct because
@@ -876,7 +907,7 @@ Newest first.
 
 1. **Direction:** happy with "studio with a print shop" (work first), or should the shop lead?
 2. **Fonts:** Bricolage Grotesque + Inter (in use by default), or one of the alternatives?
-3. **Real minimum quantities** per product (50 is a stand-in).
+3. **Real minimum quantities** per product (10 since 8 Oct 2026; staff can now set each in the back office).
 
 Answered: back office (our own, later, no Supabase); git repo (given 3 Oct 2026); photos
 (placeholders now, real ones later); shop is add-to-quote (replaced 5 Oct by online ordering);
