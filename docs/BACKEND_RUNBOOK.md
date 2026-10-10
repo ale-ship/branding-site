@@ -699,6 +699,8 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   or changing their password signs them out everywhere; the last active admin can't be removed.
   **The first admin:** `npm run staff:add -- --email … --name "…" --role admin` in `backend/`
   (asks for the password; `STAFF_PASSWORD` for scripts). Then admins add staff in the back office.
+  In Windows PowerShell, npm's wrapper drops the `--`, so run the script itself from `backend/`:
+  `node src/cli/add-staff.js --email … --name "…" --role admin`.
 - **The back office API** (`modules/backoffice`): the order board in the spec's columns, searchable
   by number, name, phone or email, with overdue orders flagged; an order with its audit trail; and
   the staff steps in `steps.js` (pure): log pieces (never more than are left), mark ready (a
