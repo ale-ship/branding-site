@@ -40,4 +40,32 @@ describe.skipIf(!dbUrl)('the shop photos (migration 010)', () => {
     // Products without a photo of their own keep the placeholder.
     expect((await src('content_items', { kind: 'product', slug: 'umbrella-branding' })).image.src).toBe('/images/placeholder/umbrellas.jpg');
   });
+
+  it('puts the photos on the home page, services and projects (011), keeping staff choices', async () => {
+    await knex.migrate.down({ name: '011_home_photos.js' });
+    const home = async () => (await src('content_items', { kind: 'page', slug: 'home' }));
+    expect((await home()).workshop.image.src).toBe('/images/placeholder/print-wide-format.jpg');
+    expect((await home()).inHouse.images.map((i) => i.src)).toEqual([
+      '/images/placeholder/print-latex.jpg',
+      '/images/placeholder/apparel-press.jpg',
+      '/images/placeholder/press-offset.jpg',
+      '/images/placeholder/screen-inks.jpg',
+    ]);
+    const mine = { src: '/api/media/0123456789abcdef.jpg', alt: 'Our own van' };
+    await knex.raw(`UPDATE content_items SET data = jsonb_set(data, '{image}', ?::jsonb) WHERE kind = 'service' AND slug = 'vehicle-branding'`, [JSON.stringify(mine)]);
+
+    await knex.migrate.up({ name: '011_home_photos.js' });
+    expect((await home()).workshop.image.src).toBe('/images/mockups/wide-format-printer.jpg');
+    expect((await home()).inHouse.images.map((i) => i.src)).toEqual([
+      '/images/mockups/shop-interior.jpg',
+      '/images/mockups/polo-embroidery.jpg',
+      '/images/placeholder/press-offset.jpg',
+      '/images/mockups/reception-sign.jpg',
+    ]);
+    expect((await src('content_items', { kind: 'service', slug: 'outdoor-branding' })).image.src).toBe('/images/mockups/shop-front.jpg');
+    expect((await src('content_items', { kind: 'service', slug: 'vehicle-branding' })).image).toEqual(mine);
+    const fleet = (await src('content_items', { kind: 'project', slug: 'sample-fleet-livery' })).cover;
+    expect(fleet.src).toBe('/images/mockups/vehicle-fleet.jpg');
+    expect(fleet.alt).toContain('Noorcom Group');
+  });
 });

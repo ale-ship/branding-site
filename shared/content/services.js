@@ -4,6 +4,8 @@
 
 /** @param {string} name @param {string} alt */
 const img = (name, alt) => ({ src: `/images/placeholder/${name}.jpg`, alt });
+/** The owner's own photos (13 Oct 2026), in public/images/mockups. @param {string} name @param {string} alt */
+const mockup = (name, alt) => ({ src: `/images/mockups/${name}.jpg`, alt });
 
 /**
  * The services, seeded into the backend's database, where staff edit them in the back office.
@@ -28,7 +30,7 @@ export const services = [
       { question: 'Will a wall mural damage the paint?', answer: 'No. We use removable wallpaper and films that come off cleanly when you move or rebrand.' },
       { question: 'Do you measure the space first?', answer: 'Yes. We visit, measure and photograph the space before we design, at no charge within Nairobi.' },
     ],
-    image: img('wall-mural', 'An office lounge with a large illustrated wall mural'),
+    image: mockup('shop-interior', 'A lit Noorcom Branding banner listing our services, hung inside the shop'),
   },
   {
     slug: 'outdoor-branding',
@@ -46,7 +48,7 @@ export const services = [
       { question: 'How long do outdoor prints last?', answer: 'With UV-resistant inks and laminate, three to five years in Nairobi sun, depending on the material.' },
       { question: 'Can you work at height?', answer: 'Yes. Our installers have the access equipment for shop fronts and building signs.' },
     ],
-    image: img('billboard', 'A roadside billboard against a pale sky'),
+    image: mockup('shop-front', 'An illuminated Noorcom Branding shop-front sign with 3D letters at dusk'),
   },
   {
     slug: 'vehicle-branding',
@@ -64,7 +66,7 @@ export const services = [
       { question: 'How long does a wrap take?', answer: 'Two to four days per vehicle in our workshop. For fleets we wrap a few at a time so your vehicles keep working.' },
       { question: 'Do I need to tell NTSA?', answer: 'A full colour change may need to be recorded. We’ll tell you when it applies.' },
     ],
-    image: img('van-wrap', 'A white van covered in a full graphic wrap'),
+    image: mockup('vehicle-fleet', 'A white van and a black pickup branded with the Noorcom Group logo and red swooshes'),
   },
   {
     slug: 'apparel',
@@ -82,7 +84,7 @@ export const services = [
       { question: 'Do you supply the garments?', answer: 'Yes, in all common sizes and colours. You can also bring your own.' },
       { question: 'Screen print or heat transfer?', answer: 'Screen print for bigger runs and bold colours; heat transfer for small runs, names and photos. We’ll recommend one.' },
     ],
-    image: img('tshirts-rack', 'A rack of t-shirts in every colour of the rainbow'),
+    image: mockup('apparel-set', 'Black and white t-shirts and a black hoodie printed with the Noorcom Group logo'),
   },
   {
     slug: 'corporate-gifts',
@@ -100,7 +102,7 @@ export const services = [
       { question: 'Printed or engraved?', answer: 'Printing gives full colour; laser engraving is permanent and looks premium on steel. We’ll show you samples.' },
       { question: 'Can I see a sample first?', answer: 'For orders over 100 pieces we make one sample for you to approve before the run.' },
     ],
-    image: img('water-bottles', 'Three pastel metal water bottles on a white surface'),
+    image: mockup('bottle-and-backpack', 'A black water bottle and backpack branded with the Noorcom Group logo'),
   },
   {
     slug: 'stationery',
@@ -118,7 +120,7 @@ export const services = [
       { question: 'What file should I send?', answer: 'A print-ready PDF is best. If you only have a Word file or a photo, send it and our designers will prepare it.' },
       { question: 'Can I get a printed proof?', answer: 'Yes, for a small fee that’s taken off the order. Digital proofs are always free.' },
     ],
-    image: img('business-cards', 'Two stacks of blank business cards'),
+    image: mockup('business-cards', 'Black and white business cards with the Noorcom Group logo, beside a pen'),
   },
   {
     slug: 'large-format',
@@ -136,6 +138,6 @@ export const services = [
       { question: 'What size can you print?', answer: 'Up to 3.2 m wide in one piece; bigger backdrops are joined invisibly.' },
       { question: 'Do banner stands come with a bag?', answer: 'Yes, every roll-up comes with its stand and a carry bag.' },
     ],
-    image: img('print-wide-format', 'A wide-format printer feeding out a long pink banner'),
+    image: mockup('wide-format-printer', 'Our wide-format printer printing a long banner'),
   },
 ];

@@ -105,8 +105,16 @@ next. Update it at the end of every task.
   `public/images/shop/<slug>.jpg` (1600 px; the hoodie is 577 px, cut from a small export, so a
   larger file of that mock-up would sharpen it). Posters, brochures, umbrellas and gift bags still
   have placeholders. Migration 010 makes the same change in a database that still shows the
-  placeholders. The other mock-ups (shop front, reception sign, wide-format printer, vehicles, caps,
-  laptop, polo, scarf, stationery set) aren't used yet: they suit the service and work pages.
+  placeholders.
+- **13 Oct 2026, the mock-ups on the home page** (`public/images/mockups/`, kept in their own shape
+  at up to 2400 px; the shop front is a 4:3 version with its top and bottom extended, the polo a 4:5
+  crop around the logo): the workshop band is the wide-format printer; "behind the scenes" is the
+  shop's own banner, the embroidered polo, the offset press (still a placeholder) and the reception
+  sign; the services' photos are the shop interior (indoor), the shop front (outdoor), the vehicles,
+  the apparel set, the bottle and backpack, the business cards and the printer; and three featured
+  samples have new covers (the fleet, caps and beanies, the gift set). Migration 011 does the same in
+  a database. Not used yet: the laptop and the scarf. The samples' words still describe the old
+  photos' jobs (an office mural, a billboard), so those two keep stock covers.
 - **Next (owner, 7 Oct 2026: the VPS waits):** the rest of step B5 (the sample, partial deliveries,
   site jobs' survey, quote and installation, the job card), or B3b once Absa's documentation arrives.
   Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS record, deploy key,

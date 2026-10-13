@@ -10,6 +10,8 @@
 
 /** @param {string} name @param {string} alt */
 const img = (name, alt) => ({ src: `/images/placeholder/${name}.jpg`, alt });
+/** The owner's own photos (13 Oct 2026), in public/images/mockups. @param {string} name @param {string} alt */
+const mockup = (name, alt) => ({ src: `/images/mockups/${name}.jpg`, alt });
 
 /** @type {PageContent} */
 export const pages = {
@@ -21,7 +23,7 @@ export const pages = {
       discoverSubtitle: 'From the Noorcom archive',
     },
     workshop: {
-      image: img('print-wide-format', 'Our wide-format printer feeding out a long printed banner in the workshop'),
+      image: mockup('wide-format-printer', 'Our wide-format printer printing a long banner in the workshop'),
       caption: 'Printed in our Nairobi workshop',
       facts: [
         { value: 'In-house', label: 'Design, print and installation under one roof' },
@@ -36,10 +38,10 @@ export const pages = {
       buttonLabel: 'About the studio',
       // The large photo first, then the two below it, then the one beside the words (wide screens).
       images: [
-        img('print-latex', 'A wide-format latex printer in the print room'),
-        img('apparel-press', 'A yellow t-shirt laid on the press, ready to print'),
+        mockup('shop-interior', 'A lit Noorcom Branding banner listing our services, hung inside the shop'),
+        mockup('polo-embroidery', 'The Noorcom Group logo embroidered on a black polo shirt'),
         img('press-offset', 'An offset press with its ink rollers'),
-        img('screen-inks', 'Tubs of screen-printing ink on the workbench'),
+        mockup('reception-sign', 'A reception desk with a lit Noorcom Group logo sign'),
       ],
     },
     // TODO(business): confirm the steps and typical turnaround with Noorcom.

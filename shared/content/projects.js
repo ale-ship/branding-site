@@ -18,6 +18,9 @@ const img = (name, alt, caption) => ({
   ...(caption ? { caption } : {}),
 });
 
+/** The owner's own photos (13 Oct 2026), in public/images/mockups. @param {string} name @param {string} alt */
+const mockup = (name, alt) => ({ src: `/images/mockups/${name}.jpg`, alt });
+
 /** Production photos shared by the samples. Real case studies get their own. */
 const shop = {
   wide: img('print-wide-format', 'A wide-format printer feeding out a printed banner', 'Printed in-house on our wide-format machine.'),
@@ -45,7 +48,7 @@ export const projects = [
     location: 'Nairobi',
     services: ['vehicle-branding'],
     summary: 'Full wraps for a fleet of delivery vans, designed to read at speed and survive the rainy season.',
-    cover: img('van-wrap', 'A white van covered in a full graphic wrap'),
+    cover: mockup('vehicle-fleet', 'A white van and a black pickup branded with the Noorcom Group logo and red swooshes'),
     palette: ['#f2f2f0', '#e85a8a', '#1b1b1b'],
     brief:
       'Twelve plain white vans, a new route network across Nairobi, and no budget for billboards. The vans had to become the advertising.',
@@ -106,7 +109,7 @@ export const projects = [
     location: 'Nairobi',
     services: ['apparel'],
     summary: 'Crew and fan t-shirts printed and packed in three days.',
-    cover: img('tshirt-print', 'Close-up of a bold multicolour print on a white t-shirt'),
+    cover: mockup('caps-and-beanies', 'Black and red caps and beanies with the Noorcom Group logo'),
     palette: ['#ffffff', '#e5433b', '#1f4fa3'],
     brief: 'A festival needed crew and fan t-shirts in six sizes and two colours, and the artwork arrived on Thursday.',
     idea: 'Screen print the crew shirts for durability and heat-transfer the fan shirts, so both runs could go through the workshop at once.',
@@ -166,7 +169,7 @@ export const projects = [
     location: 'Upper Hill',
     services: ['corporate-gifts'],
     summary: 'Year-end gift sets: bottles, notebooks and bags in the client’s colours.',
-    cover: img('water-bottles', 'Three pastel metal water bottles'),
+    cover: mockup('merchandise-set', 'A branded t-shirt, desk calendar, receipt book, folder and cards for Noorcom Group'),
     palette: ['#f4a259', '#7fd1c7', '#c9a0dc'],
     brief: 'Two hundred year-end gifts for clients, useful enough that people actually keep them.',
     idea: 'Three everyday things in three soft colours, packed in a kraft box with a printed card.',
