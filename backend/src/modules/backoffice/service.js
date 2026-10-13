@@ -1,12 +1,12 @@
 // @ts-check
 import { OrderError } from '@noorcom-branding/shared/contract/errors.js';
 import { nairobiToday } from '@noorcom-branding/shared/rules/calendar.js';
-import { withTransaction } from '../../db/pool.js';
 import { AppError } from '../../lib/errors.js';
+import { approvalOf } from '../accounts/company.service.js';
 import { release } from '../capacity/repo.js';
-import { queueNotifications } from '../notifications/service.js';
-import { findByOrderNo, historyOf, insertEvent, insertNotifications } from '../orders/repo.js';
+import { findByOrderNo, historyOf } from '../orders/repo.js';
 import { signerFor } from '../orders/service.js';
+import { staffStep } from '../orders/steps.service.js';
 import { toOrder } from '../orders/view.js';
 import { assignUnmatched, listUnmatched, markForRefund } from '../payments/c2b.service.js';
 import { audit, auditOf } from '../staff/repo.js';
@@ -84,9 +84,9 @@ export async function orderForStaff(deps, ref) {
   const pool = need(deps);
   const row = await findByOrderNo(pool, ref.trim().toUpperCase());
   if (!row) throw new OrderError('not_found', 'There is no order with that number.');
-  const [history, trail] = await Promise.all([historyOf(pool, row.id), auditOf(pool, row.id)]);
+  const [history, trail, company] = await Promise.all([historyOf(pool, row.id), auditOf(pool, row.id), row.company_id ? approvalOf(deps, row.company_id) : null]);
   return {
-    order: toOrder(row, history, signerFor(deps)),
+    order: toOrder(row, history, signerFor(deps), company),
     staff: {
       attention: row.attention,
       audit: trail.map((a) => ({ at: new Date(a.at).toISOString(), action: a.action, staff: a.staff, detail: a.detail })),
@@ -105,27 +105,7 @@ export async function orderForStaff(deps, ref) {
  * @param {(trx: import('pg').PoolClient, order: Record<string, any>) => Promise<void>} [extra] More writes in the same transaction.
  */
 async function step(deps, staff, ref, action, decide, now, extra) {
-  const ids = await withTransaction(need(deps), async (trx) => {
-    const order = await findByOrderNo(trx, ref.trim().toUpperCase(), { lock: true });
-    if (!order) throw new OrderError('not_found', 'There is no order with that number.');
-    const s = decide(order);
-    await repo.updateOrder(trx, order.id, s.fields, now);
-    for (const text of s.events) await insertEvent(trx, order.id, text, now);
-    if (extra) await extra(trx, order);
-    await audit(trx, staff.id, action, order.id, s.audit);
-    if (!s.message) return [];
-    const payload = { text: s.message.text, ref: order.order_no };
-    return insertNotifications(
-      trx,
-      order.id,
-      [
-        { channel: 'whatsapp', recipient: order.customer_phone, template: s.message.template, payload },
-        { channel: 'email', recipient: order.customer_email, template: s.message.template, payload },
-      ],
-      now,
-    );
-  });
-  await queueNotifications(deps, ids);
+  await staffStep(deps, staff, ref, action, decide, now, extra);
   return orderForStaff(deps, ref);
 }
 

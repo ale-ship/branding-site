@@ -50,6 +50,7 @@ export async function dashboard(deps, now = new Date()) {
     overdue: pipe.overdue,
     attention: pipe.attention,
     unmatched: pipe.unmatched,
+    requests: pipe.requests,
     stages,
     revenueByDay: daily,
     byCategory: categories,

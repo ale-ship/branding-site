@@ -5,6 +5,7 @@ import {
   FileText,
   Handshake,
   Images,
+  Inbox,
   KanbanSquare,
   Layers,
   LayoutDashboard,
@@ -26,6 +27,7 @@ import { Dashboard } from './pages/Dashboard.jsx';
 import { OrderPage } from './pages/OrderPage.jsx';
 import { ProductsPage } from './pages/ProductsPage.jsx';
 import { Reports } from './pages/Reports.jsx';
+import { Requests } from './pages/Requests.jsx';
 import { SignIn } from './pages/SignIn.jsx';
 import { StaffPage } from './pages/StaffPage.jsx';
 import { Unmatched } from './pages/Unmatched.jsx';
@@ -56,6 +58,7 @@ export function App() {
   const [staff, setStaff] = useState(undefined);
   const [menuOpen, setMenuOpen] = useState(false);
   const [unmatched, setUnmatched] = useState(0);
+  const [newRequests, setNewRequests] = useState(0);
   const route = useHashRoute();
 
   useEffect(() => {
@@ -66,8 +69,15 @@ export function App() {
   }, []);
   /** Any 401 from a page means the session ended: back to sign-in. */
   const onAuthLost = useCallback(() => setStaff(null), []);
-  // Close the drawer on navigation; count unmatched payments for the sidebar badge.
+  // Close the drawer on navigation; count unmatched payments and new requests for the sidebar badges.
   useEffect(() => setMenuOpen(false), [route]);
+  useEffect(() => {
+    if (!staff) return;
+    api
+      .get('/staff/requests?status=new')
+      .then((r) => setNewRequests(r.requests.length))
+      .catch((e) => e instanceof ApiError && e.status === 401 && onAuthLost());
+  }, [staff, route, onAuthLost]);
   useEffect(() => {
     if (!staff || !may(staff, 'payments')) return;
     api
@@ -97,6 +107,7 @@ export function App() {
     [
       'Orders',
       [
+        ['requests', 'Requests', Inbox, true, newRequests],
         ['orders', 'Order board', KanbanSquare, true],
         ['payments', 'Unmatched payments', CreditCard, may(staff, 'payments'), unmatched],
       ],
@@ -199,6 +210,7 @@ export function App() {
           {page === 'orders' && param && <OrderPage key={param} orderRef={param} staff={staff} onAuthLost={onAuthLost} />}
           {page === 'orders' && !param && <Board key={query} initialQuery={new URLSearchParams(query).get('q') ?? ''} onAuthLost={onAuthLost} />}
           {page === 'payments' && <Unmatched onAuthLost={onAuthLost} />}
+          {page === 'requests' && <Requests refId={param} onAuthLost={onAuthLost} />}
           {page === 'reports' && may(staff, 'finance') && <Reports kind={param} onAuthLost={onAuthLost} />}
           {page === 'accounts' && may(staff, 'finance') && !param && <Accounts onAuthLost={onAuthLost} />}
           {page === 'accounts' && may(staff, 'finance') && param && <Statement key={param} email={decodeURIComponent(param)} onAuthLost={onAuthLost} />}
@@ -206,7 +218,7 @@ export function App() {
           {page === 'products' && <ProductsPage me={staff} onAuthLost={onAuthLost} />}
           {page === 'staff' && <StaffPage me={staff} onAuthLost={onAuthLost} />}
           {page === 'website' && <Website key={path} section={param} item={item} me={staff} onAuthLost={onAuthLost} />}
-          {!['dashboard', 'orders', 'payments', 'reports', 'accounts', 'products', 'staff', 'website'].includes(page) && (
+          {!['dashboard', 'requests', 'orders', 'payments', 'reports', 'accounts', 'products', 'staff', 'website'].includes(page) && (
             <p>
               No such page. <a href="#/dashboard">Back to the dashboard</a>.
             </p>

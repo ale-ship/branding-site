@@ -3,25 +3,27 @@ import { paymentsOf } from '../payments/view.js';
 
 /**
  * A stored order as the contract's `Order` (shared/contract/order-types.d.ts): what the site's order
- * page reads. Proof images are short-lived signed links. Early deliveries and the site quote come with
- * the rest of step B5; until then they are empty.
+ * page reads. Proof images, the sample's photo and a design's final files are short-lived signed links.
  *
  * @typedef {import('@noorcom-branding/shared/contract/order-types.js').Order} Order
  * @typedef {Record<string, any>} Row
  */
 
 /**
- * The whole order's delivery, once it is out (early, partial deliveries come with B5).
+ * The early (partial) deliveries, then the rest of the order's delivery once it is out.
  * @param {Row} r
  * @returns {Order['deliveries']}
  */
 function deliveriesOf(r) {
-  if (!r.dispatch) return [];
+  /** @type {Order['deliveries']} */
+  const early = r.early_deliveries ?? [];
+  if (!r.dispatch) return early;
   const delivered = r.handed_over?.method === 'delivery';
   return [
+    ...early,
     {
       id: `${r.order_no}-D1`,
-      pieces: r.quantity,
+      pieces: r.quantity - early.reduce((s, d) => s + d.pieces, 0),
       partial: false,
       status: delivered ? 'delivered' : 'out',
       rider: r.dispatch.rider || null,
@@ -39,12 +41,12 @@ const iso = (t) => (t == null ? null : new Date(t).toISOString());
 
 /**
  * @param {Row} r The order row, with `invoice_no`.
- * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[]; logs?: Row[]; proofs?: Row[] }} history
+ * @param {{ events: Row[]; notifications: Row[]; requests?: Row[]; payments?: Row[]; logs?: Row[]; proofs?: Row[]; files?: Row[] }} history
  * @param {(key: string) => string} [sign] A stored file's short-lived link (lib/signedUrl.js).
  * @param {{ name: string; approvers: string[] } | null} [company] A company order's company and who approves for it.
  * @returns {Order}
  */
-export function toOrder(r, { events, notifications, requests = [], payments = [], logs = [], proofs = [] }, sign = () => '', company = null) {
+export function toOrder(r, { events, notifications, requests = [], payments = [], logs = [], proofs = [], files = [] }, sign = () => '', company = null) {
   return {
     ref: r.order_no,
     invoiceNo: r.invoice_no,
@@ -82,9 +84,11 @@ export function toOrder(r, { events, notifications, requests = [], payments = []
       decidedAt: iso(p.decided_at),
     })),
     survey: r.survey,
-    siteQuote: null,
-    installDate: null,
-    sample: r.sample,
+    siteQuote: r.site_quote ?? null,
+    installDate: r.install_date ?? null,
+    sample: r.sample
+      ? { status: r.sample.status, photo: r.sample.photoKey ? sign(r.sample.photoKey) : null, uploadedAt: r.sample.uploadedAt ?? null, comments: r.sample.comments ?? null }
+      : null,
     production: {
       logs: logs.map((l) => ({ at: /** @type {string} */ (iso(l.at)), pieces: l.pieces, note: l.note })),
       dailyCapacity: r.daily_capacity,
@@ -94,6 +98,7 @@ export function toOrder(r, { events, notifications, requests = [], payments = []
     pickupCode: r.pickup_code ?? null,
     deliveries: deliveriesOf(r),
     handedOver: r.handed_over ? { at: r.handed_over.at, method: r.handed_over.method, detail: r.handed_over.detail } : null,
+    finalFiles: files.map((f) => ({ id: f.id, name: f.name, size: f.size, url: sign(f.file_key) })),
     company: r.company_id && company ? { id: r.company_id, name: company.name, poNumber: r.company_po, approvers: company.approvers } : null,
   };
 }

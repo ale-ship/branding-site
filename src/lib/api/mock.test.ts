@@ -80,7 +80,7 @@ describe('mock data', () => {
     };
     const a = await mockApi.submitQuote(request);
     const b = await mockApi.submitQuote(request);
-    expect(a.reference).toMatch(/^NB-\d{6}$/);
+    expect(a.reference).toMatch(/^NQ-\d{6}$/);
     expect(b.reference).not.toBe(a.reference);
     expect(receivedQuotes.at(-1)?.reference).toBe(b.reference);
   });

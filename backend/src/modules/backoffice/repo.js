@@ -55,6 +55,13 @@ const COLUMNS = {
   attention: (v) => v,
   started_on: (v) => v,
   promised_date: (v) => v,
+  // B5: samples, site jobs, early deliveries.
+  sample: (v) => (v == null ? null : JSON.stringify(v)),
+  survey: (v) => (v == null ? null : JSON.stringify(v)),
+  site_quote: (v) => (v == null ? null : JSON.stringify(v)),
+  install_date: (v) => v,
+  early_deliveries: (v) => JSON.stringify(v ?? []),
+  total: (v) => v,
 };
 
 /**

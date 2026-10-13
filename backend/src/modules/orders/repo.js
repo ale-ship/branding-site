@@ -99,18 +99,19 @@ export async function findByOrderNo(db, orderNo, { lock = false } = {}) {
  * log and its proofs, oldest first.
  * @param {Db} db
  * @param {number} orderId
- * @returns {Promise<{ events: Row[]; notifications: Row[]; requests: Row[]; payments: Row[]; logs: Row[]; proofs: Row[] }>}
+ * @returns {Promise<{ events: Row[]; notifications: Row[]; requests: Row[]; payments: Row[]; logs: Row[]; proofs: Row[]; files: Row[] }>}
  */
 export async function historyOf(db, orderId) {
-  const [events, notifications, requests, payments, logs, proofs] = await Promise.all([
+  const [events, notifications, requests, payments, logs, proofs, files] = await Promise.all([
     db.query('SELECT text, at FROM order_events WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT channel, recipient, payload, created_at FROM notifications WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT * FROM payment_requests WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT id, public_id, request_id, purpose, method, phone, amount, mpesa_receipt, receipt_no, created_at FROM payments WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT pieces, note, at FROM production_logs WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT version, status, note, comments, pins, file_key, mockup_key, uploaded_at, decided_at FROM proofs WHERE order_id = $1 ORDER BY version', [orderId]),
+    db.query("SELECT id, name, file_key, size, type, created_at FROM order_files WHERE order_id = $1 AND kind = 'final' ORDER BY id", [orderId]),
   ]);
-  return { events: events.rows, notifications: notifications.rows, requests: requests.rows, payments: payments.rows, logs: logs.rows, proofs: proofs.rows };
+  return { events: events.rows, notifications: notifications.rows, requests: requests.rows, payments: payments.rows, logs: logs.rows, proofs: proofs.rows, files: files.rows };
 }
 
 /**
@@ -129,4 +130,36 @@ export async function expireUnpaid(trx, now, orderId) {
     [now, orderId ?? null],
   );
   return rows.map((r) => r.id);
+}
+
+/**
+ * A file staff sent with the order: a design-only order's final file, or a sample's photo.
+ * @param {Db} trx
+ * @param {{ orderId: number; kind: 'final' | 'sample'; name: string; key: string; size: number; type: string; staffId: number; at: Date }} f
+ */
+export async function insertFile(trx, f) {
+  await trx.query('INSERT INTO order_files (order_id, kind, name, file_key, size, type, staff_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [
+    f.orderId, f.kind, f.name, f.key, f.size, f.type, f.staffId, f.at,
+  ]);
+}
+
+/**
+ * Removes one of the order's final files and answers its storage key, or null.
+ * @param {Db} trx
+ * @param {number} orderId
+ * @param {number} id
+ * @returns {Promise<string | null>}
+ */
+export async function deleteFinal(trx, orderId, id) {
+  const { rows } = await trx.query("DELETE FROM order_files WHERE order_id = $1 AND id = $2 AND kind = 'final' RETURNING file_key", [orderId, id]);
+  return rows[0]?.file_key ?? null;
+}
+
+/**
+ * @param {Db} db
+ * @param {number} orderId
+ */
+export async function countFinals(db, orderId) {
+  const { rows } = await db.query("SELECT count(*)::int AS n FROM order_files WHERE order_id = $1 AND kind = 'final'", [orderId]);
+  return rows[0].n;
 }

@@ -1,4 +1,4 @@
-import { FileText, MessageCircle, Package, Truck } from 'lucide-react';
+import { Download, FileText, MessageCircle, Package, Truck } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DemoControls } from '@/components/order/DemoControls';
@@ -19,7 +19,7 @@ import { describeBrief } from '@/lib/order';
 import { CLOSED, localPhone, PAYMENT_STATUS_LABEL, PURPOSE_LABEL, STATUS_LABEL, TRACKS, orderTrackIndex } from '@/lib/order-status';
 import { DELIVERY_ZONES } from '@/lib/pricing';
 import { deliverablePieces, productionEta, SAMPLE_THRESHOLD } from '@/lib/production';
-import { nairobiToday } from '@/lib/quote';
+import { formatBytes, nairobiToday } from '@/lib/quote';
 import { earliestInstall } from '@/lib/site-quote';
 import { invoiceIssuer, site } from '@/lib/site';
 import { loadOrder, tokenFrom, withToken } from '../load';
@@ -54,9 +54,11 @@ function nextStep(order: Order): string {
       if (order.sample && order.sample.status !== 'approved') return 'We’re printing one sample for you to check before the full run.';
       return 'In production. We update this page as work is done.';
     case 'ready':
-      return 'Checked and packed.';
+      // Our backend gives the pickup code when the order is ready; the mock gives it a step later.
+      return order.pickupCode ? 'Ready for pickup at Chuka Elimu Plaza, Loita Street: bring your pickup code.' : 'Checked and packed.';
     case 'out_for_handover':
-      if (order.mechanism === 'C') return 'Your final files are ready to download.';
+      // Our backend lists the files once staff upload them; the mock has them at once.
+      if (order.mechanism === 'C') return order.finalFiles?.length === 0 ? 'Design approved: we’re preparing your final files.' : 'Your final files are ready to download.';
       return order.handover.method === 'delivery' ? 'On its way to you.' : 'Ready for pickup at Chuka Elimu Plaza, Loita Street: bring your pickup code.';
     case 'completed':
       return 'Done. Thank you for ordering with us.';
@@ -165,7 +167,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
             <SampleReview orderRef={order.ref} token={token} photo={order.sample.photo} productName={order.product.name} />
           )}
 
-          {order.status === 'out_for_handover' && order.pickupCode && (
+          {(order.status === 'ready' || order.status === 'out_for_handover') && order.pickupCode && (
             <section aria-labelledby="pickup-title" className="border border-ink p-5 sm:p-6">
               <h2 id="pickup-title" className="text-xl font-bold">
                 Your pickup code
@@ -179,6 +181,26 @@ export default async function OrderPage({ params, searchParams }: Props) {
               <p className="mt-3 text-body">
                 Show this code at the counter, Chuka Elimu Plaza, 1st Floor, Loita Street. Whoever collects needs the code; we note their name.
               </p>
+            </section>
+          )}
+
+          {order.finalFiles && order.finalFiles.length > 0 && (
+            <section aria-labelledby="files-title" className="border border-ink p-5 sm:p-6">
+              <h2 id="files-title" className="text-xl font-bold">
+                Your final files
+              </h2>
+              <ul className="mt-3 flex flex-col divide-y divide-border">
+                {order.finalFiles.map((f) => (
+                  <li key={f.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3">
+                    <span className="font-semibold break-all text-heading">{f.name}</span>
+                    <a href={f.url} download={f.name} className="inline-flex min-h-11 items-center gap-2 font-semibold text-link underline underline-offset-4">
+                      <Download aria-hidden className="size-4" />
+                      Download<span className="sr-only"> {f.name}</span> ({formatBytes(f.size)})
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-sm text-muted">The links work for an hour: open this page again for fresh ones.</p>
             </section>
           )}
 

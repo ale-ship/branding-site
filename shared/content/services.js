@@ -2,8 +2,6 @@
 
 /** @typedef {import('../contract/content.js').Service} Service */
 
-/** @param {string} name @param {string} alt */
-const img = (name, alt) => ({ src: `/images/placeholder/${name}.jpg`, alt });
 /** The owner's own photos (13 Oct 2026), in public/images/mockups. @param {string} name @param {string} alt */
 const mockup = (name, alt) => ({ src: `/images/mockups/${name}.jpg`, alt });
 

@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { may } from '../api.js';
+import { moreSteps } from './StepsMore.jsx';
 
 /**
  * The next step for this order, for this role (the API checks the same rules): log pieces, mark
  * ready, send out, hand over, cancel, clear a flag. Logging takes seconds: type a number or tap a
  * quick amount.
  */
-export function Steps({ order: o, staff, attention, act, upload }) {
+export function Steps({ order: o, staff, attention, act, upload, sendFile, remove }) {
   const method = o.handover.method;
   const pieces = o.progress.kind === 'pieces' ? o.progress : null;
   const left = pieces ? pieces.total - pieces.done : 0;
   const cancellable = ['awaiting_payment', 'in_design', 'awaiting_approval', 'awaiting_balance', 'on_hold'].includes(o.status);
 
   const panels = [];
-  if (o.status === 'in_production' && pieces && left > 0 && may(staff, 'progress')) panels.push(<LogPieces key="log" left={left} act={act} />);
+  // A big run's sample comes first: the run is logged once the customer approves it.
+  const sampleWaits = !!o.sample && o.sample.status !== 'approved';
+  if (o.status === 'in_production' && pieces && left > 0 && !sampleWaits && may(staff, 'progress')) panels.push(<LogPieces key="log" left={left} act={act} />);
   if (o.status === 'in_production' && (!pieces || left === 0) && may(staff, 'ready') && (method === 'pickup' || method === 'delivery')) {
     panels.push(
       <section key="ready" className="panel">
@@ -38,7 +41,10 @@ export function Steps({ order: o, staff, attention, act, upload }) {
       </section>,
     );
   }
-  if (o.status === 'in_design' && may(staff, 'proofs')) panels.push(<UploadProof key="proof" order={o} upload={upload} />);
+  // A site job is designed once its firm quote is accepted and the deposit paid.
+  const designing = o.status === 'in_design' && (o.mechanism !== 'B' || o.siteQuote?.status === 'accepted');
+  if (designing && may(staff, 'proofs')) panels.push(<UploadProof key="proof" order={o} upload={upload} />);
+  if (may(staff, 'progress')) panels.push(...moreSteps({ order: o, act, sendFile, remove }));
   if (cancellable && may(staff, 'cancel')) panels.push(<Cancel key="cancel" paid={o.amountPaid} act={act} />);
   if (o.status === 'awaiting_approval') {
     panels.push(

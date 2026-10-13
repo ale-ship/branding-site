@@ -37,13 +37,15 @@ import type {
  *   B4  answering a proof (approveProof, requestChanges); proof images are signed /api/files links;
  *       the website's content (services, our work, the shop, clients, the home and About pages),
  *       which staff edit in the back office; its photos are /api/media links
- *   B5  accounts: sign-in by an emailed code, the account, brand kit, addresses, reorders, the
+ *   B5  the quote and contact forms (submitQuote, sendMessage), which reach the staff inbox;
+ *       accounts: sign-in by an emailed code, the account, brand kit, addresses, reorders, the
  *       statement and company accounts; orders reached through a signed-in account (`{ email }`)
- *       go to the API with the session (`X-Account-Session`), and the API takes the email from it
+ *       go to the API with the session (`X-Account-Session`), and the API takes the email from it;
+ *       the steps after paying: the pre-production sample, early deliveries, and a site job's
+ *       survey, firm quote and installation (reviewSample, requestPartialDelivery, bookSurvey,
+ *       acceptSiteQuote, bookInstall)
  *
- * The sample, early deliveries, surveys and installation arrive later in B5: until then those
- * methods answer that it isn't available online yet, rather than looking for the order in the mock,
- * which doesn't have it.
+ * Every SiteApi method is now on the API in live mode.
  */
 
 const API = process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:4300';
@@ -142,9 +144,10 @@ async function accessHeaders(access: OrderAccess): Promise<Record<string, string
 const asAccount = <T>(session: string, path: string, init: Parameters<typeof call>[1] = {}) =>
   forVisitor<T>(`/api/account${path}`, { ...init, headers: { ...init.headers, 'x-account-session': session } });
 
-const notYet = async (): Promise<never> => {
-  throw new OrderError('invalid_state', 'This isn’t available online yet. Please WhatsApp us and we’ll sort it out.');
-};
+/** One of the customer's steps on an order: POST /api/orders/:no/<path>, the access in a header. */
+async function orderStep(ref: string, access: OrderAccess, path: string, body: unknown = {}): Promise<Order> {
+  return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/${path}`, { method: 'POST', body: JSON.stringify(body), headers: await accessHeaders(access) });
+}
 
 export const liveApi: SiteApi = {
   ...mockApi,
@@ -222,6 +225,14 @@ export const liveApi: SiteApi = {
     return forVisitor<Order>(`/api/orders/${encodeURIComponent(ref)}/proofs/${version}/changes`, { method: 'POST', body: JSON.stringify({ comments, pins }), headers: await accessHeaders(access) });
   },
 
+  // B5: the quote and contact forms, for the staff inbox in the back office.
+  async submitQuote(request) {
+    return forVisitor<{ reference: string }>('/api/requests/quote', { method: 'POST', body: JSON.stringify(request) });
+  },
+  async sendMessage(message) {
+    return forVisitor<{ reference: string }>('/api/requests/contact', { method: 'POST', body: JSON.stringify(message) });
+  },
+
   // B5: accounts. The code is emailed by the API and never comes back here.
   async requestSignInCode(email) {
     return forVisitor<{ sentTo: string }>('/api/account/code', { method: 'POST', body: JSON.stringify({ email }) });
@@ -268,10 +279,20 @@ export const liveApi: SiteApi = {
     return asAccount<Account>(session, `/company/members/${encodeURIComponent(email)}`, { method: 'DELETE' });
   },
 
-  // Later in B5: the sample, deliveries, site jobs.
-  reviewSample: notYet,
-  requestPartialDelivery: notYet,
-  bookSurvey: notYet,
-  acceptSiteQuote: notYet,
-  bookInstall: notYet,
+  // B5: the steps after paying. The API checks each against the order's status.
+  async reviewSample(ref, access, decision, comments) {
+    return orderStep(ref, access, 'sample', { decision, comments });
+  },
+  async requestPartialDelivery(ref, access, pieces) {
+    return orderStep(ref, access, 'deliveries', { pieces });
+  },
+  async bookSurvey(ref, access, date) {
+    return orderStep(ref, access, 'survey', { date });
+  },
+  async acceptSiteQuote(ref, access) {
+    return orderStep(ref, access, 'quote/accept');
+  },
+  async bookInstall(ref, access, date) {
+    return orderStep(ref, access, 'install', { date });
+  },
 };

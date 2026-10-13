@@ -164,8 +164,8 @@ describe('helpers', () => {
   });
 
   it('builds a WhatsApp follow-up with the reference', () => {
-    const href = whatsappFollowUp('NB-123456', 'https://wa.me/254722530301');
+    const href = whatsappFollowUp('NQ-123456', 'https://wa.me/254722530301');
     expect(href.startsWith('https://wa.me/254722530301?text=')).toBe(true);
-    expect(decodeURIComponent(href.split('text=')[1]!)).toContain('NB-123456');
+    expect(decodeURIComponent(href.split('text=')[1]!)).toContain('NQ-123456');
   });
 });

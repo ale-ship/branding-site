@@ -16,6 +16,7 @@ import { absaCallbackRoutes, devRoutes, paymentRoutes } from './modules/payments
 import { pricingRoutes } from './modules/pricing/routes.js';
 import { staffProductRoutes } from './modules/products/routes.js';
 import { proofRoutes, staffProofRoutes } from './modules/proofs/routes.js';
+import { requestRoutes, staffRequestRoutes } from './modules/requests/routes.js';
 import { staffReportRoutes } from './modules/reports/routes.js';
 import { staffAuthRoutes, staffRoutes } from './modules/staff/routes.js';
 
@@ -63,10 +64,12 @@ export function createApp(config, { limits = {}, ...deps }) {
   app.use('/api/payments', paymentRoutes(all));
   // B5: customer accounts (sign-in by an emailed code, the account, companies).
   app.use('/api/account', accountRoutes(all));
+  // B5: the site's quote and contact forms, for the staff inbox.
+  app.use('/api/requests', requestRoutes(all));
   // B4: the back office. Sign-in is open; everything else needs a staff session (checked once).
   app.use('/api/staff/auth', staffAuthRoutes(all));
   const staff = Router();
-  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all), staffProofRoutes(all), staffProductRoutes(all), staffReportRoutes(all), staffContentRoutes(all));
+  staff.use(requireStaff(all), staffRoutes(all), backofficeRoutes(all), staffProofRoutes(all), staffProductRoutes(all), staffReportRoutes(all), staffContentRoutes(all), staffRequestRoutes(all));
   app.use('/api/staff', staff);
   // A made-up Paybill payment, for trying the flow: only while Absa is fake, never in production.
   if (config.integrations.absa === 'fake' && config.env !== 'production') app.use('/api/dev', devRoutes(all));

@@ -28,9 +28,9 @@ export default [
     },
   },
   // routes: declare paths, guards and rate limits only.
-  { files: ['src/**/routes.js'], rules: banned('routes.js points at controllers; it holds no logic.', DB, NET, SITE, ['**/service.js']) },
+  { files: ['src/**/routes.js', 'src/**/*.routes.js'], rules: banned('routes.js points at controllers; it holds no logic.', DB, NET, SITE, ['**/service.js']) },
   // controllers: parse, call one service, answer. No database, integrations or queues.
-  { files: ['src/**/controller.js'], rules: banned('controller.js calls services only.', DB, NET, SITE) },
+  { files: ['src/**/controller.js', 'src/**/*.controller.js'], rules: banned('controller.js calls services only.', DB, NET, SITE) },
   // services: business rules. They call repos and never build SQL themselves.
   { files: ['src/**/service.js', 'src/**/*.service.js'], rules: banned('service.js does not build SQL; go through repo.js.', ['pg', 'knex'], SITE) },
   // repos: SQL only. No network, Redis or queues.

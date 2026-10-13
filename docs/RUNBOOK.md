@@ -115,8 +115,16 @@ next. Update it at the end of every task.
   samples have new covers (the fleet, caps and beanies, the gift set). Migration 011 does the same in
   a database. Not used yet: the laptop and the scarf. The samples' words still describe the old
   photos' jobs (an office mural, a billboard), so those two keep stock covers.
-- **Next (owner, 7 Oct 2026: the VPS waits):** the rest of step B5 (the sample, partial deliveries,
-  site jobs' survey, quote and installation, the job card), or B3b once Absa's documentation arrives.
+- **13 Oct 2026, the whole workflow checked and completed** (backend step B5, part 2; details in
+  `docs/BACKEND_RUNBOOK.md`, "Step B5, part 2"). Run end to end in browsers in live mode: briefs from
+  the quote and contact forms now reach staff (the back office's **Requests**, with an email to
+  `STAFF_INBOX`); site jobs run from the survey to the firm quote (staff's quote builder), deposit,
+  installation date, sign-off and balance; big runs get their pre-production sample; customers can
+  ask for finished pieces early; design-only orders get their final files; the pickup code shows on
+  the order page. Fixed on the way: the API restarting when `node_modules` changed.
+- **Next (owner, 7 Oct 2026: the VPS waits):** the job card with its QR code, mockups on proofs and
+  customers' file uploads (R2), or B3b once Absa's documentation arrives. The VPS deploy still ships
+  only the website: the API, worker, migrations, `/admin/` and `/api/` come with the VPS work.
   Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS record, deploy key,
   first deploy) and section 8 (Postgres and Redis), plus the API and worker units and nginx's
   `/admin/`. Ask Absa for the items in its section 14. Then the launch checklist.

@@ -72,11 +72,11 @@ export function Dashboard({ me, onAuthLost }) {
         />
         <Stat
           label="Needs a hand"
-          value={(d.overdue + d.attention + d.unmatched).toLocaleString('en-KE')}
+          value={(d.overdue + d.attention + d.unmatched + d.requests).toLocaleString('en-KE')}
           icon={AlertTriangle}
-          tone={d.overdue + d.attention + d.unmatched ? 'red' : undefined}
-          note={`${d.overdue} overdue · ${d.attention} flagged · ${d.unmatched} unmatched payments`}
-          href={d.unmatched ? '#/payments' : '#/orders'}
+          tone={d.overdue + d.attention + d.unmatched + d.requests ? 'red' : undefined}
+          note={`${d.requests} new ${d.requests === 1 ? 'request' : 'requests'} · ${d.overdue} overdue · ${d.attention} flagged · ${d.unmatched} unmatched payments`}
+          href={d.requests ? '#/requests' : d.unmatched ? '#/payments' : '#/orders'}
         />
       </div>
 

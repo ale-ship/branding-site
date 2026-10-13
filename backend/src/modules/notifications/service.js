@@ -66,7 +66,7 @@ export async function sweepOutbox(deps, now = new Date()) {
 
 /** @param {string} text */
 const emailBody = (text) =>
-  `${text}\n\nNoorcom Branding\n${FOOTER}\n\nYou get this email because you ordered from us. Reply to it to reach us.`;
+  `${text}\n\nNoorcom Branding\n${FOOTER}\n\nYou get this email about an order or a request you made with us. Reply to it to reach us.`;
 
 // The site's business details (src/lib/site.ts); the backend can't import the site's code.
 const FOOTER = 'Chuka Elimu Plaza, 1st Floor, Loita Street, Nairobi · +254 722 530 301 · noorcombranding.co.ke';

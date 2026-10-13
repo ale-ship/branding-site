@@ -17,6 +17,8 @@ export const getFile = (deps) => async (req, res) => {
       'Cache-Control': 'private, max-age=600',
       'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+      // A design's final files download under their own name (finals/<order>/<id>/<name>).
+      ...(key.startsWith('finals/') ? { 'Content-Disposition': `attachment; filename="${key.split('/').at(-1)}"` } : {}),
     })
     .send(file.body);
 };

@@ -46,10 +46,10 @@ export async function totals(db, from, to) {
  * Orders per status, and what is waiting for money.
  * @param {Db} db
  * @param {string} today
- * @returns {Promise<{ byStatus: Record<string, number>; awaiting: { orders: number; amount: number }; overdue: number; attention: number; unmatched: number }>}
+ * @returns {Promise<{ byStatus: Record<string, number>; awaiting: { orders: number; amount: number }; overdue: number; attention: number; unmatched: number; requests: number }>}
  */
 export async function pipeline(db, today) {
-  const [statuses, awaiting, overdue, attention, unmatched] = await Promise.all([
+  const [statuses, awaiting, overdue, attention, unmatched, requests] = await Promise.all([
     db.query('SELECT status, COUNT(*)::integer AS n FROM orders GROUP BY status'),
     db.query("SELECT COUNT(*)::integer AS orders, COALESCE(SUM(due_now), 0)::integer AS amount FROM orders WHERE status IN ('awaiting_payment', 'awaiting_balance') AND due_now > 0"),
     db.query(
@@ -59,6 +59,7 @@ export async function pipeline(db, today) {
     ),
     db.query('SELECT COUNT(*)::integer AS n FROM orders WHERE attention IS NOT NULL'),
     db.query("SELECT COUNT(*)::integer AS n FROM c2b_confirmations WHERE status = 'unmatched'"),
+    db.query("SELECT COUNT(*)::integer AS n FROM requests WHERE status = 'new'"),
   ]);
   return {
     byStatus: Object.fromEntries(statuses.rows.map((r) => [r.status, r.n])),
@@ -66,6 +67,7 @@ export async function pipeline(db, today) {
     overdue: overdue.rows[0].n,
     attention: attention.rows[0].n,
     unmatched: unmatched.rows[0].n,
+    requests: requests.rows[0].n,
   };
 }
 

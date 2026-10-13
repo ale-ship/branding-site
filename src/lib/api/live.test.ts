@@ -144,12 +144,25 @@ describe('liveApi (step B2)', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('http://127.0.0.1:4300/api/capacity');
   });
 
-  it('says what comes after payment isn’t online yet, instead of asking the mock about an order it doesn’t have', async () => {
-    const fetchMock = stubFetch(() => json(200, {}));
-    const err = await liveApi.reviewSample(placed.ref, { token: placed.token }, 'approve', '').catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(OrderError);
-    expect(err).toMatchObject({ code: 'invalid_state' });
-    expect(fetchMock).not.toHaveBeenCalled();
+  it('sends the steps after payment to the API, with the order’s access in a header (B5)', async () => {
+    const fetchMock = stubFetch(() => json(200, { ref: placed.ref }));
+    const access = { token: placed.token };
+    await liveApi.reviewSample(placed.ref, access, 'changes', 'Higher, please');
+    await liveApi.requestPartialDelivery(placed.ref, access, 60);
+    await liveApi.bookSurvey(placed.ref, access, '2026-10-20');
+    await liveApi.acceptSiteQuote(placed.ref, access);
+    await liveApi.bookInstall(placed.ref, access, '2026-10-28');
+    expect(fetchMock.mock.calls.map(([url, init]) => [String(url).replace('http://127.0.0.1:4300', ''), JSON.parse(String(init?.body))])).toEqual([
+      ['/api/orders/NB-123456/sample', { decision: 'changes', comments: 'Higher, please' }],
+      ['/api/orders/NB-123456/deliveries', { pieces: 60 }],
+      ['/api/orders/NB-123456/survey', { date: '2026-10-20' }],
+      ['/api/orders/NB-123456/quote/accept', {}],
+      ['/api/orders/NB-123456/install', { date: '2026-10-28' }],
+    ]);
+    for (const [, init] of fetchMock.mock.calls) expect(init?.headers).toMatchObject({ 'x-order-token': placed.token });
+
+    stubFetch(() => json(409, { error: 'invalid_state', message: 'There’s no sample waiting for you.' }));
+    expect(await liveApi.reviewSample(placed.ref, access, 'approve', '').catch((e: unknown) => e)).toMatchObject({ code: 'invalid_state', message: 'There’s no sample waiting for you.' });
   });
 });
 
@@ -213,6 +226,21 @@ describe('liveApi (step B4)', () => {
     expect(url).toBe('http://127.0.0.1:4300/api/orders/NB-123456/proofs/1/approve');
     expect(init?.headers).toMatchObject({ 'x-account-session': 's'.repeat(64) });
     expect(JSON.stringify(init)).not.toContain('amina@example.co.ke');
+  });
+});
+
+describe('liveApi (step B5: the quote and contact forms)', () => {
+  it('posts a quote request and a message to the API, passing the visitor on', async () => {
+    visitorHeaders.set('x-forwarded-for', '41.90.1.2');
+    const fetchMock = stubFetch((url) => json(201, { reference: url.endsWith('/quote') ? 'NQ-123456' : 'NM-123456' }));
+    const quote = { service: 'apparel' as const, products: [], quantity: 100, details: 'Crew shirts', artwork: [], needsDesign: false, deadline: '', fulfilment: 'collect' as const, location: '', name: 'Amina', company: '', phone: '+254722530301', email: '', preferredContact: 'whatsapp' as const };
+    expect(await liveApi.submitQuote(quote)).toEqual({ reference: 'NQ-123456' });
+    expect(await liveApi.sendMessage({ name: 'Amina', phone: '', email: 'a@example.co.ke', message: 'Hello there' })).toEqual({ reference: 'NM-123456' });
+    expect(fetchMock.mock.calls.map(([url, init]) => [String(url), init?.method, JSON.parse(String(init?.body)).name])).toEqual([
+      ['http://127.0.0.1:4300/api/requests/quote', 'POST', 'Amina'],
+      ['http://127.0.0.1:4300/api/requests/contact', 'POST', 'Amina'],
+    ]);
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toMatchObject({ 'x-forwarded-for': '41.90.1.2' });
   });
 });
 

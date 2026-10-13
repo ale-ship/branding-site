@@ -149,9 +149,9 @@ they can be checked:
   `API_INTERNAL_URL=http://127.0.0.1:4300` (a deploy, as above: the build reads the catalogue from
   the API, so the API must be up first).
 - Customer accounts (B5) sign in with a code sent by email, so `api.env` needs the mailbox's SMTP
-  (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM=info@noorcombranding.co.ke`).
-  Without `SMTP_HOST` the mail is only written to `MAIL_OUTBOX_DIR` on the box and **nobody can sign
-  in**; the config doesn't refuse that yet, so check it before the site goes live on the API.
+  (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM=info@noorcombranding.co.ke`), and
+  `STAFF_INBOX` is where quote requests and messages go. Without `SMTP_HOST` the mail is only written
+  to `MAIL_OUTBOX_DIR` on the box; the API refuses to start on the live site's address without it.
 
 ---
 

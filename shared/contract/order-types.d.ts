@@ -272,6 +272,9 @@ export type Delivery = {
   deliveredAt: string | null;
 };
 
+/** A final file of a design-only order, to download from the order page. */
+export type FinalFile = { id: number; name: string; size: number; url: string };
+
 /** One measured item on a site job's firm quote, e.g. "Reception wall, 4.2 × 2.6 m, wallpaper". */
 export type SiteQuoteItem = { label: string; widthCm: number; heightCm: number; material: SiteMaterial; quantity: number };
 
@@ -358,6 +361,8 @@ export type Order = {
   /** Six digits, given when the order is ready for pickup; staff check it at the counter. */
   pickupCode: string | null;
   deliveries: Delivery[];
+  /** Design only (C): the final files staff send once the design is approved, behind short-lived links. */
+  finalFiles?: FinalFile[];
   handedOver: HandoverRecord | null;
   company: OrderCompany | null;
 };

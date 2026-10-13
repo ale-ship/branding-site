@@ -37,6 +37,13 @@ describe('config', () => {
     expect(parseConfig({ PUBLIC_URL: 'https://staging.noorcombranding.co.ke/' }).publicUrl).toBe('https://staging.noorcombranding.co.ke');
   });
 
+  it('refuses the live site without SMTP: sign-in codes and requests go by email', () => {
+    const live = { PUBLIC_URL: 'https://noorcombranding.co.ke', ABSA_MODE: 'fake', WHATSAPP_MODE: 'fake' };
+    expect(() => parseConfig({ ...live, SMTP_HOST: 'mail.example.com' })).toThrow(/integration is fake/);
+    expect(() => parseConfig({ PUBLIC_URL: 'https://noorcombranding.co.ke' })).toThrow(/SMTP_HOST is empty/);
+    expect(parseConfig({ STAFF_INBOX: 'desk@noorcombranding.co.ke' }).mail.staffInbox).toBe('desk@noorcombranding.co.ke');
+  });
+
   it('sends email through SMTP when a host is set', () => {
     const c = parseConfig({ SMTP_HOST: 'mail.example.com', SMTP_USER: 'u', SMTP_PASS: 'p' });
     expect(c.integrations.email).toBe('live');

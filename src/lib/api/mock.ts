@@ -26,7 +26,8 @@ export const receivedQuotes = shared('receivedQuotes', (): (QuoteRequest & { ref
 export const receivedMessages = shared('receivedMessages', (): (ContactMessage & { reference: string; receivedAt: string })[] => []);
 
 /** A prefix and six digits, unique among everything received in this process. */
-function newReference(prefix: 'NB' | 'NM'): string {
+/** NB- for orders (also the Paybill reference), NQ- for quote requests, NM- for messages, never mixed up. */
+function newReference(prefix: 'NB' | 'NQ' | 'NM'): string {
   const used = new Set([...receivedQuotes, ...receivedMessages].map((r) => r.reference).concat([...orderMock.orders.keys()]));
   let reference: string;
   do {
@@ -65,7 +66,7 @@ export const mockApi: SiteApi = {
     return structuredClone(pages);
   },
   async submitQuote(request) {
-    const reference = newReference('NB');
+    const reference = newReference('NQ');
     receivedQuotes.push({ ...structuredClone(request), reference, receivedAt: new Date().toISOString() });
     return { reference };
   },

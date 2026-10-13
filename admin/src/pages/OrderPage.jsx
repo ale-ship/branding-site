@@ -33,6 +33,29 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
     }
   };
 
+  /** Sends a file to a step (the sample's photo, a final file); the API answers with the order. */
+  const sendFile = async (path, file, headers = {}) => {
+    setError('');
+    try {
+      setData(await api.upload(`/staff/orders/${o.ref}/${path}`, file, headers));
+      return true;
+    } catch (e) {
+      fail(e);
+      return false;
+    }
+  };
+  /** Removes something from the order (a final file). */
+  const remove = async (path) => {
+    setError('');
+    try {
+      setData(await api.del(`/staff/orders/${o.ref}/${path}`));
+      return true;
+    } catch (e) {
+      fail(e);
+      return false;
+    }
+  };
+
   /** Uploads a proof; the API answers with the order as it is now. */
   const upload = async (file, note) => {
     setError('');
@@ -91,7 +114,7 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
               {o.production.promisedBy && <p className="muted">Promised for {day(o.production.promisedBy)}.</p>}
             </section>
           )}
-          <Steps order={o} staff={staff} attention={extra.attention} act={act} upload={upload} />
+          <Steps order={o} staff={staff} attention={extra.attention} act={act} upload={upload} sendFile={sendFile} remove={remove} />
           {o.proofs.length > 0 && <Proofs order={o} />}
           <Brief order={o} />
           <section className="panel" aria-labelledby="events-title">

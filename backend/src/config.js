@@ -36,6 +36,8 @@ const schema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   MAIL_OUTBOX_DIR: z.string().min(1).default('.mail-outbox'),
+  // Where new quote requests and contact messages are sent for staff.
+  STAFF_INBOX: z.string().email().default('info@noorcombranding.co.ke'),
   WHATSAPP_OUTBOX_DIR: z.string().min(1).default('.whatsapp-outbox'),
   // Signs the short-lived links to files (proofs). Production needs its own.
   FILES_SECRET: z.string().default(''),
@@ -63,7 +65,7 @@ const LIVE_HOSTS = ['noorcombranding.co.ke', 'www.noorcombranding.co.ke'];
  * @property {{ absa: 'fake' | 'live'; daraja: 'fake' | 'live'; whatsapp: 'fake' | 'live'; storage: 'fake' | 'live'; email: 'fake' | 'live' }} integrations
  * @property {string} publicUrl
  * @property {{ secret: string; paybill: string; fakeDelayMs: number }} absa
- * @property {{ from: string; outboxDir: string; smtp: { host: string; port: number; user: string; pass: string } | null }} mail
+ * @property {{ from: string; outboxDir: string; staffInbox: string; smtp: { host: string; port: number; user: string; pass: string } | null }} mail
  * @property {{ outboxDir: string }} whatsapp
  * @property {{ secret: string; dir: string }} files
  * @property {{ internalUrl: string; revalidateSecret: string }} site
@@ -96,9 +98,10 @@ export function parseConfig(env = process.env) {
   ])) {
     if (c[k] === 'live') throw new Error(`Invalid configuration: ${k}: live is not built yet; it needs ${why}`);
   }
-  const fake = [c.ABSA_MODE, c.DARAJA_MODE, c.WHATSAPP_MODE].includes('fake');
+  // Email is fake without SMTP_HOST: sign-in codes and quote requests would only be written to disk.
+  const fake = [c.ABSA_MODE, c.DARAJA_MODE, c.WHATSAPP_MODE].includes('fake') || !c.SMTP_HOST;
   if (fake && LIVE_HOSTS.includes(new URL(c.PUBLIC_URL).hostname)) {
-    throw new Error('Invalid configuration: PUBLIC_URL is the live site, but a payment or message integration is fake');
+    throw new Error('Invalid configuration: PUBLIC_URL is the live site, but a payment or message integration is fake (or SMTP_HOST is empty)');
   }
   return {
     env: c.NODE_ENV,
@@ -116,6 +119,7 @@ export function parseConfig(env = process.env) {
     mail: {
       from: c.MAIL_FROM,
       outboxDir: c.MAIL_OUTBOX_DIR,
+      staffInbox: c.STAFF_INBOX,
       smtp: c.SMTP_HOST ? { host: c.SMTP_HOST, port: c.SMTP_PORT, user: c.SMTP_USER, pass: c.SMTP_PASS } : null,
     },
     whatsapp: { outboxDir: c.WHATSAPP_OUTBOX_DIR },

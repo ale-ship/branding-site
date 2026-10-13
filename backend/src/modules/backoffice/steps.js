@@ -2,6 +2,7 @@
 import { OrderError } from '@noorcom-branding/shared/contract/errors.js';
 import { randomInt } from 'node:crypto';
 import { staffMessages } from '../notifications/templates.js';
+import { sampleBlocksRun } from '../orders/flow.js';
 
 /**
  * What each staff step does to an order (docs/ORDER_WORKFLOW_SPEC.md, "Order statuses and
@@ -31,6 +32,7 @@ const refuse = (what, status) => new OrderError('invalid_state', `You can’t ${
 export function logPieces(o, pieces, note) {
   if (o.status !== 'in_production') throw refuse('log production', o.status);
   if (o.progress?.kind !== 'pieces') throw new OrderError('invalid_state', 'This order is tracked by stages, not pieces.');
+  if (sampleBlocksRun(o)) throw new OrderError('invalid_state', 'The customer approves the sample before the full run is logged.');
   const left = o.progress.total - o.progress.done;
   if (!Number.isInteger(pieces) || pieces < 1) throw new OrderError('invalid', 'Enter how many pieces were finished.');
   if (pieces > left) throw new OrderError('invalid', `Only ${left} ${left === 1 ? 'piece is' : 'pieces are'} left on this order.`);
@@ -66,7 +68,7 @@ export function markReady(o) {
   if (method === 'delivery') {
     return { fields: { status: 'ready' }, events: ['Checked and packed; delivery is being arranged.'], message: { template: 'ready', text: staffMessages.readyForDelivery(o.order_no) }, audit: { method } };
   }
-  throw new OrderError('invalid_state', 'Installations and digital handovers come with their own steps (B5).');
+  throw new OrderError('invalid_state', 'Site jobs move on by their stages, and design-only orders by sending the final files.');
 }
 
 /**
@@ -111,7 +113,7 @@ export function handOver(o, h, now) {
     recipient = h.recipient.trim();
     detail = `Delivered to ${recipient}.`;
   } else {
-    throw new OrderError('invalid_state', 'Installations and digital handovers come with their own steps (B5).');
+    throw new OrderError('invalid_state', 'Site jobs move on by their stages, and design-only orders by sending the final files.');
   }
   return {
     fields: { status: 'completed', handed_over: { at: now.toISOString(), method, detail, recipient } },

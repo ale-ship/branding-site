@@ -1,10 +1,12 @@
 # Noorcom Branding Backend Runbook
 
-Last updated 9 Oct 2026. The design of the backend behind the website: the stack, the file layout,
-the database, the API, the payment flows and the order to build it in. **Steps B0 to B4 and the
-first part of B5 are built** (section 13: the skeleton and `shared/`, the catalogue and price,
-orders, payments against the fakes, the staff back office with proofs, reports, the website editor
-and the price manager, and customer accounts); the rest is the plan to build from. Sections 4 to
+Last updated 13 Oct 2026. The design of the backend behind the website: the stack, the file layout,
+the database, the API, the payment flows and the order to build it in. **Steps B0 to B4 and most of
+B5 are built** (section 13: the skeleton and `shared/`, the catalogue and price, orders, payments
+against the fakes, the staff back office with proofs, reports, the website editor and the price
+manager, customer accounts, the requests inbox, and every step of an order: samples, early
+deliveries, site jobs and design-only files). Every `SiteApi` method is on the API in live mode; the
+rest is the plan to build from. Sections 4 to
 12 mark what is built (✓ or "built") and what is still planned. Read
 `docs/RUNBOOK.md` (the site) and `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow) first.
 
@@ -202,7 +204,7 @@ backend/
 │  │
 │  ├─ db/
 │  │  ├─ pool.js           the `pg` pool, `withTransaction(pool, fn)`, `dbHealthy`
-│  │  ├─ migrations/       001 to 011 (section 5)
+│  │  ├─ migrations/       001 to 013 (section 5)
 │  │  └─ seeds/01-catalogue.js  categories, products and tiers from shared/catalogue (adds, never overwrites)
 │  │
 │  ├─ lib/                 small helpers
@@ -230,7 +232,10 @@ backend/
 │  │  ├─ pricing/          POST /api/quotes/price, using shared/rules/pricing.js
 │  │  ├─ capacity/         GET /api/capacity; machine time booked on order, released on expiry
 │  │  ├─ orders/           place (checks.js, re-priced), read by token, phone or session (view.js), expiry;
-│  │  │                    company orders
+│  │  │                    company orders; the steps after paying: the rules (flow.js: sample, early
+│  │  │                    deliveries, final files; sitejob.js: survey, firm quote, installation,
+│  │  │                    stages), the step runner (steps.service.js) and the customer's steps
+│  │  │                    (extras.service.js)
 │  │  ├─ payments/         STK Push (service.js), Paybill C2B (c2b.service.js, c2b.repo.js), the ledger
 │  │  │                    (ledger.js, apply.js: THE place money is recorded, section 6), view.js,
 │  │  │                    providers/absa/{stk,c2b}.js (Absa's bodies → our shapes)
@@ -240,7 +245,9 @@ backend/
 │  │  ├─ notifications/    the outbox: send WhatsApp and email (service.js), the words (templates.js)
 │  │  ├─ staff/            staff sign-in and out, staff accounts, the audit log
 │  │  ├─ backoffice/       the order board, an order, the staff steps (steps.js), unmatched payments,
-│  │  │                    the dashboard (dashboard.service.js)
+│  │  │                    the dashboard (dashboard.service.js); the B5 steps (extras.service.js,
+│  │  │                    extras.controller.js): sample photo, early delivery, firm quote, stages, final files
+│  │  ├─ requests/         the site's quote and contact forms (NQ-, NM-) and the staff inbox
 │  │  ├─ products/         the price manager: minimums, price tiers, on sale (admin)
 │  │  ├─ reports/          sales, payments, money owed, by product, Paybill suspense; customer accounts
 │  │  │                    and statements (accounts.service.js); PDF and CSV (files.js, labels.js)
@@ -270,9 +277,11 @@ backend/
 
 **Still planned:** the live Absa client and `POST /api/payments/absa/c2b/confirm` registration with
 Absa (B3b), Daraja as the fallback, invoice and receipt PDFs (Playwright), R2 storage and
-`POST /api/uploads`, live WhatsApp templates, the sample, partial deliveries, surveys, site quotes
-and installation (`modules/surveys`, `deliveries`), the job card, proof reminders, the quote and
-contact forms (`modules/requests`), and order updates by server-sent events.
+`POST /api/uploads` (customers' artwork files still go by WhatsApp or email), live WhatsApp
+templates, the job card with its QR code, mockups on proofs, proof reminders, and order updates by
+server-sent events. The VPS deploy (`deploy/`) still ships only the website: the API and worker
+units, migrations in the deploy, the back office's build at `/admin/` and nginx's `/api/` come with
+the VPS work.
 
 ## 5. Database (migrations, in order)
 
@@ -288,6 +297,8 @@ contact forms (`modules/requests`), and order updates by server-sent events.
 | 008 ✓ | content | `content_items` (kind, slug, data JSONB, position, published), `media`; the starting content inserted once |
 | 009 ✓ | accounts (B5) | `customer_profiles` (email, lower case: the account; name, phone, company, brand kit JSONB, addresses JSONB), `sign_in_codes` (one per email: the code's hash, tries, sent and expiry times), `customer_sessions` (token hash, email, expiry), `companies` (`CO-` + 6 digits, name, KRA PIN), `company_members` (email unique, role: owner, approver, member); orders gain `company_id` and `company_po`. The account is its email, so orders aren't linked to it by id |
 | 010 ✓ | shop photos | Data only: the owner's photos of eight shop products (13 Oct 2026) replace the placeholders on the shop's products, the order form's matching products and five order categories, only where the old placeholder is still there (a photo staff chose stays) |
+| 012 ✓ | requests (B5) | `requests`: the site's quote requests (NQ-) and contact messages (NM-) as sent, who they're from, status (new, in progress, closed), the staff note and who handled it |
+| 013 ✓ | order steps (B5) | Orders gain `site_quote` (the firm quote), `install_date` and `early_deliveries`; `order_files` (a design-only order's final files and a sample's photo: name, storage key, size, type, who uploaded) |
 | 011 ✓ | home photos | Data only, the same way: the owner's mock-ups on the home page (the workshop band, three "behind the scenes" photos), the seven services' photos and three featured sample projects' covers |
 
 Planned (from the original design; they take the next free numbers when built):
@@ -405,7 +416,7 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | (orders by account) | `X-Account-Session` on `GET /api/orders/:no`, the payment and the proofs | The order's own email, or an owner or approver of its company; on `POST /api/orders`, it makes `company` a company order for a signed-in member |
 | (documents) | `GET /api/orders/:no/invoice.pdf`, `/receipts/:receiptNo.pdf` | Signed, short-lived links |
 | (uploads) | `POST /api/uploads` | Presigned PUT to R2 |
-| `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | |
+| `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | Built (B5): stored as NQ- or NM-, staff emailed at `STAFF_INBOX`, the customer acknowledged; staff answer them in the back office's Requests (`/api/staff/requests`) |
 | (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`; `dashboard`; `products` (the price manager, admin: minimum, tiers, on sale); `reports/:kind` and `accounts`, `accounts/statement` (admin; `?format=pdf` or `csv` downloads); `content` and `media` (the website editor). Role-checked; changes need `X-Requested-With: nb-admin` |
 | (files) | `GET /api/files/<key>?exp&sig` | Stored files (proofs) behind links signed for an hour (`lib/signedUrl.js`) |
 
@@ -421,7 +432,8 @@ Per IP, 429 `rate_limited` beyond them, Redis keys `nb:rl:<name>:<ip>` (Noorcom 
 | `GET /api/orders/:no` | 120 per minute (the order page refreshes while a payment is waiting) |
 | `POST /api/payments/stk` | 10 per 10 minutes, and one pending prompt per order (`nb:stk:lock:*`) |
 | `POST /api/uploads` | 30 per 10 minutes |
-| `POST /api/requests/quote`, `/contact` | 5 per hour, with a hidden honeypot field |
+| `POST /api/requests/quote`, `/contact` | 10 per hour each |
+| `POST /api/orders/:no/sample`, `/deliveries`, `/survey`, `/quote/accept`, `/install` | 30 per 10 minutes together |
 | `POST /api/account/code` | 10 per 10 minutes per IP, and 1 a minute per email (in Postgres) |
 | `POST /api/account/verify` | 20 per 10 minutes per IP; 5 tries per code |
 | Document downloads | 60 per 10 minutes |
@@ -488,7 +500,7 @@ from Nairobi, so put Cloudflare in front at the DNS cutover (an African edge) fo
 Read today (B3; `backend/.env.example` has each with a note): the database and Redis URLs,
 `PUBLIC_URL`, the four modes, `ABSA_CALLBACK_SECRET` (24+ characters, required in production),
 `ABSA_PAYBILL`, `FAKE_STK_DELAY_MS`, `MAIL_FROM`, `SMTP_*` (email is live when `SMTP_HOST` is
-set), `MAIL_OUTBOX_DIR` and `WHATSAPP_OUTBOX_DIR`; from B4, `FILES_SECRET` (24+ characters,
+set), `MAIL_OUTBOX_DIR`, `STAFF_INBOX` (where quote requests and messages go; B5) and `WHATSAPP_OUTBOX_DIR`; from B4, `FILES_SECRET` (24+ characters,
 required in production) and `STORAGE_DIR` (the fake storage's folder); with the website editor,
 `SITE_INTERNAL_URL` (the site on this machine: `http://127.0.0.1:4301` on the VPS) and
 `REVALIDATE_SECRET` (24+ characters, required in production; the same value in the site's env).
@@ -529,7 +541,7 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
 | B3 ✓ (fakes) | Payments: Absa STK Push and callback, `ledger.js`, receipts (RCT), STK query; Absa C2B confirmation, routing, the unmatched queue; the worker and the outbox; receipt and invoice PDFs (moved to B3b) | Against the fakes: done. The real KES 1 payment on staging waits for Absa's documentation (section 14) and the VPS |
 | B3b | Receipt and invoice PDFs (Playwright printing the site's pages), live Absa client, live WhatsApp templates | A real KES 1 payment on staging confirms the order and sends the receipt with its PDF, by both STK and Paybill |
 | B4 ✓ | Staff back office (`admin/`): sign-in, order board, unmatched payments, production logger; proofs (brought forward from B5); then reports and customer accounts, the website editor and the price manager | Staff run an order through without the demo controls: done in browsers on 8 Oct 2026 |
-| B5 | Spec Phase 2 to 4. **Part 1 ✓ (9 Oct 2026): customer accounts**, brand kits, addresses, reorders, statements, company accounts. Still to build: the pre-production sample, partial deliveries, surveys and firm quotes, installation, the job card, mockups on proofs | As in the spec |
+| B5 | Spec Phase 2 to 4. **Part 1 ✓ (9 Oct 2026): customer accounts**, brand kits, addresses, reorders, statements, company accounts. **Part 2 ✓ (13 Oct 2026): the requests inbox, the pre-production sample, early deliveries, site jobs (survey, firm quote, installation, stages, sign-off) and design-only final files**, checked end to end in browsers. Still to build: the job card, mockups on proofs, customers' file uploads (R2) | As in the spec |
 
 ### Step B0, done 6 Oct 2026
 
@@ -871,6 +883,60 @@ Each step ends with its tests passing (against the fakes), a deploy to staging a
   with the code from the emailed `.eml`, the order on the account and opened by the session alone,
   a company set up through the account page, and sign-out ending the session in Postgres. axe found
   nothing on the account page at 390 and 1440 px.
+
+### Step B5, part 2: the whole workflow, done 13 Oct 2026
+
+The owner asked for the whole workflow to be confirmed, from a brief to staff and back to the
+customer, to an order and through production. It was run end to end in browsers (the site built in
+live mode, the back office, the API and the worker); what didn't work was fixed or built:
+
+- **Briefs reach staff** (`modules/requests`, migration 012). The quote form ("ask us first") and
+  the contact form were kept only in the site's mock, so no brief ever reached anyone. Now they are
+  stored (NQ- for quote requests, NM- for messages: never NB-, which is an order number that
+  Paybill routing looks for), staff are emailed at `STAFF_INBOX` with the whole request in words,
+  and the customer gets an acknowledgement, both through the outbox. The back office has
+  **Requests** (first under Orders, with a badge for new ones, and on the dashboard's "Needs a
+  hand"): search, new / in progress / closed, WhatsApp, call and email links with the reference in
+  the greeting, and a note for the team. Changes are audited.
+- **Site jobs** (Mechanism B; `orders/sitejob.js`): they stopped after the survey fee. Now the
+  customer books the survey on the order page; staff enter what they measured in the **quote
+  builder** (items, material, size, quantity, extras such as a county permit, notes) and send the
+  firm quote (`shared/rules/site-quote.js` prices it); the customer accepts it and pays the
+  deposit; design and proof as usual; in production staff tick the stages; the customer books the
+  installation date (two working days' notice, working days only); "Signed off" asks for the
+  balance with the survey fee already off it; paid, it completes.
+- **Pre-production samples** (A, 200 pieces or more; `orders/flow.js`): the backend ignored them, so
+  a big run could start unchecked. Staff now send the sample's photo; the customer approves it or
+  asks for changes (another sample); the production logger stays closed until it is approved.
+- **Early deliveries** (A, delivered, in production): the customer asks for finished pieces; staff
+  send them out (rider or waybill) and mark them delivered; one open at a time; the final delivery
+  takes the rest.
+- **Design-only orders** (C): after approval the page said "Your final files are ready to download"
+  with nothing to download, and nothing completed the order. Staff now upload the final files (any
+  type, up to 50 MB each), remove one if needed, and send them: the order completes, the customer is
+  messaged, and the order page lists the files to download (signed links that download under their
+  own name).
+- **The pickup code** was never shown on the order page in live mode (the site waited for a status
+  the backend skips): it now shows as soon as the order is ready, and the status line says to come
+  and collect.
+- **The step runner** (`orders/steps.service.js`): one transaction with the order locked, the change,
+  its events, the customer's WhatsApp and email and, for staff, the audit row; the back office's
+  B4 steps use it too. The ESLint layer rules now also bind `*.controller.js` and `*.routes.js`.
+- **Development**: `npm run backend` and `backend:worker` restarted whenever a file under
+  `node_modules` changed (`node --watch` follows every import), taking the API away for a moment and
+  failing a page: they now watch only `src/` and `shared/`.
+- **Config**: the API refuses to start on the live site's address without `SMTP_HOST` (sign-in codes
+  and requests go by email), and `STAFF_INBOX` is where requests are sent.
+- **Tests:** `requests.test.js`, `steps.test.js` (a big run's sample and early delivery, design-only
+  final files, a site job from survey to balance), the config test, and the site's `live.test.ts`.
+  133 backend tests, 231 for the site.
+- **Checked in browsers**: an order placed through the order form, paid by M-Pesa (the fake), proof
+  uploaded in the back office, approved, balance paid, logged, ready, the pickup code on the order
+  page, handed over: completed, fully paid, fourteen messages sent, invoice and receipt pages; a quote
+  request and a message in the inbox with their emails; a site job through survey, quote, deposit,
+  proof, stages, installation date, sign-off and balance (KES 30,030 paid of 30,030); a design-only
+  order's two final files sent and downloaded; a 250-piece run's sample approved and 60 pieces
+  delivered early. axe found nothing on any new screen.
 
 ### Setting up Postgres and Redis on a development machine
 

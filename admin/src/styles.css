@@ -529,3 +529,9 @@ legend { font-weight: 650; color: var(--ink); font-size: 0.9rem; margin-bottom: 
 .tier-edit { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .tier-edit .field { flex: 1 1 8rem; }
 .tier-edit .icon-btn { align-self: flex-end; }
+
+/* Requests (the website's quote and contact forms) */
+.request-row { grid-template-columns: minmax(0, 1fr) auto; }
+@media (min-width: 900px) { .request-row { grid-template-columns: minmax(0, 1fr) auto auto; } }
+.stack { display: grid; gap: 1rem; align-content: start; }
+.pre { white-space: pre-wrap; }

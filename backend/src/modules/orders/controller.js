@@ -1,6 +1,8 @@
 // @ts-check
 import { orderInputSchema, orderLookupSchema } from '@noorcom-branding/shared/contract/schemas.js';
+import { z } from 'zod';
 import { accessFrom } from '../../middleware/customerAccess.js';
+import * as extras from './extras.service.js';
 import { createOrder, getOrder } from './service.js';
 
 /**
@@ -40,4 +42,36 @@ export const getOrderHandler = (deps) => async (req, res) => {
 export const postLookup = (deps) => async (req, res) => {
   const { ref, phone } = orderLookupSchema.parse(req.body);
   noStore(res).json(await getOrder({ ...deps, logger: req.log }, ref, { phone }));
+};
+
+// B5: the customer's steps after paying, with the order's access in a header.
+const no = (/** @type {import('express').Request} */ req) => z.string().regex(/^NB-\d{6}$/i).parse(req.params.no);
+const sampleBody = z.object({ decision: z.enum(['approve', 'changes']), comments: z.string().max(2000).default('') });
+const piecesBody = z.object({ pieces: z.number().int().min(1).max(1_000_000) });
+const dateBody = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a date.') });
+
+/** @param {Deps} deps @returns {import('express').RequestHandler} */
+export const postSampleReview = (deps) => async (req, res) => {
+  const { decision, comments } = sampleBody.parse(req.body);
+  noStore(res).json(await extras.reviewSample({ ...deps, logger: req.log }, no(req), accessFrom(req), decision, comments));
+};
+
+/** @param {Deps} deps @returns {import('express').RequestHandler} */
+export const postEarlyDelivery = (deps) => async (req, res) => {
+  noStore(res).json(await extras.requestEarlyDelivery({ ...deps, logger: req.log }, no(req), accessFrom(req), piecesBody.parse(req.body).pieces));
+};
+
+/** @param {Deps} deps @returns {import('express').RequestHandler} */
+export const postSurvey = (deps) => async (req, res) => {
+  noStore(res).json(await extras.bookSurvey({ ...deps, logger: req.log }, no(req), accessFrom(req), dateBody.parse(req.body).date));
+};
+
+/** @param {Deps} deps @returns {import('express').RequestHandler} */
+export const postAcceptQuote = (deps) => async (req, res) => {
+  noStore(res).json(await extras.acceptSiteQuote({ ...deps, logger: req.log }, no(req), accessFrom(req)));
+};
+
+/** @param {Deps} deps @returns {import('express').RequestHandler} */
+export const postInstall = (deps) => async (req, res) => {
+  noStore(res).json(await extras.bookInstall({ ...deps, logger: req.log }, no(req), accessFrom(req), dateBody.parse(req.body).date));
 };

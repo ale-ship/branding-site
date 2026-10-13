@@ -1,6 +1,6 @@
 # Noorcom Branding website
 
-Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (strict), Tailwind CSS v4, lucide-react, Vitest. The site runs on a typed mock by default; with `NEXT_PUBLIC_API_MODE=live` it runs on our own backend in `backend/` (with shared rules in `shared/`), which replaces the mock step by step (B0 to B4 and B5's accounts are built). Read `docs/RUNBOOK.md` first; for online ordering and payments, also `docs/ORDER_WORKFLOW_SPEC.md`; for the backend, `docs/BACKEND_RUNBOOK.md`; for the VPS, `docs/VPS_BRANDING.md`.
+Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (strict), Tailwind CSS v4, lucide-react, Vitest. The site runs on a typed mock by default; with `NEXT_PUBLIC_API_MODE=live` it runs on our own backend in `backend/` (with shared rules in `shared/`), which replaces the mock step by step (B0 to B4 and most of B5 are built: every SiteApi method is on the API in live mode). Read `docs/RUNBOOK.md` first; for online ordering and payments, also `docs/ORDER_WORKFLOW_SPEC.md`; for the backend, `docs/BACKEND_RUNBOOK.md`; for the VPS, `docs/VPS_BRANDING.md`.
 
 ## Commands
 

@@ -39,6 +39,24 @@ export function subjectFor(template, payload) {
       return `Order ${ref} is complete`;
     case 'cancelled':
       return `Order ${ref} has been cancelled`;
+    case 'sample-ready':
+      return `A sample of ${ref} is ready to check`;
+    case 'survey-booked':
+      return `Site survey booked for ${ref}`;
+    case 'site-quote':
+      return `Your firm quote for ${ref}`;
+    case 'quote-accepted':
+      return `Quote accepted for ${ref}: the deposit is due`;
+    case 'install-booked':
+      return `Installation booked for ${ref}`;
+    case 'files-ready':
+      return `Your final files for ${ref} are ready`;
+    case 'request-quote':
+      return `New quote request ${ref}`;
+    case 'request-message':
+      return `New message ${ref}`;
+    case 'request-received':
+      return `We’ve got your request ${ref}`;
     case 'payment-received':
       return `Payment received for ${ref}${payload.receiptNo ? `, receipt ${payload.receiptNo}` : ''}`;
     default:
