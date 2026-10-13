@@ -4,6 +4,8 @@
 
 /** @param {string} name @param {string} alt */
 const img = (name, alt) => ({ src: `/images/placeholder/${name}.jpg`, alt });
+/** The owner's own photos of the shop's products (13 Oct 2026), in public/images/shop. @param {string} name @param {string} alt */
+const shop = (name, alt) => ({ src: `/images/shop/${name}.jpg`, alt });
 
 /**
  * Prices are per piece, from the live site (owner's screenshot, 3 Oct 2026).
@@ -29,7 +31,7 @@ export const products = [
       { name: 'Finish', values: ['Matte laminate', 'Gloss laminate', 'Soft-touch'] },
       { name: 'Sides', values: ['Both sides', 'One side'] },
     ],
-    image: img('business-cards-stack', 'Stacks of blank business cards'),
+    image: shop('business-cards', 'Black and white business cards with the Noorcom Group logo, beside a pen'),
     featured: true,
   },
   {
@@ -68,7 +70,7 @@ export const products = [
     summary: 'Stapled or perfect-bound booklets and company profiles.',
     description: 'Company profiles, catalogues and reports, stapled or with a glued spine, with a heavy laminated cover.',
     options: [{ name: 'Binding', values: ['Saddle-stitched', 'Perfect bound'] }],
-    image: img('booklet', 'A plain hardcover book standing on a grey background'),
+    image: shop('booklet-printing', 'Black hardcover books with the Noorcom Group logo on the covers'),
     featured: false,
   },
   {
@@ -81,7 +83,7 @@ export const products = [
     summary: 'Branded covers, your choice of ruled or plain pages.',
     description: 'Spiral-bound A4 notebooks with your design on a laminated cover. Good for staff, events and gift sets.',
     options: [{ name: 'Pages', values: ['Ruled', 'Plain', 'Dotted'] }],
-    image: img('notebook', 'A spiral notebook on a grey background'),
+    image: shop('a4-notebooks', 'A black spiral notebook with the Noorcom Group logo and a branded pen'),
     featured: true,
   },
   {
@@ -97,7 +99,7 @@ export const products = [
       { name: 'Branding', values: ['Printed', 'Laser engraved'] },
       { name: 'Colour', values: ['White', 'Black', 'Silver', 'Blue'] },
     ],
-    image: img('water-bottles', 'Three pastel metal water bottles'),
+    image: shop('water-bottle-branding', 'A black water bottle and backpack, both branded with the Noorcom Group logo'),
     featured: true,
   },
   {
@@ -110,7 +112,7 @@ export const products = [
     summary: 'Ceramic mugs printed to survive the dishwasher.',
     description: 'Classic 11 oz mugs printed all the way round. The print is baked in, so it lasts through daily washing.',
     options: [{ name: 'Mug', values: ['White ceramic', 'Colour-change', 'Enamel'] }],
-    image: img('mug', 'A white mug of coffee with a printed logo'),
+    image: shop('mug-branding', 'A white mug and a black mug printed with the Noorcom Group logo'),
     featured: true,
   },
   {
@@ -139,7 +141,7 @@ export const products = [
       { name: 'Branding', values: ['Print', 'Embroidery'] },
       { name: 'Colour', values: ['Black', 'Navy', 'Grey', 'White'] },
     ],
-    image: img('hoodie', 'A plain white hoodie hanging on a rope'),
+    image: shop('hoodie-branding', 'A black hoodie with a red hood lining and the Noorcom Group logo on the chest'),
     featured: false,
   },
   {
@@ -155,7 +157,7 @@ export const products = [
       { name: 'Print', values: ['Screen print', 'Heat transfer'] },
       { name: 'Colour', values: ['White', 'Black', 'Navy', 'Red'] },
     ],
-    image: img('tshirts-folded', 'Three folded t-shirts in blue, sand and pale blue'),
+    image: shop('t-shirt-printing', 'A black and a white t-shirt printed with the Noorcom Group logo'),
     featured: true,
   },
   {
@@ -181,7 +183,7 @@ export const products = [
     summary: 'Roll-up banners with stand and carry bag.',
     description: 'An 85 × 200 cm roll-up banner with its stand and carry bag. Up in a minute at any event.',
     options: [{ name: 'Stand', values: ['Economy roll-up', 'Premium roll-up', 'X-banner'] }],
-    image: img('banner-outdoor', 'A tall printed banner on a white wall'),
+    image: shop('banner-stands', 'A Noorcom Branding roll-up banner standing in a reception area'),
     featured: false,
   },
 ];

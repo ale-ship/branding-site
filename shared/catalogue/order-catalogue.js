@@ -8,6 +8,8 @@
 
 /** @param {string} name @param {string} alt */
 const img = (name, alt) => ({ src: `/images/placeholder/${name}.jpg`, alt });
+/** The owner's own photos of the shop's products (13 Oct 2026), in public/images/shop. @param {string} name @param {string} alt */
+const shop = (name, alt) => ({ src: `/images/shop/${name}.jpg`, alt });
 
 /**
  * What can be ordered online (docs/ORDER_WORKFLOW_SPEC.md). Each product's `mechanism` decides the
@@ -24,12 +26,12 @@ const img = (name, alt) => ({ src: `/images/placeholder/${name}.jpg`, alt });
 
 /** @type {OrderCategory[]} */
 export const orderCategories = [
-  { slug: 'apparel', name: 'Apparel', mechanism: 'A', summary: 'T-shirts, hoodies, caps and uniforms.', image: img('tshirts-rack', 'A rack of t-shirts in every colour'), service: 'apparel' },
-  { slug: 'corporate-gifts', name: 'Corporate gifts', mechanism: 'A', summary: 'Mugs, bottles, umbrellas, notebooks and bags.', image: img('water-bottles', 'Three pastel metal water bottles'), service: 'corporate-gifts' },
-  { slug: 'stationery', name: 'Stationery', mechanism: 'A', summary: 'Business cards and letterheads.', image: img('business-cards-stack', 'Stacks of business cards'), service: 'stationery' },
-  { slug: 'books', name: 'Books and booklets', mechanism: 'A', summary: 'Company profiles, catalogues and reports.', image: img('booklet', 'A hardcover booklet'), service: 'stationery' },
+  { slug: 'apparel', name: 'Apparel', mechanism: 'A', summary: 'T-shirts, hoodies, caps and uniforms.', image: shop('t-shirt-printing', 'A black and a white t-shirt printed with the Noorcom Group logo'), service: 'apparel' },
+  { slug: 'corporate-gifts', name: 'Corporate gifts', mechanism: 'A', summary: 'Mugs, bottles, umbrellas, notebooks and bags.', image: shop('water-bottle-branding', 'A black water bottle and backpack, both branded with the Noorcom Group logo'), service: 'corporate-gifts' },
+  { slug: 'stationery', name: 'Stationery', mechanism: 'A', summary: 'Business cards and letterheads.', image: shop('business-cards', 'Black and white business cards with the Noorcom Group logo, beside a pen'), service: 'stationery' },
+  { slug: 'books', name: 'Books and booklets', mechanism: 'A', summary: 'Company profiles, catalogues and reports.', image: shop('booklet-printing', 'Black hardcover books with the Noorcom Group logo on the covers'), service: 'stationery' },
   { slug: 'print', name: 'Posters, flyers and brochures', mechanism: 'A', summary: 'From A5 flyers to A0 posters.', image: img('print-samples', 'Printed brochures and design books'), service: 'stationery' },
-  { slug: 'large-format', name: 'Large format', mechanism: 'A', summary: 'Roll-up banners and banners for events.', image: img('banner-outdoor', 'A tall printed banner on a wall'), service: 'large-format' },
+  { slug: 'large-format', name: 'Large format', mechanism: 'A', summary: 'Roll-up banners and banners for events.', image: shop('banner-stands', 'A Noorcom Branding roll-up banner standing in a reception area'), service: 'large-format' },
   { slug: 'indoor-branding', name: 'Indoor branding', mechanism: 'B', summary: 'Offices, receptions and shops: we survey, design and install.', image: img('wall-mural', 'An office lounge with a wall mural'), service: 'indoor-branding' },
   { slug: 'outdoor-branding', name: 'Outdoor branding', mechanism: 'B', summary: 'Shop fronts, pylons, light boxes and billboards.', image: img('billboard', 'A roadside billboard'), service: 'outdoor-branding' },
   { slug: 'vehicle-branding', name: 'Vehicle branding', mechanism: 'B', summary: 'Full wraps, partial wraps and door decals.', image: img('van-wrap', 'A van with a full graphic wrap'), service: 'vehicle-branding' },
@@ -97,7 +99,7 @@ export const orderProducts = [
     category: 'apparel',
     mechanism: 'A',
     summary: 'Cotton t-shirts printed for staff, teams and events.',
-    image: img('tshirts-folded', 'Three folded t-shirts'),
+    image: shop('t-shirt-printing', 'A black and a white t-shirt printed with the Noorcom Group logo'),
     priceTiers: [
       { minQty: 10, unitPrice: 650 },
       { minQty: 100, unitPrice: 600 },
@@ -124,7 +126,7 @@ export const orderProducts = [
     category: 'apparel',
     mechanism: 'A',
     summary: 'Heavy hoodies, printed or embroidered.',
-    image: img('hoodie', 'A plain white hoodie'),
+    image: shop('hoodie-branding', 'A black hoodie with a red hood lining and the Noorcom Group logo on the chest'),
     priceTiers: [
       { minQty: 10, unitPrice: 2500 },
       { minQty: 100, unitPrice: 2350 },
@@ -150,7 +152,7 @@ export const orderProducts = [
     category: 'corporate-gifts',
     mechanism: 'A',
     summary: 'Ceramic mugs printed to survive the dishwasher.',
-    image: img('mug', 'A white mug with a printed logo'),
+    image: shop('mug-branding', 'A white mug and a black mug printed with the Noorcom Group logo'),
     priceTiers: [
       { minQty: 10, unitPrice: 450 },
       { minQty: 200, unitPrice: 420 },
@@ -194,7 +196,7 @@ export const orderProducts = [
     category: 'corporate-gifts',
     mechanism: 'A',
     summary: 'Steel bottles printed or laser engraved.',
-    image: img('water-bottles', 'Three pastel metal water bottles'),
+    image: shop('water-bottle-branding', 'A black water bottle and backpack, both branded with the Noorcom Group logo'),
     priceTiers: [
       { minQty: 10, unitPrice: 800 },
       { minQty: 200, unitPrice: 750 },
@@ -249,7 +251,7 @@ export const orderProducts = [
     category: 'corporate-gifts',
     mechanism: 'A',
     summary: 'Spiral notebooks with your design on the cover.',
-    image: img('notebook', 'A spiral notebook'),
+    image: shop('a4-notebooks', 'A black spiral notebook with the Noorcom Group logo and a branded pen'),
     priceTiers: [
       { minQty: 10, unitPrice: 1200 },
       { minQty: 200, unitPrice: 1100 },
@@ -287,7 +289,7 @@ export const orderProducts = [
     category: 'stationery',
     mechanism: 'A',
     summary: 'Full colour on heavy card.',
-    image: img('business-cards-stack', 'Stacks of business cards'),
+    image: shop('business-cards', 'Black and white business cards with the Noorcom Group logo, beside a pen'),
     priceTiers: [
       { minQty: 10, unitPrice: 18 },
       { minQty: 500, unitPrice: 15 },
@@ -325,7 +327,7 @@ export const orderProducts = [
     category: 'books',
     mechanism: 'A',
     summary: 'Company profiles, catalogues and reports, up to 24 pages.',
-    image: img('booklet', 'A hardcover booklet'),
+    image: shop('booklet-printing', 'Black hardcover books with the Noorcom Group logo on the covers'),
     priceTiers: [
       { minQty: 10, unitPrice: 700 },
       { minQty: 200, unitPrice: 620 },
@@ -416,7 +418,7 @@ export const orderProducts = [
     category: 'large-format',
     mechanism: 'A',
     summary: 'Roll-up banners with stand and carry bag.',
-    image: img('banner-outdoor', 'A tall printed banner'),
+    image: shop('banner-stands', 'A Noorcom Branding roll-up banner standing in a reception area'),
     priceTiers: [{ minQty: 10, unitPrice: 3500 }],
     minQuantity: 10,
     setupFee: 0,

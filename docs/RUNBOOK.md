@@ -1,6 +1,6 @@
 # Noorcom Branding Website Runbook
 
-Last updated 9 Oct 2026. This is the handover document: read it first in a new chat or on a new
+Last updated 13 Oct 2026. This is the handover document: read it first in a new chat or on a new
 machine. It records what the project is, what we found, every decision and why, and what comes
 next. Update it at the end of every task.
 
@@ -99,6 +99,14 @@ next. Update it at the end of every task.
   account are opened by the session, which the site passes on from its `nb-session` cookie; the API
   takes the email from it. Checks: 124 backend tests; the site's 230 tests, build, `a11y`,
   `devices` and `menu`.
+- **13 Oct 2026, the shop's own photos:** the owner's mock-ups replace the stock photos of eight
+  products (business cards, booklets, A4 notebooks, water bottles, mugs, hoodies, t-shirts, banner
+  stands) on the shop, the order form and five order categories. They are square crops in
+  `public/images/shop/<slug>.jpg` (1600 px; the hoodie is 577 px, cut from a small export, so a
+  larger file of that mock-up would sharpen it). Posters, brochures, umbrellas and gift bags still
+  have placeholders. Migration 010 makes the same change in a database that still shows the
+  placeholders. The other mock-ups (shop front, reception sign, wide-format printer, vehicles, caps,
+  laptop, polo, scarf, stationery set) aren't used yet: they suit the service and work pages.
 - **Next (owner, 7 Oct 2026: the VPS waits):** the rest of step B5 (the sample, partial deliveries,
   site jobs' survey, quote and installation, the job card), or B3b once Absa's documentation arrives.
   Later, on the box: `docs/VPS_BRANDING.md` sections 1.1 to 5 (staging DNS record, deploy key,

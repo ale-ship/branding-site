@@ -202,7 +202,7 @@ backend/
 │  │
 │  ├─ db/
 │  │  ├─ pool.js           the `pg` pool, `withTransaction(pool, fn)`, `dbHealthy`
-│  │  ├─ migrations/       001 to 009 (section 5)
+│  │  ├─ migrations/       001 to 010 (section 5)
 │  │  └─ seeds/01-catalogue.js  categories, products and tiers from shared/catalogue (adds, never overwrites)
 │  │
 │  ├─ lib/                 small helpers
@@ -287,6 +287,7 @@ contact forms (`modules/requests`), and order updates by server-sent events.
 | 007 ✓ | two roles | Staff roles become `admin` and `designer` only (owner, 8 Oct 2026) |
 | 008 ✓ | content | `content_items` (kind, slug, data JSONB, position, published), `media`; the starting content inserted once |
 | 009 ✓ | accounts (B5) | `customer_profiles` (email, lower case: the account; name, phone, company, brand kit JSONB, addresses JSONB), `sign_in_codes` (one per email: the code's hash, tries, sent and expiry times), `customer_sessions` (token hash, email, expiry), `companies` (`CO-` + 6 digits, name, KRA PIN), `company_members` (email unique, role: owner, approver, member); orders gain `company_id` and `company_po`. The account is its email, so orders aren't linked to it by id |
+| 010 ✓ | shop photos | Data only: the owner's photos of eight shop products (13 Oct 2026) replace the placeholders on the shop's products, the order form's matching products and five order categories, only where the old placeholder is still there (a photo staff chose stays) |
 
 Planned (from the original design; they take the next free numbers when built):
 
