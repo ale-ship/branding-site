@@ -102,7 +102,7 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
         </table>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 pt-4 sm:grid-cols-[1fr_0.85fr] sm:gap-[18mm]">
+      <div className="grid grid-cols-1 gap-8 pt-4 break-inside-avoid sm:grid-cols-[1fr_0.85fr] sm:gap-[18mm]">
         <div className="flex flex-col items-start gap-3 pt-2">
           <p className="text-sm text-heading italic">Thank you for your payment.</p>
           <p className="text-xs text-muted">

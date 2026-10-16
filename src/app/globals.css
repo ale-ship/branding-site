@@ -237,3 +237,21 @@
     transform: none;
   }
 }
+
+/* Printed documents (invoices, receipts, statements). A zero page margin stops the browser adding
+   its own header and footer (date, title, address); the document keeps its margins as padding,
+   repeated on every page. Its fills (the table header, the shaded boxes) print as on screen. */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}
+.print-exact {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.print-pad {
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}

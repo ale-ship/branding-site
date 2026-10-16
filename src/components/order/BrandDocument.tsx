@@ -37,8 +37,8 @@ export function BrandDocument({
         <PrintButton />
       </div>
 
-      <article aria-label={label} className="mx-auto flex min-h-[297mm] max-w-[210mm] flex-col bg-bg font-sans text-[13px] text-body shadow-sm print:min-h-0 print:shadow-none">
-        <div className="flex flex-1 flex-col px-[6mm] pt-[12mm] pb-[10mm] sm:px-[14mm]">
+      <article aria-label={label} className="print-exact mx-auto flex min-h-[297mm] max-w-[210mm] flex-col bg-bg font-sans text-[13px] text-body shadow-sm print:min-h-0 print:shadow-none">
+        <div className="print-pad flex flex-1 flex-col px-[6mm] pt-[12mm] pb-[10mm] sm:px-[14mm] print:px-[14mm]">
           <header className="flex flex-wrap items-start justify-between gap-6">
             <Image src="/brand/nb-logo.png" alt="Noorcom Branding: Design, Print, Brand" width={578} height={440} loading="eager" className="h-24 w-auto" />
             <div className="ml-auto text-right">
@@ -87,7 +87,7 @@ export function DocMeta({ rows, children }: { rows: [string, ReactNode][]; child
       <dl>
         {rows.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-6 border-b border-border py-1.5">
-            <dt className="text-heading">{k} :</dt>
+            <dt className="whitespace-nowrap text-heading">{k} :</dt>
             <dd className="text-right font-bold text-heading">{v}</dd>
           </div>
         ))}
@@ -120,7 +120,7 @@ export function Totals({ rows }: { rows: { label: string; value: string; strong?
           key={r.label}
           className={`flex justify-between gap-4 px-1 ${r.band ? 'mt-1 bg-panel px-3 py-2.5 text-lg font-bold text-heading' : `border-b border-border py-2 ${r.strong ? 'text-lg font-bold text-heading' : 'text-heading'}`}`}
         >
-          <dt>{r.label}</dt>
+          <dt className="whitespace-nowrap">{r.label}</dt>
           <dd className="whitespace-nowrap tabular-nums">{r.value}</dd>
         </div>
       ))}

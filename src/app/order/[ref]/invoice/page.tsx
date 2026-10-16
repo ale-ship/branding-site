@@ -68,7 +68,7 @@ export default async function InvoicePage({ params, searchParams }: Props) {
           description:
             i === 0
               ? order.needsDesign && order.mechanism === "A"
-                ? `Design and printing of ${l.label.toLowerCase()}`
+                ? `Order ${order.ref}, designed by our studio`
                 : `Order ${order.ref}`
               : (l.detail ?? ""),
           quantity: l.quantity ?? 1,
@@ -162,7 +162,7 @@ export default async function InvoicePage({ params, searchParams }: Props) {
             {rows.map((r, i) => (
               <tr
                 key={`${r.item}-${i}`}
-                className="border-b border-border align-top"
+                className="break-inside-avoid border-b border-border align-top"
               >
                 <td className="px-3 py-3 text-heading">{i + 1}</td>
                 <td className="px-3 py-3">
@@ -189,7 +189,7 @@ export default async function InvoicePage({ params, searchParams }: Props) {
         </table>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 pt-4 sm:grid-cols-[1fr_0.85fr] sm:gap-[18mm]">
+      <div className="grid grid-cols-1 gap-8 pt-4 break-inside-avoid sm:grid-cols-[1fr_0.85fr] sm:gap-[18mm]">
         <div className="pt-2">
           <p className="text-sm text-heading italic">
             Thanks for your business.
