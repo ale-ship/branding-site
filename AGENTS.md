@@ -39,3 +39,13 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - Responsive: mobile first; check 320, 360, 390, 768, 1024, 1440 and 1920 px with no horizontal overflow; 44 px touch targets; visible focus; alt text on every content image.
 - Before handing over: `lint`, `typecheck`, `test`, `build`, then `a11y`, `devices` and `menu` against a production server (`BASE=http://localhost:3100`). All must pass.
 - Deploy files are in `deploy/` (the shared Contabo VPS, port 4301); see `docs/VPS_BRANDING.md`. Never commit real env files.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
