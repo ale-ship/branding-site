@@ -206,7 +206,7 @@ export default async function InvoicePage({ params, searchParams }: Props) {
           {balance > 0 && (
             <a
               href={withToken(`/order/${order.ref}`, token)}
-              className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-accent-ink underline underline-offset-2"
+              className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-accent-ink underline underline-offset-2 print:hidden"
             >
               Pay online: click here
             </a>
