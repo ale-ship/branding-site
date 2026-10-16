@@ -2,14 +2,17 @@ import { Download } from 'lucide-react';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { BrandDocument, DocLabel, IssuerBlock, money } from '@/components/order/BrandDocument';
+import { BrandDocument, DocMeta, DocParties, money, PartyBlock, Th } from '@/components/order/BrandDocument';
 import { SESSION_COOKIE } from '@/lib/account';
 import { api } from '@/lib/api';
 import { formatDateShort } from '@/lib/calendar';
 import { localPhone } from '@/lib/order-status';
 import { nairobiToday } from '@/lib/quote';
 
-export const metadata: Metadata = { title: 'Statement of account', robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: 'Statement of account',
+  robots: { index: false, follow: false },
+};
 
 const day = (iso: string) => formatDateShort(nairobiToday(new Date(iso)));
 
@@ -35,47 +38,42 @@ export default async function StatementPage() {
       label="Statement of account"
       title="STATEMENT"
       number={`${customerNo(account.email)}-${today.replace(/-/g, '')}`}
-      highlight={{ label: statement.balance < 0 ? 'In credit' : 'Balance due', value: `KES ${money(Math.abs(statement.balance))}` }}
+      highlight={{
+        label: statement.balance < 0 ? 'In credit' : 'Balance due',
+        value: `KES ${money(Math.abs(statement.balance))}`,
+      }}
     >
-      <div className="grid grid-cols-1 gap-6 py-6 sm:grid-cols-3">
-        <IssuerBlock />
-        <div>
-          <DocLabel>Statement for</DocLabel>
-          <p className="mt-2 text-base font-bold text-heading">{account.company || account.name}</p>
-          {account.company && <p className="text-muted">{account.name}</p>}
-          {account.phone && <p className="text-muted">{localPhone(account.phone)}</p>}
-          <p className="break-all text-muted">{account.email}</p>
-        </div>
-        <div>
-          <DocLabel>Details</DocLabel>
-          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-            <dt className="text-muted">Date</dt>
-            <dd className="text-right font-medium text-heading">{formatDateShort(today)}</dd>
-            <dt className="text-muted">Invoiced</dt>
-            <dd className="text-right font-medium text-heading tabular-nums">{money(statement.invoiced)}</dd>
-            <dt className="text-muted">Paid</dt>
-            <dd className="text-right font-medium text-heading tabular-nums">{money(statement.paid)}</dd>
-          </dl>
-          <a
-            href="/account/statement.csv"
-            download
-            className="mt-3 inline-flex min-h-11 items-center gap-2 font-semibold text-link underline underline-offset-4 print:hidden"
-          >
+      <DocParties>
+        <PartyBlock
+          label="Statement for"
+          name={account.company || account.name}
+          lines={[account.company && account.name, account.email, account.phone && localPhone(account.phone)]}
+        />
+        <DocMeta
+          rows={[
+            ['Date', formatDateShort(today)],
+            ['Invoiced', money(statement.invoiced)],
+            ['Paid', money(statement.paid)],
+          ]}
+        >
+          <a href="/account/statement.csv" download className="mt-3 inline-flex min-h-11 items-center gap-2 font-semibold text-link underline underline-offset-4 print:hidden">
             <Download aria-hidden className="size-4" /> Download as CSV
           </a>
-        </div>
-      </div>
+        </DocMeta>
+      </DocParties>
 
       {statement.lines.length ? (
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Statement lines">
-          <table className="w-full min-w-[34rem] border-b border-ink text-left">
+          <table className="w-full min-w-[34rem] text-left">
             <thead>
-              <tr className="bg-ink text-xs text-bg uppercase">
-                <th scope="col" className="px-3 py-3 font-medium">Date</th>
-                <th scope="col" className="px-2 py-3 font-medium">Document</th>
-                <th scope="col" className="px-2 py-3 text-right font-medium">Debit</th>
-                <th scope="col" className="px-2 py-3 text-right font-medium">Credit</th>
-                <th scope="col" className="px-3 py-3 text-right font-medium">Balance</th>
+              <tr className="bg-ink-hover text-xs text-bg uppercase">
+                <Th>Date</Th>
+                <Th>Document</Th>
+                <Th align="right">Debit</Th>
+                <Th align="right">Credit</Th>
+                <Th align="right" last>
+                  Balance
+                </Th>
               </tr>
             </thead>
             <tbody>
