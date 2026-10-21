@@ -27,15 +27,9 @@ export function CaseStudy({ project, services, next }: { project: Project; servi
         <Reveal>
           <div className="flex flex-wrap items-center gap-3">
             <Eyebrow>Case study</Eyebrow>
-            {project.sample && (
-              <span className="border border-ink px-2 py-0.5 text-[0.7rem] font-semibold tracking-[0.14em] text-heading uppercase">
-                Sample
-              </span>
-            )}
+            {project.sample && <span className="border border-ink px-2 py-0.5 text-[0.7rem] font-semibold tracking-[0.14em] text-heading uppercase">Sample</span>}
           </div>
-          <h1 className="mt-5 max-w-5xl text-[clamp(2.5rem,6.5vw,6rem)] leading-[0.95] font-extrabold tracking-[-0.035em]">
-            {project.title}
-          </h1>
+          <h1 className="mt-5 max-w-5xl text-[clamp(2.5rem,6.5vw,6rem)] leading-[0.95] font-extrabold tracking-[-0.035em]">{project.title}</h1>
           <p className="mt-6 max-w-2xl text-lg text-body sm:text-xl">{project.summary}</p>
         </Reveal>
 
@@ -68,12 +62,14 @@ export function CaseStudy({ project, services, next }: { project: Project; servi
         </Reveal>
       </Container>
 
-      <Container className="py-20 sm:py-28">
-        <div className="flex flex-col gap-14 sm:gap-20">
-          <Story label="The brief">{project.brief}</Story>
-          <Story label="The idea">{project.idea}</Story>
-        </div>
-      </Container>
+      {(project.brief || project.idea) && (
+        <Container className="py-20 sm:py-28">
+          <div className="flex flex-col gap-14 sm:gap-20">
+            <Story label="The brief">{project.brief}</Story>
+            <Story label="The idea">{project.idea}</Story>
+          </div>
+        </Container>
+      )}
 
       {project.facts.length > 0 && (
         <Container>
@@ -93,31 +89,37 @@ export function CaseStudy({ project, services, next }: { project: Project; servi
         </Container>
       )}
 
-      <Container className="py-20 sm:py-28">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
-          <Reveal>
-            <Eyebrow>Colours</Eyebrow>
-            <ul className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
-              {project.palette.map((colour) => (
-                <li key={colour}>
-                  <span className="block aspect-square border border-border" style={{ backgroundColor: colour }} />
-                  <span className="mt-2 block font-mono text-sm text-muted uppercase">{colour}</span>
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-          <Reveal delay={100}>
-            <Eyebrow>Materials and finishes</Eyebrow>
-            <ul className="mt-6 border-t border-ink">
-              {project.materials.map((material) => (
-                <li key={material} className="border-b border-border py-4 text-lg text-heading">
-                  {material}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-        </div>
-      </Container>
+      {(project.palette.length > 0 || project.materials.length > 0) && (
+        <Container className="py-20 sm:py-28">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
+            {project.palette.length > 0 && (
+              <Reveal>
+                <Eyebrow>Colours</Eyebrow>
+                <ul className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+                  {project.palette.map((colour) => (
+                    <li key={colour}>
+                      <span className="block aspect-square border border-border" style={{ backgroundColor: colour }} />
+                      <span className="mt-2 block font-mono text-sm text-muted uppercase">{colour}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Reveal>
+            )}
+            {project.materials.length > 0 && (
+              <Reveal delay={100}>
+                <Eyebrow>Materials and finishes</Eyebrow>
+                <ul className="mt-6 border-t border-ink">
+                  {project.materials.map((material) => (
+                    <li key={material} className="border-b border-border py-4 text-lg text-heading">
+                      {material}
+                    </li>
+                  ))}
+                </ul>
+              </Reveal>
+            )}
+          </div>
+        </Container>
+      )}
 
       {project.applications.length > 0 && (
         <Container className="pb-20 sm:pb-28">
@@ -144,9 +146,11 @@ export function CaseStudy({ project, services, next }: { project: Project; servi
 
       {project.beforeAfter && <BeforeAfter before={project.beforeAfter.before} after={project.beforeAfter.after} />}
 
-      <Container className="py-20 sm:py-28">
-        <Story label="The result">{project.result}</Story>
-      </Container>
+      {project.result && (
+        <Container className="py-20 sm:py-28">
+          <Story label="The result">{project.result}</Story>
+        </Container>
+      )}
 
       {next && (
         <Container className="pb-20 sm:pb-28">
@@ -159,7 +163,13 @@ export function CaseStudy({ project, services, next }: { project: Project; servi
               </span>
             </span>
             <span className="relative block aspect-[3/2] w-full overflow-hidden bg-panel sm:w-72">
-              <Image src={next.cover.src} alt="" fill sizes="(min-width: 640px) 288px, 100vw" className="object-cover transition-transform duration-[1.2s] group-hover:scale-[1.05]" />
+              <Image
+                src={next.cover.src}
+                alt=""
+                fill
+                sizes="(min-width: 640px) 288px, 100vw"
+                className="object-cover transition-transform duration-[1.2s] group-hover:scale-[1.05]"
+              />
             </span>
           </Link>
         </Container>
@@ -178,13 +188,13 @@ function Credit({ label, children }: { label: string; children: React.ReactNode 
 }
 
 /** A label in the left column, a large statement on the right. */
-function Story({ label, children }: { label: string; children: React.ReactNode }) {
+/** One part of the story; nothing when staff haven't written it yet. */
+function Story({ label, children }: { label: string; children: string }) {
+  if (!children.trim()) return null;
   return (
     <Reveal className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2.4fr)] lg:gap-10">
       <h2 className="font-sans text-xs font-semibold tracking-[0.18em] text-muted uppercase lg:pt-3">{label}</h2>
-      <p className="font-display text-[clamp(1.5rem,2.8vw,2.4rem)] leading-[1.2] font-medium tracking-[-0.015em] text-heading">
-        {children}
-      </p>
+      <p className="font-display text-[clamp(1.5rem,2.8vw,2.4rem)] leading-[1.2] font-medium tracking-[-0.015em] text-heading">{children}</p>
     </Reveal>
   );
 }
@@ -199,13 +209,7 @@ function Gallery({ photos, className = '' }: { photos: CaptionedPhoto[]; classNa
           <Reveal as="li" key={`${photo.src}-${i}`} delay={(i % 2) * 100} className={wide ? 'sm:col-span-2' : ''}>
             <figure>
               <div className={`relative overflow-hidden bg-panel ${wide ? 'aspect-[4/3] sm:aspect-[16/9]' : 'aspect-[4/3]'}`}>
-                <Image
-                  src={photo.src}
-                  alt={photo.alt}
-                  fill
-                  sizes={wide ? '(min-width: 1680px) 1600px, 100vw' : '(min-width: 640px) 50vw, 100vw'}
-                  className="object-cover"
-                />
+                <Image src={photo.src} alt={photo.alt} fill sizes={wide ? '(min-width: 1680px) 1600px, 100vw' : '(min-width: 640px) 50vw, 100vw'} className="object-cover" />
               </div>
               {photo.caption && <figcaption className="mt-3 text-sm text-muted">{photo.caption}</figcaption>}
             </figure>
@@ -233,9 +237,7 @@ function BeforeAfter({ before, after }: { before: Photo; after: Photo }) {
               <div className="relative aspect-[4/3] overflow-hidden bg-panel">
                 <Image src={photo.src} alt={photo.alt} fill sizes="(min-width: 640px) 50vw, 100vw" className="object-cover" />
               </div>
-              <figcaption className="absolute top-3 left-3 bg-bg px-2.5 py-1 text-[0.7rem] font-semibold tracking-[0.14em] text-heading uppercase">
-                {label}
-              </figcaption>
+              <figcaption className="absolute top-3 left-3 bg-bg px-2.5 py-1 text-[0.7rem] font-semibold tracking-[0.14em] text-heading uppercase">{label}</figcaption>
             </figure>
           </Reveal>
         ))}

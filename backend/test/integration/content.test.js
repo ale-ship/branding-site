@@ -86,8 +86,8 @@ describe.skipIf(!dbUrl)('the website editor', () => {
   it('gives the site everything, in order, with shop prices from the order form', async () => {
     const c = await site();
     expect(c.services).toHaveLength(7);
-    expect(c.projects.map((p) => p.slug)[0]).toBe('sample-fleet-livery');
-    expect(c.clients).toHaveLength(8);
+    expect(c.projects.map((p) => p.slug)[0]).toBe('nairobi-city-county-trade-fair');
+    expect(c.clients).toHaveLength(10);
     expect(c.pages.home.workshop.facts[1]).toEqual({ value: 'From 10', label: 'Pieces on most branded items' });
     // The shop shows the order catalogue's price and minimum.
     await knex.raw("UPDATE price_tiers SET unit_price = 777 WHERE product_id = (SELECT id FROM products WHERE slug = 'mug-branding') AND min_qty = 10");
@@ -101,7 +101,7 @@ describe.skipIf(!dbUrl)('the website editor', () => {
     const res = await send('put', '/content/project/sample-fleet-livery', { data: { ...item.data, title: '  Twelve vans, one look  ' }, published: true });
     expect(res.status).toBe(200);
     expect(res.body.item).toMatchObject({ slug: 'sample-fleet-livery', updatedBy: 'The designer', data: { title: 'Twelve vans, one look' } });
-    expect((await site()).projects[0].title).toBe('Twelve vans, one look');
+    expect((await site()).projects.find((p) => p.slug === 'sample-fleet-livery').title).toBe('Twelve vans, one look');
     expect(queued).toEqual([{ name: 'refresh-site', data: { tags: ['content'] } }]);
     await runJob(deps, 'refresh-site', queued[0].data);
     expect(refreshed).toEqual([['content']]);

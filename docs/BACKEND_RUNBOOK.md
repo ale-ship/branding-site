@@ -302,6 +302,7 @@ the VPS work.
 | 012 ✓ | requests (B5) | `requests`: the site's quote requests (NQ-) and contact messages (NM-) as sent, who they're from, status (new, in progress, closed), the staff note and who handled it |
 | 013 ✓ | order steps (B5) | Orders gain `site_quote` (the firm quote), `install_date` and `early_deliveries`; `order_files` (a design-only order's final files and a sample's photo: name, storage key, size, type, who uploaded) |
 | 014 ✓ | payments by hand | `payments.method` gains `manual`, with `channel` (mpesa, bank, cash) and `recorded_by` (the staff member; both set exactly when the method is manual); `orders.payment_report` (the customer's "I've paid" code); notifications gain the status `skipped` (WhatsApp off) |
+| 015 ✓ | real work | Data only: the owner's mock-ups of eleven real jobs (21 Oct 2026, `public/images/work`) added to "Our work" ahead of the samples, which stop being featured (only while still samples); the ten clients behind them replace the "Client 01" placeholders (only those without a logo). A project's idea and result may now be empty until staff write them |
 | 011 ✓ | home photos | Data only, the same way: the owner's mock-ups on the home page (the workshop band, three "behind the scenes" photos), the seven services' photos and three featured sample projects' covers |
 
 Planned (from the original design; they take the next free numbers when built):

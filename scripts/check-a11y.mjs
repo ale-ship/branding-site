@@ -85,6 +85,8 @@ const ROUTES = [
   { path: '/work' },
   { path: '/work?service=apparel', name: 'filtered work' },
   { path: '/work/sample-fleet-livery' },
+  // A real job: only what staff have written shows.
+  { path: '/work/municipality-of-isiolo-identity' },
   { path: '/services' },
   { path: '/services/apparel' },
   { path: '/shop' },

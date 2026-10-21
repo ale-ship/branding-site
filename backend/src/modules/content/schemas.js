@@ -53,8 +53,9 @@ export const project = z.object({
   cover: photo,
   palette: z.array(z.string().regex(/^#[0-9a-f]{6}$/i, 'Colours are written like #d7000f.')).max(8),
   brief: text(1, 3000),
-  idea: text(1, 3000),
-  result: text(1, 3000),
+  // May wait for staff (real jobs, 21 Oct 2026): the case study leaves out what's empty.
+  idea: text(0, 3000),
+  result: text(0, 3000),
   facts: z.array(z.object({ label: text(1, 60), value: text(1, 30) })).max(6),
   materials: z.array(text(1, 160)).max(15),
   applications: z.array(captioned).max(16),

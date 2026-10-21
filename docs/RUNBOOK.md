@@ -130,6 +130,15 @@ next. Update it at the end of every task.
   every action under **Settings → Activity**. Unpaid orders now expire after 7 days. Invoices,
   receipts and statements follow the owner's invoice design and print without the browser's header
   and footer (16 Oct). `PAYMENTS_MODE` and `NEXT_PUBLIC_PAYMENTS_MODE` bring the prompt back.
+- **21 Oct 2026, real work on the site:** the owner's mock-ups of eleven real jobs (Nairobi City
+  County's trade-fair stand and summit T-shirts, the Municipality of Isiolo's seal and flag, uniforms
+  for Zuri Restaurant, Ramtan Luxury Hotel and Gaada Security, Kiwanja Comprehensive School, Bahati
+  VTC's sign, logos for SATU and STEP, RideMeds' cards) are in **Our work** (`public/images/work`,
+  migration 015), five of them featured on the home page; the samples stay behind them, tagged, for
+  the services without real work yet. The clients strip shows the ten real clients. Only what the
+  pictures show is written: staff add the idea, result, numbers and colours, and check the years
+  (set to 2026 where unknown), in the back office. Left out under the no-people rule: the two Karibu
+  banners, the flag banner by the road, and the vocational centres' roll-ups.
 - **Next (owner, 7 Oct 2026: the VPS waits):** the job card with its QR code, mockups on proofs and
   customers' file uploads (R2), or B3b once Absa's documentation arrives. The VPS deploy still ships
   only the website: the API, worker, migrations, `/admin/` and `/api/` come with the VPS work.
