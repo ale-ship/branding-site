@@ -30,7 +30,8 @@ export function Steps({ order: o, staff, attention, act, upload, sendFile, remov
   if (o.status === 'ready' && method === 'pickup' && may(staff, 'handover')) panels.push(<Pickup key="pickup" act={act} />);
   if (o.status === 'ready' && method === 'delivery' && may(staff, 'dispatch')) panels.push(<Dispatch key="dispatch" act={act} />);
   if (o.status === 'out_for_handover' && method === 'delivery' && may(staff, 'handover')) panels.push(<Delivered key="delivered" act={act} />);
-  if (attention && may(staff, 'cancel')) {
+  // A reported payment is answered in the Record payment panel (RecordPayment.jsx).
+  if (attention && attention !== 'payment-reported' && may(staff, 'cancel')) {
     panels.push(
       <section key="attention" className="panel">
         <h2>Flagged</h2>

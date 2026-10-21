@@ -3,7 +3,8 @@ import { addWorkingDays } from '../calendar';
 import { allocate, book, machineFor, MACHINES, type CapacityCalendar, type Machine } from '../capacity';
 import { nairobiToday, normaliseKenyanPhone } from '../quote';
 import { routeC2B, type C2BConfirmation, type C2BRoute } from '../payments/c2b';
-import { estimatePrice, UNPAID_EXPIRY_HOURS } from '../pricing';
+import { reportedReference } from '../manual-payment';
+import { estimatePrice, UNPAID_EXPIRY_DAYS, UNPAID_EXPIRY_HOURS } from '../pricing';
 import { isPickupCode, needsSample, partialDeliveryError } from '../production';
 import { changeRequestError, checklistComplete, MAX_CHANGE_NOTES } from '../proof';
 import { buildSiteQuote, installDateError } from '../site-quote';
@@ -23,6 +24,7 @@ import {
   type OrderProduct,
   type OrderProgress,
   type OrderStatus,
+  type PaymentChannel,
   type PaymentStatus,
   type PriceLine,
   type ProofPin,
@@ -194,9 +196,14 @@ function advanceAfterPayment(order: Stored) {
  * Applies a confirmed M-Pesa callback (STK or Paybill). Idempotent on the receipt number: a
  * repeated callback is ignored. Returns whether it credited anything.
  */
-function applyCallback(order: Stored, cb: { receipt: string; amount: number; method: 'stk' | 'paybill'; phone: string | null; paymentId?: string }): boolean {
+function applyCallback(
+  order: Stored,
+  cb: { receipt: string; amount: number; method: OrderPayment['method']; phone: string | null; paymentId?: string; channel?: PaymentChannel },
+): boolean {
   if (usedReceipts.has(cb.receipt)) return false;
   usedReceipts.add(cb.receipt);
+  // The customer's "I've paid" is answered by the money arriving.
+  order.paymentReport = null;
 
   let payment = cb.paymentId ? order.payments.find((p) => p.id === cb.paymentId) : undefined;
   if (payment) {
@@ -210,6 +217,7 @@ function applyCallback(order: Stored, cb: { receipt: string; amount: number; met
       id: `PAY-${randomDigits(8)}`,
       purpose: order.duePurpose ?? 'balance',
       method: cb.method,
+      ...(cb.channel ? { channel: cb.channel } : {}),
       phone: cb.phone,
       amount: cb.amount,
       status: 'confirmed',
@@ -265,7 +273,7 @@ function settle(order: Stored) {
     else failPayment(payment, 'timeout', 'No answer on the phone within a minute.');
   }
   if (order.status === 'awaiting_payment' && order.expiresAt && clock.now() > Date.parse(order.expiresAt)) {
-    setStatus(order, 'expired', `Not paid within ${UNPAID_EXPIRY_HOURS} hours, so the order has expired.`);
+    setStatus(order, 'expired', `Not paid within ${UNPAID_EXPIRY_DAYS} days, so the order has expired.`);
     if (order.reserved) book(bookings, order.reserved.machine, order.reserved.days, -1);
     order.reserved = null;
     order.dueNow = 0;
@@ -324,6 +332,7 @@ export function createOrder(input: OrderInput, newRef: () => string): { ref: str
     dueNow: estimate.dueNow.amount,
     duePurpose: estimate.dueNow.purpose,
     payments: [],
+    paymentReport: null,
     events: [{ at: now, text: 'Order placed.' }],
     notifications: [],
     progress: initialProgress(p, input.quantity),
@@ -445,6 +454,21 @@ export function requestChanges(ref: string, access: OrderAccess, version: number
   proof.decidedAt = iso();
   if (order.progress.kind === 'rounds') order.progress.done = Math.min(order.progress.total + 5, order.progress.done + 1);
   setStatus(order, 'in_design', `Changes requested on proof v${version}${pins.length ? ` (${pins.length} pinned note${pins.length === 1 ? '' : 's'})` : ''}.`);
+  return publicCopy(order);
+}
+
+/** Payments by hand: the customer's M-Pesa code, for staff to check (as the backend's payreport.js). */
+export function reportPayment(ref: string, access: OrderAccess, rawCode: string, amount: number | null): Order {
+  const order = find(ref, access);
+  settle(order);
+  if (!['awaiting_payment', 'awaiting_balance'].includes(order.status) || order.dueNow <= 0) throw new OrderError('invalid_state', 'Nothing is due on this order right now.');
+  const code = reportedReference(rawCode);
+  if (!code) throw new OrderError('invalid', 'Enter the code from your M-Pesa message, like TJK4XY12AB.');
+  if (amount !== null && (!Number.isInteger(amount) || amount < 1 || amount > 10_000_000)) throw new OrderError('invalid', 'Enter the amount you paid in shillings, like 14250.');
+  if (order.paymentReport?.code === code) throw new OrderError('invalid_state', 'We already have that code; we’re checking it.');
+  order.paymentReport = { code, amount, at: iso() };
+  event(order, `You told us you paid${amount === null ? '' : ` KES ${amount.toLocaleString('en-KE')}`} (reference ${code}). We’re checking it.`);
+  notify(order, `Thank you. We’ve got your payment reference ${code} for ${order.ref} and we’re checking it; we’ll confirm as soon as it’s in.`);
   return publicCopy(order);
 }
 
@@ -677,6 +701,16 @@ export const mockStaff = {
     if (!order) throw new OrderError('not_found', 'No such order.');
     const { route, credited } = receiveC2B(c2b({ receipt, amount, msisdn: order.customer.phone, billRef: invoiceIssuer.paybillAccount(ref) }));
     return route.kind === 'matched' && credited;
+  },
+  /**
+   * A designer records a payment by hand (payments by hand, 21 Oct 2026): the customer's reported
+   * code if there is one, else a new one. Returns whether it credited the order.
+   */
+  recordPayment(ref: string, amount: number, channel: PaymentChannel = 'mpesa'): boolean {
+    const order = orders.get(ref);
+    if (!order) throw new OrderError('not_found', 'No such order.');
+    const receipt = channel === 'cash' ? `CASH-${randomDigits(8)}` : (order.paymentReport?.code ?? newReceipt());
+    return applyCallback(order, { receipt, amount, method: 'manual', phone: null, channel });
   },
   /** A Paybill payment with only the bank account typed: routed by phone and exact amount, if it can be. */
   paybillWithoutReference(ref: string, amount: number): C2BRoute {

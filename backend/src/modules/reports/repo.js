@@ -50,8 +50,8 @@ export async function invoices(db, from, to) {
 export async function payments(db, from, to) {
   const { rows } = await db.query(
     `SELECT p.receipt_no, ${nairobiDay('p.created_at')}::text AS day, p.created_at, o.order_no, o.customer_name,
-            p.method, p.mpesa_receipt, p.purpose, p.amount
-     FROM payments p JOIN orders o ON o.id = p.order_id
+            p.method, p.channel, p.mpesa_receipt, p.purpose, p.amount, s.name AS recorded_by
+     FROM payments p JOIN orders o ON o.id = p.order_id LEFT JOIN staff_users s ON s.id = p.recorded_by
      WHERE ${nairobiDay('p.created_at')} BETWEEN $1 AND $2
      ORDER BY p.created_at, p.id`,
     [from, to],
@@ -163,7 +163,7 @@ export async function statementOf(db, email) {
   );
   const ids = orders.rows.map((r) => r.id);
   const payments = ids.length
-    ? await db.query('SELECT order_id, method, mpesa_receipt, receipt_no, amount, created_at FROM payments WHERE order_id = ANY($1) ORDER BY created_at, id', [ids])
+    ? await db.query('SELECT order_id, method, channel, mpesa_receipt, receipt_no, amount, created_at FROM payments WHERE order_id = ANY($1) ORDER BY created_at, id', [ids])
     : { rows: [] };
   return { orders: orders.rows, payments: payments.rows };
 }

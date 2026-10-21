@@ -1,6 +1,6 @@
 // @ts-check
 import { AppError } from '../../lib/errors.js';
-import { findNotification, markAttempt, markSent, pendingBefore } from './repo.js';
+import { findNotification, markAttempt, markSent, markSkipped, pendingBefore } from './repo.js';
 import { subjectFor } from './templates.js';
 
 /**
@@ -39,6 +39,11 @@ export async function sendNotification(deps, id, now = new Date()) {
   if (!pool || !whatsapp || !mailer) throw new AppError(503, 'unavailable', 'Messages are unavailable.');
   const n = await findNotification(pool, id);
   if (!n || n.status !== 'pending') return 'skipped';
+  // No WhatsApp Business account yet: the email to the same customer carries the message.
+  if (n.channel === 'whatsapp' && whatsapp.mode === 'off') {
+    await markSkipped(pool, id, now);
+    return 'skipped';
+  }
   try {
     if (n.channel === 'whatsapp') await whatsapp.send({ to: n.recipient, template: n.template, text: n.payload.text });
     else await mailer.send({ to: n.recipient, subject: subjectFor(n.template, n.payload), text: emailBody(n.payload.text) });

@@ -110,6 +110,9 @@ export const mockApi: SiteApi = {
   async requestChanges(ref, access, version, comments, pins) {
     return orderMock.requestChanges(ref, access, version, comments, pins);
   },
+  async reportPayment(ref, access, code, amount) {
+    return orderMock.reportPayment(ref, access, code, amount);
+  },
   async reviewSample(ref, access, decision, comments) {
     return orderMock.reviewSample(ref, access, decision, comments);
   },

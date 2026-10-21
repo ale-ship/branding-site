@@ -108,14 +108,25 @@ export async function receiptSeen(db, mpesaReceipt) {
 }
 
 /**
+ * The order a receipt (M-Pesa code or bank reference) was recorded against, if it was.
+ * @param {Db} db
+ * @param {string} mpesaReceipt
+ * @returns {Promise<string | null>}
+ */
+export async function orderOfReceipt(db, mpesaReceipt) {
+  const { rows } = await db.query('SELECT o.order_no FROM payments p JOIN orders o ON o.id = p.order_id WHERE p.mpesa_receipt = $1', [mpesaReceipt]);
+  return rows[0]?.order_no ?? null;
+}
+
+/**
  * @param {Db} trx
- * @param {{ publicId: string; orderId: number; requestId: number | null; purpose: string; method: string; phone: string | null; amount: number; mpesaReceipt: string; receiptNo: string; raw: unknown; at: Date }} p
+ * @param {{ publicId: string; orderId: number; requestId: number | null; purpose: string; method: string; phone: string | null; amount: number; mpesaReceipt: string; receiptNo: string; raw: unknown; at: Date; channel?: string; recordedBy?: number }} p
  */
 export async function insertPayment(trx, p) {
   await trx.query(
-    `INSERT INTO payments (public_id, order_id, request_id, purpose, method, phone, amount, mpesa_receipt, receipt_no, raw, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [p.publicId, p.orderId, p.requestId, p.purpose, p.method, p.phone, p.amount, p.mpesaReceipt, p.receiptNo, json(p.raw), p.at],
+    `INSERT INTO payments (public_id, order_id, request_id, purpose, method, phone, amount, mpesa_receipt, receipt_no, raw, created_at, channel, recorded_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    [p.publicId, p.orderId, p.requestId, p.purpose, p.method, p.phone, p.amount, p.mpesaReceipt, p.receiptNo, json(p.raw), p.at, p.channel ?? null, p.recordedBy ?? null],
   );
 }
 

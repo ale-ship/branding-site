@@ -535,3 +535,4 @@ legend { font-weight: 650; color: var(--ink); font-size: 0.9rem; margin-bottom: 
 @media (min-width: 900px) { .request-row { grid-template-columns: minmax(0, 1fr) auto auto; } }
 .stack { display: grid; gap: 1rem; align-content: start; }
 .pre { white-space: pre-wrap; }
+.nowrap { white-space: nowrap; }

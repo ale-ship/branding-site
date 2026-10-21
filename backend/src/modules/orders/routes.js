@@ -1,7 +1,7 @@
 // @ts-check
 import { Router } from 'express';
 import { rateLimit } from '../../middleware/rateLimit.js';
-import { getOrderHandler, postAcceptQuote, postEarlyDelivery, postInstall, postLookup, postOrder, postSampleReview, postSurvey } from './controller.js';
+import { getOrderHandler, postAcceptQuote, postEarlyDelivery, postInstall, postLookup, postOrder, postPaymentReport, postSampleReview, postSurvey } from './controller.js';
 
 /**
  * /api/orders, with the limits in section 8.1 (per visitor: the site passes their address along).
@@ -19,5 +19,7 @@ export function orderRoutes(deps) {
   router.post('/:no/survey', steps, postSurvey(deps));
   router.post('/:no/quote/accept', steps, postAcceptQuote(deps));
   router.post('/:no/install', steps, postInstall(deps));
+  // Payments by hand: the customer's M-Pesa code, for staff to check and record.
+  router.post('/:no/payment-report', steps, postPaymentReport(deps));
   return router;
 }

@@ -50,6 +50,10 @@ function needAll(deps) {
  * @returns {Promise<OrderPayment>}
  */
 export async function startStk(deps, ref, access, phone, now = new Date()) {
+  // Until the prompt is connected, customers pay to the Paybill and staff record it (PAYMENTS_MODE).
+  if ((deps.config?.payments ?? 'manual') === 'manual') {
+    throw new OrderError('invalid_state', 'Pay to the Paybill on your order page, then tell us your M-Pesa code there.');
+  }
   const { pool, redis, jobs, absa } = needAll(deps);
   const order = await findOrderFor(deps, ref, access, now);
   if (!['awaiting_payment', 'awaiting_balance'].includes(order.status) || order.due_now <= 0) {

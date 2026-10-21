@@ -60,7 +60,7 @@ export const statementFrom = (orders, payments) =>
       company: o.company_po ? { poNumber: o.company_po } : null,
       payments: payments
         .filter((p) => p.order_id === o.id)
-        .map((p) => ({ status: 'confirmed', settledAt: new Date(p.created_at).toISOString(), receiptNo: p.receipt_no, method: p.method, mpesaReceipt: p.mpesa_receipt, amount: p.amount })),
+        .map((p) => ({ status: 'confirmed', settledAt: new Date(p.created_at).toISOString(), receiptNo: p.receipt_no, method: p.method, channel: p.channel ?? undefined, mpesaReceipt: p.mpesa_receipt, amount: p.amount })),
     })),
   );
 

@@ -138,7 +138,7 @@ describe.skipIf(!dbUrl)('orders (B2)', () => {
     });
     expect(res.body.events.map((e) => e.text)).toEqual(['Order placed.']);
     expect(res.body.notifications.map((n) => n.channel)).toEqual(['whatsapp', 'email']);
-    expect(Date.parse(res.body.expiresAt) - Date.parse(res.body.createdAt)).toBe(48 * 3_600_000);
+    expect(Date.parse(res.body.expiresAt) - Date.parse(res.body.createdAt)).toBe(7 * 24 * 3_600_000);
     expect(res.body).not.toHaveProperty('token');
     expect(res.body).not.toHaveProperty('token_hash');
   });
@@ -192,14 +192,14 @@ describe.skipIf(!dbUrl)('orders (B2)', () => {
     expect(paths).toEqual(expect.arrayContaining(['quantity', 'customer.name']));
   });
 
-  it('expires an unpaid order after 48 hours and lets go of its machine time', async () => {
-    const placedAt = new Date(Date.now() - 49 * 3_600_000);
+  it('expires an unpaid order after 7 days and lets go of its machine time', async () => {
+    const placedAt = new Date(Date.now() - (7 * 24 + 1) * 3_600_000);
     const { ref, token } = await createOrder({ pool, redis: null, logger }, order(), placedAt);
     expect(Number((await knex('capacity_bookings').count({ n: '*' }).first()).n)).toBeGreaterThan(0);
 
     const res = await read(ref, token);
     expect(res.body).toMatchObject({ status: 'expired', dueNow: 0, duePurpose: null });
-    expect(res.body.events.at(-1).text).toBe('Not paid within 48 hours, so the order has expired.');
+    expect(res.body.events.at(-1).text).toBe('Not paid within 7 days, so the order has expired.');
     expect(await knex('capacity_bookings').count({ n: '*' }).first()).toEqual({ n: '0' });
 
     // Reading it again changes nothing, and the sweep finds nothing left to expire.
@@ -210,8 +210,8 @@ describe.skipIf(!dbUrl)('orders (B2)', () => {
 
   it('sweeps unpaid orders nobody opened, and leaves younger ones alone', async () => {
     const deps = { pool, redis: null, logger };
-    await createOrder(deps, order(), new Date(Date.now() - 50 * 3_600_000));
-    await createOrder(deps, order(), new Date(Date.now() - 49 * 3_600_000));
+    await createOrder(deps, order(), new Date(Date.now() - (7 * 24 + 2) * 3_600_000));
+    await createOrder(deps, order(), new Date(Date.now() - (7 * 24 + 1) * 3_600_000));
     await createOrder(deps, order());
     expect(await expireUnpaid({ pool })).toBe(2);
     expect(await knex('orders').where({ status: 'awaiting_payment' }).count({ n: '*' }).first()).toEqual({ n: '1' });

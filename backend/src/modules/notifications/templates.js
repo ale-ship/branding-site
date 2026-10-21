@@ -59,6 +59,12 @@ export function subjectFor(template, payload) {
       return `We’ve got your request ${ref}`;
     case 'payment-received':
       return `Payment received for ${ref}${payload.receiptNo ? `, receipt ${payload.receiptNo}` : ''}`;
+    case 'payment-reported':
+      return `We’re checking your payment for ${ref}`;
+    case 'payment-check':
+      return `Payment to check: ${ref}`;
+    case 'payment-not-found':
+      return `We couldn’t find your payment for ${ref}`;
     default:
       return `Your order ${ref}`;
   }

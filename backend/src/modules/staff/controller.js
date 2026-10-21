@@ -1,7 +1,7 @@
 // @ts-check
 import { z } from 'zod';
 import { STAFF_COOKIE, staffOf, staffToken } from '../../middleware/staffAuth.js';
-import { addStaff, listStaff, ROLES, SESSION_DAYS, signIn, signOut, updateStaff } from './service.js';
+import { activity, addStaff, listStaff, ROLES, SESSION_DAYS, signIn, signOut, updateStaff } from './service.js';
 
 /**
  * Staff sign-in and staff accounts over HTTP. The cookie is httpOnly, SameSite=Strict, Secure in
@@ -81,4 +81,16 @@ export const postUser = (deps) => async (req, res) => {
 export const patchUser = (deps) => async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
   res.json({ user: await updateStaff(deps, staffOf(req), id, changeSchema.parse(req.body)) });
+};
+
+const activityQuery = z.object({ staff: z.coerce.number().int().positive().optional(), before: z.coerce.number().int().positive().optional() });
+
+/**
+ * GET /api/staff/activity?staff=&before= (admin): who did what, newest first.
+ * @param {Deps} deps
+ * @returns {import('express').RequestHandler}
+ */
+export const getActivity = (deps) => async (req, res) => {
+  const q = activityQuery.parse(req.query);
+  res.set('Cache-Control', 'no-store').json(await activity(deps, { staffId: q.staff, before: q.before }));
 };

@@ -4,13 +4,19 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { demoAction, type DemoAction } from '@/app/order/actions';
 import type { Order } from '@/lib/api/order-types';
+import { paymentsMode } from '@/lib/site';
+
+const due = (s: Order['status']) => s === 'awaiting_payment' || s === 'awaiting_balance';
+/** Payments by hand: a designer records the payment; there's no prompt or Paybill callback to play. */
+const manual = paymentsMode === 'manual';
 
 const ACTIONS: { action: DemoAction; label: string; when: (s: Order['status'], o: Order) => boolean }[] = [
-  { action: 'paybill-full', label: 'M-Pesa: Paybill payment of what’s due', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
-  { action: 'paybill-part', label: 'M-Pesa: Paybill part payment', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
-  { action: 'paybill-no-ref', label: 'M-Pesa: Paybill without the order number', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
-  { action: 'skip-wait', label: 'Skip the 60 s phone wait', when: (s) => s === 'awaiting_payment' || s === 'awaiting_balance' },
-  { action: 'repeat-callback', label: 'M-Pesa: send the last callback again', when: () => true },
+  { action: 'record-payment', label: 'Staff: record the payment of what’s due', when: (s) => manual && due(s) },
+  { action: 'paybill-full', label: 'M-Pesa: Paybill payment of what’s due', when: (s) => !manual && due(s) },
+  { action: 'paybill-part', label: 'M-Pesa: Paybill part payment', when: (s) => !manual && due(s) },
+  { action: 'paybill-no-ref', label: 'M-Pesa: Paybill without the order number', when: (s) => !manual && due(s) },
+  { action: 'skip-wait', label: 'Skip the 60 s phone wait', when: (s) => !manual && due(s) },
+  { action: 'repeat-callback', label: 'M-Pesa: send the last callback again', when: () => !manual },
   { action: 'complete-survey', label: 'Staff: survey done, send the firm quote', when: (s, o) => s === 'in_design' && o.mechanism === 'B' && !!o.survey?.booked && !o.siteQuote },
   { action: 'upload-proof', label: 'Staff: upload a proof', when: (s, o) => s === 'in_design' && (o.mechanism !== 'B' || o.siteQuote?.status === 'accepted') },
   { action: 'approve-proof', label: 'Customer: approve the proof', when: (s) => s === 'awaiting_approval' },

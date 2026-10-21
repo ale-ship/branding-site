@@ -184,7 +184,12 @@ export type OrderStatus =
   | 'on_hold'
   | 'cancelled';
 
-export type PaymentMethod = 'stk' | 'paybill';
+/** `manual`: paid without a prompt and recorded by staff in the back office (owner, 21 Oct 2026). */
+export type PaymentMethod = 'stk' | 'paybill' | 'manual';
+/** How a payment recorded by staff was made. */
+export type PaymentChannel = 'mpesa' | 'bank' | 'cash';
+/** The customer saying they've paid, with their M-Pesa or bank reference, for staff to check. */
+export type PaymentReport = { code: string; amount: number | null; at: string };
 export type PaymentStatus = 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'timeout';
 
 export type OrderPayment = {
@@ -194,7 +199,9 @@ export type OrderPayment = {
   phone: string | null;
   amount: number;
   status: PaymentStatus;
-  /** M-Pesa receipt, unique: a repeated callback can never credit twice. */
+  /** For a payment staff recorded: M-Pesa, bank or cash. */
+  channel?: PaymentChannel;
+  /** M-Pesa receipt (or the bank reference), unique: the same payment can never credit twice. */
   mpesaReceipt: string | null;
   /** Noorcom's own receipt number (RCT00001…), given when the payment is confirmed. */
   receiptNo: string | null;
@@ -323,7 +330,7 @@ export type Order = {
   ref: string;
   invoiceNo: string;
   createdAt: string;
-  /** Unpaid orders expire (48 h); null once paid. */
+  /** Unpaid orders expire (UNPAID_EXPIRY_DAYS); null once paid. */
   expiresAt: string | null;
   status: OrderStatus;
   mechanism: Mechanism;
@@ -346,6 +353,8 @@ export type Order = {
   dueNow: number;
   duePurpose: PaymentPurpose | null;
   payments: OrderPayment[];
+  /** The customer said they've paid; staff haven't recorded it yet. */
+  paymentReport: PaymentReport | null;
   events: OrderEvent[];
   notifications: OrderNotification[];
   progress: OrderProgress;

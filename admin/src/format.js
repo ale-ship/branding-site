@@ -49,6 +49,7 @@ export const columnOf = {
 export const ATTENTION = {
   'paid-after-close': 'Paid after it closed',
   'refund-due': 'Refund due',
+  'payment-reported': 'Payment to check',
 };
 
 /** Two roles (owner, 8 Oct 2026): the admin, and the designers, who also run the front desk, production and handover. */

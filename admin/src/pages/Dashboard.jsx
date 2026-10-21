@@ -85,7 +85,7 @@ export function Dashboard({ me, onAuthLost }) {
           <div className="card-head">
             <div>
               <h2 id="revenue-title">Money received</h2>
-              <p>Last 30 days, by M-Pesa prompt and Paybill</p>
+              <p>Last 30 days, every payment however it came</p>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div className="stat-value num" style={{ fontSize: '1.25rem' }}>

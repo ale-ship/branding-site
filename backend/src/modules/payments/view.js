@@ -34,7 +34,7 @@ export function toPayment(r, p) {
 }
 
 /**
- * Money that came without a prompt (Paybill).
+ * Money that came without a prompt (Paybill, or recorded by staff).
  * @param {Row} p
  * @returns {OrderPayment}
  */
@@ -43,6 +43,7 @@ export function toPaybillPayment(p) {
     id: p.public_id,
     purpose: p.purpose,
     method: p.method,
+    ...(p.channel ? { channel: p.channel } : {}),
     phone: p.phone,
     amount: p.amount,
     status: 'confirmed',

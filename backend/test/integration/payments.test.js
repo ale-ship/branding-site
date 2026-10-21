@@ -25,7 +25,7 @@ import { queryStk } from '../../src/modules/payments/service.js';
  * handlers the worker uses; a Map stands in for Redis.
  */
 const dbUrl = process.env.TEST_DATABASE_URL;
-const config = parseConfig({ NODE_ENV: 'test' });
+const config = parseConfig({ NODE_ENV: 'test', PAYMENTS_MODE: 'prompt' });
 const logger = createLogger({ env: 'test' });
 const SECRET = config.absa.secret;
 

@@ -1,11 +1,12 @@
 # Noorcom Branding Backend Runbook
 
-Last updated 13 Oct 2026. The design of the backend behind the website: the stack, the file layout,
+Last updated 21 Oct 2026. The design of the backend behind the website: the stack, the file layout,
 the database, the API, the payment flows and the order to build it in. **Steps B0 to B4 and most of
 B5 are built** (section 13: the skeleton and `shared/`, the catalogue and price, orders, payments
 against the fakes, the staff back office with proofs, reports, the website editor and the price
 manager, customer accounts, the requests inbox, and every step of an order: samples, early
-deliveries, site jobs and design-only files). Every `SiteApi` method is on the API in live mode; the
+deliveries, site jobs and design-only files), and, until Absa's prompt is connected, payments
+recorded by hand (section 6, "By hand"). Every `SiteApi` method is on the API in live mode; the
 rest is the plan to build from. Sections 4 to
 12 mark what is built (✓ or "built") and what is still planned. Read
 `docs/RUNBOOK.md` (the site) and `docs/ORDER_WORKFLOW_SPEC.md` (the order workflow) first.
@@ -118,7 +119,8 @@ one small real transaction on staging.
 | Absa STK Push and status query | `ABSA_MODE` | Accepted, then about 6 s later an Absa-shaped callback goes through the real callback route, store and ledger. Phone ending `0`: cancelled. `1`: no callback (exercises the status query). `2`: failed. Anything else: paid (the same rule as the site's mock) |
 | Absa C2B | `ABSA_MODE` | `POST /api/dev/c2b` (fake mode only) posts an Absa-shaped confirmation through the real route, so routing, the unmatched queue and receipts are tested end to end |
 | Daraja (fallback) | `DARAJA_MODE` | As Absa |
-| WhatsApp | `WHATSAPP_MODE` | Messages written as JSON to `WHATSAPP_OUTBOX_DIR` |
+| WhatsApp | `WHATSAPP_MODE` | Messages written as JSON to `WHATSAPP_OUTBOX_DIR`. `off` (no WhatsApp Business account yet): WhatsApp messages are marked `skipped` and left off the order page; the email still goes |
+| How customers pay | `PAYMENTS_MODE` | `manual` (the default, owner 21 Oct 2026): no prompt; customers pay to the Paybill and a designer records it (section 6). `prompt`: the M-Pesa prompt through Absa. With `manual`, Absa's and Daraja's fakes can't answer for anyone, so they don't stop the live site starting |
 | Email | `SMTP_HOST` empty | Messages written as `.eml` files to `.mail-outbox/` (`MAIL_OUTBOX_DIR`), including customers' sign-in codes: **the live site needs `SMTP_HOST`, or nobody can sign in** |
 | Files (R2) | `STORAGE_MODE` | Files kept on disk under `.storage/` with the same signed-URL interface |
 
@@ -299,6 +301,7 @@ the VPS work.
 | 010 ✓ | shop photos | Data only: the owner's photos of eight shop products (13 Oct 2026) replace the placeholders on the shop's products, the order form's matching products and five order categories, only where the old placeholder is still there (a photo staff chose stays) |
 | 012 ✓ | requests (B5) | `requests`: the site's quote requests (NQ-) and contact messages (NM-) as sent, who they're from, status (new, in progress, closed), the staff note and who handled it |
 | 013 ✓ | order steps (B5) | Orders gain `site_quote` (the firm quote), `install_date` and `early_deliveries`; `order_files` (a design-only order's final files and a sample's photo: name, storage key, size, type, who uploaded) |
+| 014 ✓ | payments by hand | `payments.method` gains `manual`, with `channel` (mpesa, bank, cash) and `recorded_by` (the staff member; both set exactly when the method is manual); `orders.payment_report` (the customer's "I've paid" code); notifications gain the status `skipped` (WhatsApp off) |
 | 011 ✓ | home photos | Data only, the same way: the owner's mock-ups on the home page (the workshop band, three "behind the scenes" photos), the seven services' photos and three featured sample projects' covers |
 
 Planned (from the original design; they take the next free numbers when built):
@@ -318,7 +321,26 @@ change has `updated_at` and an `audit_log` row.
 
 ## 6. Payments: the two flows
 
-### STK Push (the default)
+### By hand (`PAYMENTS_MODE=manual`, the default until Absa is connected; owner, 21 Oct 2026)
+
+1. The order page shows no prompt: the Paybill (303030), the account number with the order number,
+   the amount, a **Send my order on WhatsApp** button (the whole order, price and payment details in
+   the message, `src/lib/order-message.ts`) and a call button. `POST /api/payments/stk` answers 409.
+2. The customer can send their M-Pesa code: `POST /api/orders/:no/payment-report { code, amount }`
+   (`orders/payreport.js`). It flags the order `payment-reported`, stores the code, emails staff at
+   `STAFF_INBOX` and thanks the customer. **The order doesn't move.**
+3. A designer, signed in as themselves, checks the money on the Paybill statement and records it:
+   `POST /api/staff/orders/:no/payments { amount, channel, reference, paidOn }`
+   (`backoffice/payments.service.js`). M-Pesa codes are ten letters and digits; bank references get
+   a `BANK-` prefix; cash gets a `CASH-` one. It goes through `ledger.record()` like a callback
+   (receipt number, status, the customer's email), clears the report and is audited
+   (`payment-recorded`, with who). A reference already recorded is refused, naming its order.
+4. A code staff can't find: **Couldn't find it** (`attention/clear`) clears the report and asks the
+   customer to check the code.
+5. The admin's **Activity** page (`GET /api/staff/activity`, admin only) lists every staff action,
+   sign-ins included, by person. The payments report shows how each payment came and who recorded it.
+
+### STK Push (`PAYMENTS_MODE=prompt`)
 
 1. The site's pay panel calls `startPayment` → `POST /api/payments/stk { orderNo, phone }`.
 2. `stk.service.js` checks something is due and no prompt is pending, writes a `payment_requests`
@@ -392,6 +414,7 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | `priceEstimate` | `POST /api/quotes/price` | shared/rules/pricing.js |
 | `createOrder` | `POST /api/orders` | Re-validates, re-prices, opens the order; returns number + secret token |
 | `getOrder` | `GET /api/orders/:no` | The secret token in the `X-Order-Token` header, never in the URL |
+| `reportPayment` | `POST /api/orders/:no/payment-report` | Payments by hand: `{ code, amount }`; flags the order for staff, never moves it |
 | (order lookup) | `POST /api/orders/lookup` | Order number + phone; rate limited |
 | `startPayment` | `POST /api/payments/stk` | `{ ref, phone }`, the order's token in `X-Order-Token` or its phone in `X-Order-Phone`; one pending prompt per order |
 | (fake mode only) | `POST /api/dev/c2b` | A made-up Paybill confirmation through the real path: `{ ref, amount }`, or `billRef` and `phone`; never mounted in production |
@@ -417,7 +440,7 @@ If Noorcom is VAT-registered, eTIMS invoices become a later step (spec open ques
 | (documents) | `GET /api/orders/:no/invoice.pdf`, `/receipts/:receiptNo.pdf` | Signed, short-lived links |
 | (uploads) | `POST /api/uploads` | Presigned PUT to R2 |
 | `submitQuote`, `sendMessage` | `POST /api/requests/quote`, `/contact` | Built (B5): stored as NQ- or NM-, staff emailed at `STAFF_INBOX`, the customer acknowledged; staff answer them in the back office's Requests (`/api/staff/requests`) |
-| (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`; `dashboard`; `products` (the price manager, admin: minimum, tiers, on sale); `reports/:kind` and `accounts`, `accounts/statement` (admin; `?format=pdf` or `csv` downloads); `content` and `media` (the website editor). Role-checked; changes need `X-Requested-With: nb-admin` |
+| (staff) | `/api/staff/*` | Built at B4: `auth/sign-in`, `auth/sign-out`, `me`, `users` (admin); `orders` (the board), `orders/:no`, and its steps `progress`, `ready`, `dispatch`, `handover`, `cancel`, `attention/clear`, `proofs` (upload; the image as the body); `payments/unmatched` with `assign` and `refund`; `orders/:no/payments` (a payment recorded by hand, designers and admin); `activity` (admin: who did what); `dashboard`; `products` (the price manager, admin: minimum, tiers, on sale); `reports/:kind` and `accounts`, `accounts/statement` (admin; `?format=pdf` or `csv` downloads); `content` and `media` (the website editor). Role-checked; changes need `X-Requested-With: nb-admin` |
 | (files) | `GET /api/files/<key>?exp&sig` | Stored files (proofs) behind links signed for an hour (`lib/signedUrl.js`) |
 
 ### 8.1 Rate limits
@@ -488,17 +511,19 @@ from Nairobi, so put Cloudflare in front at the DNS cutover (an African edge) fo
 
 ## 11. Environment (`/etc/noorcom-branding/api.env`)
 
-`NODE_ENV`, `PORT=4300`, `PUBLIC_URL`, `DATABASE_URL`, `REDIS_URL` (user `nb`),
-`ABSA_MODE`, `DARAJA_MODE`, `WHATSAPP_MODE`, `WHATSAPP_OUTBOX_DIR`, `STORAGE_MODE`,
+`NODE_ENV`, `PORT=4300`, `PUBLIC_URL`, `DATABASE_URL`, `REDIS_URL` (user `nb`), `PAYMENTS_MODE`
+(`manual` until Absa is connected), `ABSA_MODE`, `DARAJA_MODE`, `WHATSAPP_MODE` (`off` until there's
+a WhatsApp Business account), `WHATSAPP_OUTBOX_DIR`, `STORAGE_MODE`,
 `ABSA_BASE_URL`, `ABSA_CLIENT_ID`, `ABSA_CLIENT_SECRET`, `ABSA_STK_SHORTCODE`, `ABSA_PAYBILL=303030`,
 `ABSA_ACCOUNT=2055268420`, `ABSA_CALLBACK_SECRET`, `ABSA_ALLOWED_IPS`, `DARAJA_*` (fallback),
 `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `SMTP_HOST`, `SMTP_PORT`,
 `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
 `WHATSAPP_TEMPLATE_NAMESPACE`, `REVALIDATE_SECRET`. The site gains `API_INTERNAL_URL=http://127.0.0.1:4300`,
-`NEXT_PUBLIC_API_MODE=live` and the same `REVALIDATE_SECRET` (section 12).
+`NEXT_PUBLIC_API_MODE=live`, the same `REVALIDATE_SECRET` (section 12) and, only with the prompt,
+`NEXT_PUBLIC_PAYMENTS_MODE=prompt`.
 
 Read today (B3; `backend/.env.example` has each with a note): the database and Redis URLs,
-`PUBLIC_URL`, the four modes, `ABSA_CALLBACK_SECRET` (24+ characters, required in production),
+`PUBLIC_URL`, the four modes and `PAYMENTS_MODE`, `ABSA_CALLBACK_SECRET` (24+ characters, required in production with `PAYMENTS_MODE=prompt`),
 `ABSA_PAYBILL`, `FAKE_STK_DELAY_MS`, `MAIL_FROM`, `SMTP_*` (email is live when `SMTP_HOST` is
 set), `MAIL_OUTBOX_DIR`, `STAFF_INBOX` (where quote requests and messages go; B5) and `WHATSAPP_OUTBOX_DIR`; from B4, `FILES_SECRET` (24+ characters,
 required in production) and `STORAGE_DIR` (the fake storage's folder); with the website editor,
@@ -937,6 +962,31 @@ live mode, the back office, the API and the worker); what didn't work was fixed 
   proof, stages, installation date, sign-off and balance (KES 30,030 paid of 30,030); a design-only
   order's two final files sent and downloaded; a 250-piece run's sample approved and 60 pieces
   delivered early. axe found nothing on any new screen.
+
+### Payments by hand, done 21 Oct 2026
+
+The owner's call: Absa's prompt isn't connected yet, so customers pay by hand and the two designers
+record it, each with their own account, the admin watching (section 6, "By hand").
+
+- **Settings:** `PAYMENTS_MODE` (`manual` by default; `prompt` brings the prompt back, nothing of it
+  was removed) and `WHATSAPP_MODE=off`. The live site can now start with manual payments, WhatsApp
+  off and SMTP set. Unpaid orders expire after **7 days** (`UNPAID_EXPIRY_DAYS`), not 48 hours.
+- **Migration 014**, `shared/rules/manual-payment.js` (codes and channels, shared with the site),
+  `orders/payreport.js`, `backoffice/payments.service.js` and its controller, the Activity endpoint
+  in `staff/`, the payments report's channel and "Recorded by" columns.
+- **Site:** `ManualPayPanel` replaces the prompt (`NEXT_PUBLIC_PAYMENTS_MODE`, `src/lib/site.ts`);
+  `SiteApi.reportPayment`; receipts and statements say M-Pesa, bank transfer or cash. The mock does
+  the same, with a demo button for "Staff: record the payment".
+- **Back office:** the order page's **Record** panel (the customer's code filled in, a confirmation
+  before saving, **Couldn't find it**), the "Payment to check" flag on the board and dashboard, and
+  **Settings → Activity** for the admin.
+- **Tests:** `manual-payments.test.js` (report, record, duplicates, bank and cash, part payments,
+  not found, Activity, WhatsApp off), the config test, the site's mock, live and message tests.
+  137 backend tests, 234 for the site.
+- **Checked in browsers:** an order on the site in live mode, the WhatsApp message read back, the code
+  sent, a designer recording it in the back office (the order went to In design with its RCT
+  receipt), the admin's Activity showing the designer, the receipt page. axe found nothing on the
+  new screens.
 
 ### Setting up Postgres and Redis on a development machine
 

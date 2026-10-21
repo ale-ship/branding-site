@@ -187,7 +187,9 @@ Collecting the balance **before printing** is the protection against unpaid prin
 
 Use the Absa STK Push and C2B APIs that Noorcom Network is already onboarding for Noorcom Branding, with Safaricom Daraja as the fallback if that onboarding stalls. Every payment is tied to an order through the order number used as the account reference.
 
-**Two ways to pay, both on the checkout page**
+**Until Absa's prompt is connected (owner, 21 Oct 2026): payments by hand.** The order page shows the Paybill details, a "Send my order on WhatsApp" button with the whole order in the message, and a call button; the customer can send their M-Pesa code, which flags the order for staff. A designer checks the money and records it in the back office (amount, M-Pesa, bank or cash, the reference, the date); that, not the customer's word, moves the order, with the same receipt and messages as a callback. Every recording shows who did it on the admin's Activity page. The balance stays due after proof approval, before printing. Unpaid orders expire after 7 days while payments are by hand. `docs/BACKEND_RUNBOOK.md`, section 6, "By hand".
+
+**Two ways to pay, both on the checkout page (once the prompt is connected)**
 
 1. **STK Push (default):** customer enters their phone number, taps Pay, gets the M-Pesa PIN prompt on their phone. The page waits on a "Check your phone" screen and updates when the callback arrives.
 2. **Manual Paybill (fallback):** shows the Paybill number and the order number as the account number. The C2B confirmation callback matches the payment to the order automatically.
@@ -206,7 +208,7 @@ Use the Absa STK Push and C2B APIs that Noorcom Network is already onboarding fo
 - STK timeout (no PIN within about 60 seconds) or a cancel: show "Try again" and the Paybill fallback; keep the order in Awaiting payment.
 - Underpayment via Paybill: record it, show the outstanding balance, do not advance the order.
 - Overpayment: record it as credit on the customer account or flag for refund.
-- Unpaid orders auto-expire after 48 hours (configurable) and release the capacity slot.
+- Unpaid orders auto-expire after 48 hours (configurable) and release the capacity slot. (7 days while payments are recorded by hand.)
 - Corporate clients (LPO / invoice terms) can be marked by staff to skip upfront payment.
 - Generate a receipt PDF and an invoice per payment, and an eTIMS-compliant invoice if Noorcom is VAT-registered (open question).
 
@@ -426,7 +428,7 @@ In this repo these endpoints belong to the separate backend; the Next.js site ne
 - [ ] How many revision rounds per design package.
 **Build phases**
 
-Status: all four phases built on the site (Phase 1 on 5 Oct 2026, Phases 2 to 4 on 6 Oct 2026), with payments, messages and sign-in codes mocked; see `docs/RUNBOOK.md`, "Online ordering". The staff back office (order board, production logging, proofs, unmatched payments, and the admin's reports and customer accounts with PDF and CSV downloads) is built in `admin/` (backend step B4, 8 Oct 2026), with the price manager for minimums and quantity tiers (deadline and delivery fees still in `shared/rules/pricing.js`). Customer accounts, brand kits, reorders, statements and company accounts run on the backend since 9 Oct 2026 (step B5, part 1); quote requests and messages (the staff inbox), the pre-production sample, partial deliveries, site jobs (survey, quote builder, installation, sign-off) and design-only final files since 13 Oct 2026 (part 2). Still to build: the job card, mockups on proofs, customers' file uploads. See `docs/BACKEND_RUNBOOK.md`, section 13.
+Status: all four phases built on the site (Phase 1 on 5 Oct 2026, Phases 2 to 4 on 6 Oct 2026), with payments, messages and sign-in codes mocked; see `docs/RUNBOOK.md`, "Online ordering". The staff back office (order board, production logging, proofs, unmatched payments, and the admin's reports and customer accounts with PDF and CSV downloads) is built in `admin/` (backend step B4, 8 Oct 2026), with the price manager for minimums and quantity tiers (deadline and delivery fees still in `shared/rules/pricing.js`). Customer accounts, brand kits, reorders, statements and company accounts run on the backend since 9 Oct 2026 (step B5, part 1); quote requests and messages (the staff inbox), the pre-production sample, partial deliveries, site jobs (survey, quote builder, installation, sign-off) and design-only final files since 13 Oct 2026 (part 2). Payments by hand (no prompt; designers record what customers pay, the admin sees who did what) since 21 Oct 2026. Still to build: the job card, mockups on proofs, customers' file uploads. See `docs/BACKEND_RUNBOOK.md`, section 13.
 
 1. **Phase 1, core ordering:** category brief forms, live pricing with urgency tiers, guest checkout, STK Push + Paybill, order tracker with statuses, WhatsApp and email confirmations, staff order board.
 2. **Phase 2, proofs and production:** proof upload and approval with pinned comments, balance payment gate, production logger with piece counts, pickup codes and delivery records.

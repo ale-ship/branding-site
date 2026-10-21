@@ -8,8 +8,8 @@ import * as repo from './repo.js';
 
 /**
  * `record()`: THE one way money enters the system (docs/BACKEND_RUNBOOK.md, section 6). Called inside
- * the caller's transaction, by the STK callback, the STK status query, a matched Paybill payment and
- * a staff assignment of an unmatched one:
+ * the caller's transaction, by the STK callback, the STK status query, a matched Paybill payment, a
+ * staff assignment of an unmatched one, and a payment staff record by hand (backoffice/payments):
  *
  *   1. lock the order row;
  *   2. a receipt number seen before changes nothing (the unique column backs this up);
@@ -27,12 +27,14 @@ export const newPaymentId = () => `PAY-${randomInt(10_000_000, 100_000_000)}`;
 /**
  * @typedef {object} Money
  * @property {number} orderId
- * @property {'stk' | 'paybill'} method
+ * @property {'stk' | 'paybill' | 'manual'} method
  * @property {string | null} phone
  * @property {number} amount Whole shillings.
  * @property {string} mpesaReceipt
  * @property {number | null} [requestId] The prompt it answers (STK).
  * @property {unknown} [raw] What the provider sent, kept with the payment.
+ * @property {'mpesa' | 'bank' | 'cash'} [channel] Recorded by hand: how it was paid.
+ * @property {number} [recordedBy] Recorded by hand: the staff member.
  *
  * @typedef {{ recorded: false } | { recorded: true; receiptNo: string; notificationIds: number[] }} Recorded
  */
@@ -79,6 +81,8 @@ export async function record(trx, m, now = new Date()) {
     receiptNo,
     raw: m.raw ?? null,
     at: now,
+    channel: m.channel,
+    recordedBy: m.recordedBy,
   });
   if (m.requestId) await repo.closeRequest(trx, m.requestId, 'confirmed', null, now);
   await repo.updateOrderMoney(trx, m.orderId, applied, now);

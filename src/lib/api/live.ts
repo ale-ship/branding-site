@@ -280,6 +280,9 @@ export const liveApi: SiteApi = {
   },
 
   // B5: the steps after paying. The API checks each against the order's status.
+  async reportPayment(ref, access, code, amount) {
+    return orderStep(ref, access, 'payment-report', { code, amount });
+  },
   async reviewSample(ref, access, decision, comments) {
     return orderStep(ref, access, 'sample', { decision, comments });
   },

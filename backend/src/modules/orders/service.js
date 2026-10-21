@@ -4,7 +4,7 @@ import { normaliseEmail } from '@noorcom-branding/shared/rules/account.js';
 import { addWorkingDays, nairobiToday } from '@noorcom-branding/shared/rules/calendar.js';
 import { allocate, machineFor, MACHINES } from '@noorcom-branding/shared/rules/capacity.js';
 import { normaliseKenyanPhone } from '@noorcom-branding/shared/rules/phone.js';
-import { estimatePrice, UNPAID_EXPIRY_HOURS } from '@noorcom-branding/shared/rules/pricing.js';
+import { estimatePrice, UNPAID_EXPIRY_DAYS, UNPAID_EXPIRY_HOURS } from '@noorcom-branding/shared/rules/pricing.js';
 import { needsSample } from '@noorcom-branding/shared/rules/production.js';
 import { withTransaction } from '../../db/pool.js';
 import { AppError } from '../../lib/errors.js';
@@ -151,7 +151,7 @@ export async function createOrder(deps, input, now = new Date(), { session = '' 
 }
 
 /**
- * Expires unpaid orders past their 48 hours (just one when `orderId` is given) and lets go of their
+ * Expires unpaid orders past their UNPAID_EXPIRY_DAYS (just one when `orderId` is given) and lets go of their
  * machine time. Run on every read of an unpaid order and every 15 minutes by the worker.
  * @param {{ pool: import('pg').Pool | null }} deps
  * @param {Date} [now]
@@ -162,7 +162,7 @@ export async function expireUnpaid(deps, now = new Date(), orderId) {
   return withTransaction(need(deps.pool), async (trx) => {
     const ids = await repo.expireUnpaid(trx, now, orderId);
     await release(trx, ids);
-    for (const id of ids) await repo.insertEvent(trx, id, `Not paid within ${UNPAID_EXPIRY_HOURS} hours, so the order has expired.`, now);
+    for (const id of ids) await repo.insertEvent(trx, id, `Not paid within ${UNPAID_EXPIRY_DAYS} days, so the order has expired.`, now);
     return ids.length;
   });
 }

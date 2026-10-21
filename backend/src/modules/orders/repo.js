@@ -104,9 +104,9 @@ export async function findByOrderNo(db, orderNo, { lock = false } = {}) {
 export async function historyOf(db, orderId) {
   const [events, notifications, requests, payments, logs, proofs, files] = await Promise.all([
     db.query('SELECT text, at FROM order_events WHERE order_id = $1 ORDER BY id', [orderId]),
-    db.query('SELECT channel, recipient, payload, created_at FROM notifications WHERE order_id = $1 ORDER BY id', [orderId]),
+    db.query("SELECT channel, recipient, payload, created_at FROM notifications WHERE order_id = $1 AND status <> 'skipped' ORDER BY id", [orderId]),
     db.query('SELECT * FROM payment_requests WHERE order_id = $1 ORDER BY id', [orderId]),
-    db.query('SELECT id, public_id, request_id, purpose, method, phone, amount, mpesa_receipt, receipt_no, created_at FROM payments WHERE order_id = $1 ORDER BY id', [orderId]),
+    db.query('SELECT id, public_id, request_id, purpose, method, phone, amount, mpesa_receipt, receipt_no, channel, created_at FROM payments WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT pieces, note, at FROM production_logs WHERE order_id = $1 ORDER BY id', [orderId]),
     db.query('SELECT version, status, note, comments, pins, file_key, mockup_key, uploaded_at, decided_at FROM proofs WHERE order_id = $1 ORDER BY version', [orderId]),
     db.query("SELECT id, name, file_key, size, type, created_at FROM order_files WHERE order_id = $1 AND kind = 'final' ORDER BY id", [orderId]),

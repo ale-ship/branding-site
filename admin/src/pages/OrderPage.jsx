@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { ATTENTION, day, kes, when } from '../format.js';
 import { PageHead, StatusPill } from '../ui.jsx';
+import { RecordPayment } from './RecordPayment.jsx';
 import { Steps } from './Steps.jsx';
 
 /**
@@ -156,6 +157,7 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
               </dd>
             </dl>
           </section>
+          <RecordPayment order={o} attention={extra.attention} act={act} />
           <section className="panel" aria-labelledby="money-title">
             <h2 id="money-title">Money</h2>
             <dl className="facts">
@@ -176,7 +178,7 @@ export function OrderPage({ orderRef, staff, onAuthLost }) {
               <ul className="timeline">
                 {o.payments.map((p) => (
                   <li key={p.id}>
-                    {kes(p.amount)} by {p.method === 'stk' ? 'M-Pesa prompt' : 'Paybill'} · {p.status}
+                    {kes(p.amount)} by {p.method === 'stk' ? 'M-Pesa prompt' : p.method === 'manual' ? `${CHANNEL[p.channel] ?? p.channel}, recorded by staff` : 'Paybill'} · {p.status}
                     {p.receiptNo ? ` · ${p.receiptNo}` : ''}
                     {p.mpesaReceipt ? ` (${p.mpesaReceipt})` : ''}
                     <div className="muted">{p.message ?? when(p.settledAt ?? p.requestedAt)}</div>
@@ -258,6 +260,8 @@ function Brief({ order: o }) {
     </section>
   );
 }
+
+const CHANNEL = { mpesa: 'M-Pesa', bank: 'bank transfer', cash: 'cash' };
 
 const PROOF_STATUS = {
   pending: 'With the customer',

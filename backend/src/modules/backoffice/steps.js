@@ -16,7 +16,8 @@ import { sampleBlocksRun } from '../orders/flow.js';
  *
  * @typedef {Record<string, any>} Row
  * @typedef {{ template: string; text: string }} Message
- * @typedef {{ fields: Record<string, unknown>; events: string[]; message: Message | null; audit: Record<string, unknown> }} Step
+ * @typedef {{ fields: Record<string, unknown>; events: string[]; message: Message | null; audit: Record<string, unknown>; staffEmail?: Message }} Step
+ *   `staffEmail`: also tell staff, at STAFF_INBOX (the customer reported a payment).
  */
 
 /** @param {string} what @param {string} status */

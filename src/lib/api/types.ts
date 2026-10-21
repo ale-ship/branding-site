@@ -112,6 +112,11 @@ export interface SiteApi {
   /** Sends an M-Pesa STK Push for what's due now. The order moves on only when the callback confirms. */
   startPayment(ref: string, access: OrderAccess, phone: string): Promise<OrderPayment>;
   getOrder(ref: string, access: OrderAccess): Promise<Order | null>;
+  /**
+   * Payments by hand: the customer says they've paid, with their M-Pesa code (and the amount, if
+   * given). The order doesn't move; staff check the money and record it in the back office.
+   */
+  reportPayment(ref: string, access: OrderAccess, code: string, amount: number | null): Promise<Order>;
   /** Approves one proof version; every checklist item must be confirmed. Locks the artwork. */
   approveProof(ref: string, access: OrderAccess, version: number, checklist: ApprovalChecklist): Promise<Order>;
   /** Sends a proof back with notes and pins; uses a revision round. */

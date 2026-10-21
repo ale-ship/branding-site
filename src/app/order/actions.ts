@@ -6,6 +6,7 @@ import { coerceOrderDraft, toOrderInput, validateOrderDraft, type OrderErrors } 
 import { changeRequestError, checklistComplete, coerceChecklist, coercePins, MAX_CHANGE_NOTES } from '@/lib/proof';
 import { normaliseKenyanPhone } from '@/lib/quote';
 import { normaliseEmail, SESSION_COOKIE } from '@/lib/account';
+import { reportedReference } from '@/lib/manual-payment';
 import { accessCookie, parseAccess } from './access';
 
 /**
@@ -124,6 +125,21 @@ export async function requestChangesAction(ref: string, token: string, version: 
   }
 }
 
+/** Payments by hand: the customer's M-Pesa code (and amount, if given) for staff to check. */
+export async function reportPaymentAction(ref: string, token: string, code: unknown, amount: unknown): Promise<{ ok: true } | Fail> {
+  const text = typeof code === 'string' ? code.trim() : '';
+  if (!reportedReference(text)) return { ok: false, message: 'Enter the code from your M-Pesa message, like TJK4XY12AB.' };
+  const raw = typeof amount === 'string' ? amount.replace(/[\s,]/g, '') : typeof amount === 'number' ? String(amount) : '';
+  const n = raw === '' ? null : Number(raw);
+  if (n !== null && (!Number.isInteger(n) || n < 1)) return { ok: false, message: 'Enter the amount in shillings, like 14250, or leave it empty.' };
+  try {
+    await api.reportPayment(String(ref), await resolveAccess(ref, token), text, n);
+    return { ok: true };
+  } catch (e) {
+    return failure(e, 'We couldn’t send that. Please try again, or WhatsApp us the code.');
+  }
+}
+
 export async function reviewSampleAction(ref: string, token: string, decision: unknown, comments: unknown): Promise<{ ok: true } | Fail> {
   const d = decision === 'approve' ? 'approve' : 'changes';
   const text = typeof comments === 'string' ? comments.trim().slice(0, MAX_CHANGE_NOTES) : '';
@@ -174,7 +190,7 @@ export async function bookInstallAction(ref: string, token: string, date: unknow
   }
 }
 
-export type DemoAction = 'paybill-full' | 'paybill-part' | 'paybill-no-ref' | 'repeat-callback' | 'upload-proof' | 'approve-proof' | 'request-changes' | 'complete-survey' | 'upload-sample' | 'log-progress' | 'early-delivery' | 'hand-over' | 'skip-wait';
+export type DemoAction = 'record-payment' | 'paybill-full' | 'paybill-part' | 'paybill-no-ref' | 'repeat-callback' | 'upload-proof' | 'approve-proof' | 'request-changes' | 'complete-survey' | 'upload-sample' | 'log-progress' | 'early-delivery' | 'hand-over' | 'skip-wait';
 
 /** Mock only: plays the parts of M-Pesa and the staff, so the flow can be tried end to end. */
 export async function demoAction(ref: string, token: string, action: DemoAction): Promise<{ ok: true; message: string } | Fail> {
@@ -184,6 +200,9 @@ export async function demoAction(ref: string, token: string, action: DemoAction)
     const order = await api.getOrder(String(ref), access);
     if (!order) return { ok: false, message: 'Order not found.' };
     switch (action) {
+      case 'record-payment':
+        demo.recordPayment(order.ref, order.dueNow || 1000);
+        return { ok: true, message: `A designer recorded KES ${(order.dueNow || 1000).toLocaleString('en-KE')}${order.paymentReport ? `, reference ${order.paymentReport.code}` : ''}.` };
       case 'paybill-full':
         demo.paybill(order.ref, order.dueNow || 1000);
         return { ok: true, message: `Paybill payment of KES ${(order.dueNow || 1000).toLocaleString('en-KE')} received.` };

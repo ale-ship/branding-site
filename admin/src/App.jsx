@@ -4,6 +4,7 @@ import {
   CreditCard,
   FileText,
   Handshake,
+  History,
   Images,
   Inbox,
   KanbanSquare,
@@ -22,6 +23,7 @@ import { ApiError, api, may } from './api.js';
 import { Contours } from './contours.jsx';
 import { ROLE } from './format.js';
 import { Accounts, Statement } from './pages/Accounts.jsx';
+import { Activity } from './pages/Activity.jsx';
 import { Board } from './pages/Board.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { OrderPage } from './pages/OrderPage.jsx';
@@ -39,7 +41,7 @@ import { PageEditor, PagesIndex } from './website/pages.jsx';
 
 /**
  * The route lives in the hash: #/dashboard, #/orders (?q=…), #/orders/NB-123456, #/payments,
- * #/reports/<kind>, #/accounts, #/accounts/<email>, #/products, #/staff, and the website editor:
+ * #/reports/<kind>, #/accounts, #/accounts/<email>, #/products, #/staff, #/activity, and the website editor:
  * #/website/pages[/home|about], #/website/work[/<slug>|new], #/website/services[/<slug>],
  * #/website/shop[/<slug>|new], #/website/clients, #/website/media.
  */
@@ -131,7 +133,13 @@ export function App() {
       ],
     ],
     ['Catalogue', [['products', 'Prices & minimums', Tags, true]]],
-    ['Settings', [['staff', 'Staff', Users, staff.role === 'admin']]],
+    [
+      'Settings',
+      [
+        ['staff', 'Staff', Users, staff.role === 'admin'],
+        ['activity', 'Activity', History, staff.role === 'admin'],
+      ],
+    ],
   ];
   const search = (e) => {
     e.preventDefault();
@@ -217,8 +225,9 @@ export function App() {
           {['reports', 'accounts'].includes(page) && !may(staff, 'finance') && <p>Reports and customer accounts are for the admin.</p>}
           {page === 'products' && <ProductsPage me={staff} onAuthLost={onAuthLost} />}
           {page === 'staff' && <StaffPage me={staff} onAuthLost={onAuthLost} />}
+          {page === 'activity' && (staff.role === 'admin' ? <Activity onAuthLost={onAuthLost} /> : <p>Activity is for the admin.</p>)}
           {page === 'website' && <Website key={path} section={param} item={item} me={staff} onAuthLost={onAuthLost} />}
-          {!['dashboard', 'requests', 'orders', 'payments', 'reports', 'accounts', 'products', 'staff', 'website'].includes(page) && (
+          {!['dashboard', 'requests', 'orders', 'payments', 'reports', 'accounts', 'products', 'staff', 'activity', 'website'].includes(page) && (
             <p>
               No such page. <a href="#/dashboard">Back to the dashboard</a>.
             </p>

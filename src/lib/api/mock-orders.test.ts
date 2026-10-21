@@ -96,12 +96,32 @@ describe('createOrder and getOrder', () => {
     await expect(mockApi.createOrder({ ...teesInput(300), urgency: 'rush' })).rejects.toThrow(/deadline/);
   });
 
-  it('expires an unpaid order after 48 hours', async () => {
+  it('expires an unpaid order after 7 days', async () => {
     const { ref, access } = await place();
-    later(49 * 3_600_000);
+    later(6 * 24 * 3_600_000);
+    expect((await mockApi.getOrder(ref, access))!.status).toBe('awaiting_payment');
+    later(25 * 3_600_000);
     const order = (await mockApi.getOrder(ref, access))!;
     expect(order.status).toBe('expired');
     expect(order.dueNow).toBe(0);
+  });
+});
+
+describe('payments by hand', () => {
+  it('flags the customer’s code for staff and moves the order only when a designer records it', async () => {
+    const { ref, access } = await place();
+    const due = (await mockApi.getOrder(ref, access))!.dueNow;
+    await expect(mockApi.reportPayment(ref, access, 'abc', null)).rejects.toMatchObject({ code: 'invalid' });
+    let order = await mockApi.reportPayment(ref, access, 'tjk4 xy12ab', due);
+    expect(order).toMatchObject({ status: 'awaiting_payment', paymentReport: { code: 'TJK4XY12AB', amount: due } });
+    expect(order.events.at(-1)!.text).toBe(`You told us you paid KES ${due.toLocaleString('en-KE')} (reference TJK4XY12AB). We’re checking it.`);
+    await expect(mockApi.reportPayment(ref, access, 'TJK4XY12AB', null)).rejects.toMatchObject({ code: 'invalid_state' });
+
+    expect(mockStaff.recordPayment(ref, due)).toBe(true);
+    order = (await mockApi.getOrder(ref, access))!;
+    expect(order).toMatchObject({ status: 'in_design', paymentReport: null, dueNow: 0 });
+    expect(order.payments.at(-1)).toMatchObject({ method: 'manual', channel: 'mpesa', mpesaReceipt: 'TJK4XY12AB', status: 'confirmed' });
+    await expect(mockApi.reportPayment(ref, access, 'TJK4XY12AC', null)).rejects.toMatchObject({ code: 'invalid_state' });
   });
 });
 
@@ -206,7 +226,7 @@ describe('Absa C2B routing and receipts', () => {
 
   it('keeps money paid after the order expired as credit, flagged', async () => {
     const { ref, access } = await place();
-    later(49 * 3_600_000);
+    later((7 * 24 + 1) * 3_600_000);
     expect(mockStaff.paybill(ref, 31000)).toBe(true);
     const order = (await mockApi.getOrder(ref, access))!;
     expect(order.status).toBe('expired');

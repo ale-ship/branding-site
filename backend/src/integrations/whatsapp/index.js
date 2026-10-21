@@ -5,17 +5,19 @@ import { join } from 'node:path';
 /**
  * WhatsApp (Meta Cloud API, approved templates; docs/BACKEND_RUNBOOK.md, section 2.3). The fake
  * writes each message as JSON into `WHATSAPP_OUTBOX_DIR`. The live client comes once Meta approves
- * the templates; config.js refuses WHATSAPP_MODE=live until then.
+ * the templates; config.js refuses WHATSAPP_MODE=live until then. `off` (no WhatsApp Business account
+ * yet) sends nothing: the notifications service marks those messages skipped and the email still goes.
  *
  * @typedef {{ to: string; template: string; text: string }} WhatsAppMessage
- * @typedef {{ mode: 'fake' | 'live'; send: (m: WhatsAppMessage) => Promise<void> }} WhatsAppClient
+ * @typedef {{ mode: 'fake' | 'live' | 'off'; send: (m: WhatsAppMessage) => Promise<void> }} WhatsAppClient
  */
 
 /**
- * @param {{ outboxDir: string }} o
+ * @param {{ mode?: 'fake' | 'live' | 'off'; outboxDir: string }} o
  * @returns {WhatsAppClient}
  */
-export function createWhatsApp({ outboxDir }) {
+export function createWhatsApp({ mode = 'fake', outboxDir }) {
+  if (mode === 'off') return { mode, send: async () => {} };
   return {
     mode: 'fake',
     async send(m) {

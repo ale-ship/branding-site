@@ -152,12 +152,14 @@ describe('liveApi (step B2)', () => {
     await liveApi.bookSurvey(placed.ref, access, '2026-10-20');
     await liveApi.acceptSiteQuote(placed.ref, access);
     await liveApi.bookInstall(placed.ref, access, '2026-10-28');
+    await liveApi.reportPayment(placed.ref, access, 'TJK4XY12AB', 14250);
     expect(fetchMock.mock.calls.map(([url, init]) => [String(url).replace('http://127.0.0.1:4300', ''), JSON.parse(String(init?.body))])).toEqual([
       ['/api/orders/NB-123456/sample', { decision: 'changes', comments: 'Higher, please' }],
       ['/api/orders/NB-123456/deliveries', { pieces: 60 }],
       ['/api/orders/NB-123456/survey', { date: '2026-10-20' }],
       ['/api/orders/NB-123456/quote/accept', {}],
       ['/api/orders/NB-123456/install', { date: '2026-10-28' }],
+      ['/api/orders/NB-123456/payment-report', { code: 'TJK4XY12AB', amount: 14250 }],
     ]);
     for (const [, init] of fetchMock.mock.calls) expect(init?.headers).toMatchObject({ 'x-order-token': placed.token });
 

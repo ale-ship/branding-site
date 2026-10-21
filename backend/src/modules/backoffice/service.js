@@ -153,6 +153,16 @@ export const cancelOrder = (deps, staff, ref, reason, now = new Date()) =>
 export const clearAttention = (deps, staff, ref, now = new Date()) =>
   step(deps, staff, ref, 'attention-cleared', (o) => {
     if (!o.attention) throw new OrderError('invalid_state', 'Nothing is flagged on this order.');
+    // A payment the customer reported that staff couldn't find: the customer is told to check it.
+    if (o.attention === 'payment-reported') {
+      const code = o.payment_report?.code ?? '';
+      return {
+        fields: { attention: null, payment_report: null },
+        events: [`We couldn’t find a payment with reference ${code}. Please check the code, or WhatsApp us.`],
+        message: { template: 'payment-not-found', text: `We couldn’t find a payment with reference ${code} for ${o.order_no}. Please check the code on your M-Pesa message and send it again on your order page, or WhatsApp us.` },
+        audit: { was: o.attention, code },
+      };
+    }
     return { fields: { attention: null }, events: [], message: null, audit: { was: o.attention } };
   }, now);
 

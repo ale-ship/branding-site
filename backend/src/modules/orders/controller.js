@@ -48,6 +48,7 @@ export const postLookup = (deps) => async (req, res) => {
 const no = (/** @type {import('express').Request} */ req) => z.string().regex(/^NB-\d{6}$/i).parse(req.params.no);
 const sampleBody = z.object({ decision: z.enum(['approve', 'changes']), comments: z.string().max(2000).default('') });
 const piecesBody = z.object({ pieces: z.number().int().min(1).max(1_000_000) });
+const reportBody = z.object({ code: z.string().min(1).max(40), amount: z.number().int().min(1).max(10_000_000).nullable().default(null) });
 const dateBody = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a date.') });
 
 /** @param {Deps} deps @returns {import('express').RequestHandler} */
@@ -74,4 +75,13 @@ export const postAcceptQuote = (deps) => async (req, res) => {
 /** @param {Deps} deps @returns {import('express').RequestHandler} */
 export const postInstall = (deps) => async (req, res) => {
   noStore(res).json(await extras.bookInstall({ ...deps, logger: req.log }, no(req), accessFrom(req), dateBody.parse(req.body).date));
+};
+
+/**
+ * POST /api/orders/:no/payment-report: `{ code, amount }`, the customer's M-Pesa code for staff to check.
+ * @param {Deps} deps @returns {import('express').RequestHandler}
+ */
+export const postPaymentReport = (deps) => async (req, res) => {
+  const { code, amount } = reportBody.parse(req.body);
+  noStore(res).json(await extras.reportPayment({ ...deps, logger: req.log }, no(req), accessFrom(req), code, amount));
 };

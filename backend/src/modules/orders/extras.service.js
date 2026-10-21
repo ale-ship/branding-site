@@ -1,6 +1,7 @@
 // @ts-check
 import { nairobiToday } from '@noorcom-branding/shared/rules/calendar.js';
 import * as flow from './flow.js';
+import { reportPayment as report } from './payreport.js';
 import * as site from './sitejob.js';
 import { customerStep } from './steps.service.js';
 
@@ -35,3 +36,11 @@ export const acceptSiteQuote = (deps, ref, access, now = new Date()) =>
 /** @param {Deps} deps @param {string} ref @param {Access} access @param {string} date @param {Date} [now] */
 export const bookInstall = (deps, ref, access, date, now = new Date()) =>
   customerStep(deps, ref, access, (o) => site.bookInstall(o, date, nairobiToday(now)), now);
+
+/**
+ * The customer says they've paid by hand, with their M-Pesa code; staff check it and record it.
+ * @param {Deps} deps @param {string} ref @param {Access} access
+ * @param {string} code @param {number | null} amount @param {Date} [now]
+ */
+export const reportPayment = (deps, ref, access, code, amount, now = new Date()) =>
+  customerStep(deps, ref, access, (o) => report(o, code, amount, now), now);

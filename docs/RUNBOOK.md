@@ -1,6 +1,6 @@
 # Noorcom Branding Website Runbook
 
-Last updated 13 Oct 2026. This is the handover document: read it first in a new chat or on a new
+Last updated 21 Oct 2026. This is the handover document: read it first in a new chat or on a new
 machine. It records what the project is, what we found, every decision and why, and what comes
 next. Update it at the end of every task.
 
@@ -122,6 +122,14 @@ next. Update it at the end of every task.
   installation date, sign-off and balance; big runs get their pre-production sample; customers can
   ask for finished pieces early; design-only orders get their final files; the pickup code shows on
   the order page. Fixed on the way: the API restarting when `node_modules` changed.
+- **21 Oct 2026, payments by hand** (owner: Absa's prompt isn't connected yet; details in
+  `docs/BACKEND_RUNBOOK.md`, "Payments by hand"). The order page has no M-Pesa prompt: it shows the
+  Paybill details, **Send my order on WhatsApp** (the whole order in the message) and a call button,
+  and takes the customer's M-Pesa code. A designer records the payment in the back office (the
+  order's **Record** panel), which moves the order as a confirmed payment would; the admin sees
+  every action under **Settings → Activity**. Unpaid orders now expire after 7 days. Invoices,
+  receipts and statements follow the owner's invoice design and print without the browser's header
+  and footer (16 Oct). `PAYMENTS_MODE` and `NEXT_PUBLIC_PAYMENTS_MODE` bring the prompt back.
 - **Next (owner, 7 Oct 2026: the VPS waits):** the job card with its QR code, mockups on proofs and
   customers' file uploads (R2), or B3b once Absa's documentation arrives. The VPS deploy still ships
   only the website: the API, worker, migrations, `/admin/` and `/api/` come with the VPS work.

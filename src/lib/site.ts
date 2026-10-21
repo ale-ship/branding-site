@@ -49,6 +49,14 @@ export const invoiceIssuer = {
   paybillAccount: (orderRef: string) => `${ABSA_ACCOUNT}#${orderRef.replace('-', '')}`,
 } as const;
 
+/**
+ * How customers pay (owner, 21 Oct 2026). `manual` until the M-Pesa prompt is connected: the order
+ * page shows the Paybill details and a WhatsApp message with the order, the customer tells us their
+ * M-Pesa code, and a designer records the payment in the back office. `prompt` brings back the
+ * M-Pesa prompt (STK Push); set NEXT_PUBLIC_PAYMENTS_MODE=prompt with the backend's PAYMENTS_MODE.
+ */
+export const paymentsMode: 'manual' | 'prompt' = process.env.NEXT_PUBLIC_PAYMENTS_MODE === 'prompt' ? 'prompt' : 'manual';
+
 export type NavItem = { label: string; href: string };
 
 /** Main navigation, in the header, the menu overlay and the footer. */

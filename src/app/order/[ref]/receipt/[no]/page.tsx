@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { BrandDocument, DocMeta, DocParties, money, PartyBlock, Th, Totals } from '@/components/order/BrandDocument';
 import { formatDateShort } from '@/lib/calendar';
+import { CHANNEL_LABEL } from '@/lib/manual-payment';
 import { localPhone, PURPOSE_LABEL } from '@/lib/order-status';
 import { loadOrder, tokenFrom, withToken } from '../../../load';
 
@@ -46,6 +47,8 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
   const total = order.total ?? order.estimate.dueNow.amount;
   const remaining = Math.max(0, total - paidToDate);
   const when = nairobi(payment.settledAt);
+  // Recorded by staff (payments by hand): how it was paid; otherwise the prompt or the Paybill.
+  const paidBy = payment.method === 'manual' ? (payment.channel === 'mpesa' || !payment.channel ? 'M-Pesa Paybill' : CHANNEL_LABEL[payment.channel]) : payment.method === 'stk' ? 'M-Pesa' : 'M-Pesa Paybill';
   const forWhat = `${PURPOSE_LABEL[payment.purpose]} for ${order.product.name}${order.mechanism === 'A' ? `, ${order.quantity.toLocaleString('en-KE')} pieces` : ''}`;
 
   return (
@@ -65,9 +68,9 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
         <DocMeta
           rows={[
             ['Date', `${when.date}, ${when.time}`],
-            ['Paid by', payment.method === 'stk' ? 'M-Pesa' : 'M-Pesa Paybill'],
+            ['Paid by', paidBy],
             [
-              'M-Pesa ref.',
+              payment.channel === 'cash' ? 'Cash ref.' : payment.channel === 'bank' ? 'Bank ref.' : 'M-Pesa ref.',
               <span key="m" className="font-mono">
                 {payment.mpesaReceipt}
               </span>,
@@ -106,7 +109,7 @@ export default async function ReceiptPage({ params, searchParams }: Props) {
         <div className="flex flex-col items-start gap-3 pt-2">
           <p className="text-sm text-heading italic">Thank you for your payment.</p>
           <p className="text-xs text-muted">
-            This receipt confirms the payment above was received by M-Pesa.
+            This receipt confirms the payment above was received{payment.channel === 'cash' ? ' in cash' : payment.channel === 'bank' ? ' by bank transfer' : ' by M-Pesa'}.
             {remaining > 0 ? ` The balance of KES ${money(remaining)} is due after you approve the proof, before printing.` : ' Your order is fully paid.'}
           </p>
           <p className="border-2 border-accent-ink px-4 py-1.5 text-xl font-extrabold tracking-[0.2em] text-accent-ink" aria-label="Paid">

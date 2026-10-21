@@ -25,7 +25,7 @@ import { createLogger } from '../../src/lib/logger.js';
  */
 const dbUrl = process.env.TEST_DATABASE_URL;
 const redisUrl = process.env.TEST_REDIS_URL;
-const config = parseConfig({ NODE_ENV: 'test' });
+const config = parseConfig({ NODE_ENV: 'test', PAYMENTS_MODE: 'prompt' });
 const logger = createLogger({ env: 'test' });
 
 describe.skipIf(!dbUrl || !redisUrl)('the worker on BullMQ (B3)', () => {

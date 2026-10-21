@@ -26,26 +26,30 @@ function need(deps) {
 }
 
 /**
+ * @param {Deps} deps
  * @param {import('pg').PoolClient} trx
  * @param {Record<string, any>} order
  * @param {Step} s
  * @param {Date} now
  * @returns {Promise<number[]>}
  */
-async function write(trx, order, s, now) {
+async function write(deps, trx, order, s, now) {
   await updateOrder(trx, order.id, s.fields, now);
   for (const text of s.events) await insertEvent(trx, order.id, text, now);
-  if (!s.message) return [];
-  const payload = { text: s.message.text, ref: order.order_no };
-  return insertNotifications(
-    trx,
-    order.id,
-    [
+  /** @type {Parameters<typeof insertNotifications>[2]} */
+  const messages = [];
+  if (s.message) {
+    const payload = { text: s.message.text, ref: order.order_no };
+    messages.push(
       { channel: 'whatsapp', recipient: order.customer_phone, template: s.message.template, payload },
       { channel: 'email', recipient: order.customer_email, template: s.message.template, payload },
-    ],
-    now,
-  );
+    );
+  }
+  if (s.staffEmail) {
+    const recipient = deps.config?.mail.staffInbox ?? 'info@noorcombranding.co.ke';
+    messages.push({ channel: 'email', recipient, template: s.staffEmail.template, payload: { text: s.staffEmail.text, ref: order.order_no } });
+  }
+  return messages.length ? insertNotifications(trx, order.id, messages, now) : [];
 }
 
 /**
@@ -63,7 +67,7 @@ export async function staffStep(deps, staff, ref, action, decide, now, extra) {
     const order = await findByOrderNo(trx, ref.trim().toUpperCase(), { lock: true });
     if (!order) throw new OrderError('not_found', 'There is no order with that number.');
     const s = decide(order);
-    const out = await write(trx, order, s, now);
+    const out = await write(deps, trx, order, s, now);
     if (extra) await extra(trx, order);
     await audit(trx, staff.id, action, order.id, s.audit);
     return out;
@@ -83,7 +87,7 @@ export async function customerStep(deps, ref, access, decide, now) {
   const { order_no: orderNo } = await findOrderFor(deps, ref, access, now);
   const ids = await withTransaction(need(deps), async (trx) => {
     const order = /** @type {Record<string, any>} */ (await findByOrderNo(trx, orderNo, { lock: true }));
-    return write(trx, order, decide(order), now);
+    return write(deps, trx, order, decide(order), now);
   });
   await queueNotifications(deps, ids);
   return getOrder(deps, orderNo, access, now);

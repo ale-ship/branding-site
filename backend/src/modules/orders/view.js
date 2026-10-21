@@ -69,6 +69,7 @@ export function toOrder(r, { events, notifications, requests = [], payments = []
     dueNow: r.due_now,
     duePurpose: r.due_purpose,
     payments: paymentsOf(requests, payments),
+    paymentReport: r.payment_report ?? null,
     events: events.map((e) => ({ at: /** @type {string} */ (iso(e.at)), text: e.text })),
     notifications: notifications.map((n) => ({ at: /** @type {string} */ (iso(n.created_at)), channel: n.channel, to: n.recipient, text: n.payload.text })),
     progress: r.progress,

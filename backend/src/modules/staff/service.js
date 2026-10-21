@@ -105,6 +105,21 @@ export async function listStaff(deps) {
   return repo.listStaff(need(deps));
 }
 
+const ACTIVITY_PAGE = 100;
+
+/**
+ * The Activity page (admin): every staff action, newest first, a page at a time.
+ * @param {Deps} deps
+ * @param {{ staffId?: number; before?: number }} f
+ */
+export async function activity(deps, f) {
+  const rows = await repo.activity(need(deps), { ...f, limit: ACTIVITY_PAGE });
+  return {
+    entries: rows.map((r) => ({ id: r.id, at: new Date(r.at).toISOString(), staff: r.staff ?? 'System', role: r.role ?? null, action: r.action, order: r.order_no ?? null, detail: r.detail ?? {} })),
+    more: rows.length === ACTIVITY_PAGE,
+  };
+}
+
 /**
  * Changes a staff member's name, role, active flag or password. A password change or deactivation
  * signs them out everywhere; the last active admin can't be demoted or deactivated.

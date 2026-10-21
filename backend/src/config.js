@@ -21,7 +21,11 @@ const schema = z.object({
   BUILD_ID: z.string().default(''),
   ABSA_MODE: mode,
   DARAJA_MODE: mode,
-  WHATSAPP_MODE: mode,
+  // off: no WhatsApp Business account yet; customers get the email only.
+  WHATSAPP_MODE: z.enum(['fake', 'live', 'off']).default('fake'),
+  // manual: customers pay to the Paybill on their invoice and staff record it (owner, 21 Oct 2026);
+  // prompt: the M-Pesa prompt (STK Push) through Absa, once it is connected (step B3b).
+  PAYMENTS_MODE: z.enum(['manual', 'prompt']).default('manual'),
   STORAGE_MODE: mode,
   // Where the API is reached from outside: provider callbacks and links in messages.
   PUBLIC_URL: z.string().url().default('http://127.0.0.1:4300'),
@@ -62,11 +66,12 @@ const LIVE_HOSTS = ['noorcombranding.co.ke', 'www.noorcombranding.co.ke'];
  * @property {string | undefined} redisUrl
  * @property {string | undefined} logLevel
  * @property {string} build
- * @property {{ absa: 'fake' | 'live'; daraja: 'fake' | 'live'; whatsapp: 'fake' | 'live'; storage: 'fake' | 'live'; email: 'fake' | 'live' }} integrations
+ * @property {{ absa: 'fake' | 'live'; daraja: 'fake' | 'live'; whatsapp: 'fake' | 'live' | 'off'; storage: 'fake' | 'live'; email: 'fake' | 'live' }} integrations
+ * @property {'manual' | 'prompt'} payments How customers pay: by hand, recorded by staff, or by the M-Pesa prompt.
  * @property {string} publicUrl
  * @property {{ secret: string; paybill: string; fakeDelayMs: number }} absa
  * @property {{ from: string; outboxDir: string; staffInbox: string; smtp: { host: string; port: number; user: string; pass: string } | null }} mail
- * @property {{ outboxDir: string }} whatsapp
+ * @property {{ mode: 'fake' | 'live' | 'off'; outboxDir: string }} whatsapp
  * @property {{ secret: string; dir: string }} files
  * @property {{ internalUrl: string; revalidateSecret: string }} site
  */
@@ -85,7 +90,7 @@ export function parseConfig(env = process.env) {
   if (c.NODE_ENV === 'production') {
     const missing = /** @type {const} */ (['DATABASE_URL', 'REDIS_URL']).filter((k) => !c[k]);
     if (missing.length) throw new Error(`Invalid configuration: ${missing.map((k) => `${k}: required in production`).join('; ')}`);
-    if (c.ABSA_CALLBACK_SECRET.length < 24) throw new Error('Invalid configuration: ABSA_CALLBACK_SECRET: at least 24 characters in production');
+    if (c.PAYMENTS_MODE === 'prompt' && c.ABSA_CALLBACK_SECRET.length < 24) throw new Error('Invalid configuration: ABSA_CALLBACK_SECRET: at least 24 characters in production');
     if (c.FILES_SECRET.length < 24) throw new Error('Invalid configuration: FILES_SECRET: at least 24 characters in production');
     if (c.REVALIDATE_SECRET.length < 24) throw new Error('Invalid configuration: REVALIDATE_SECRET: at least 24 characters in production');
   }
@@ -99,7 +104,9 @@ export function parseConfig(env = process.env) {
     if (c[k] === 'live') throw new Error(`Invalid configuration: ${k}: live is not built yet; it needs ${why}`);
   }
   // Email is fake without SMTP_HOST: sign-in codes and quote requests would only be written to disk.
-  const fake = [c.ABSA_MODE, c.DARAJA_MODE, c.WHATSAPP_MODE].includes('fake') || !c.SMTP_HOST;
+  // With manual payments nothing reaches Absa or Daraja, so their fakes can't answer for anyone.
+  const payments = c.PAYMENTS_MODE === 'prompt' ? [c.ABSA_MODE, c.DARAJA_MODE] : [];
+  const fake = [...payments, c.WHATSAPP_MODE].includes('fake') || !c.SMTP_HOST;
   if (fake && LIVE_HOSTS.includes(new URL(c.PUBLIC_URL).hostname)) {
     throw new Error('Invalid configuration: PUBLIC_URL is the live site, but a payment or message integration is fake (or SMTP_HOST is empty)');
   }
@@ -113,6 +120,7 @@ export function parseConfig(env = process.env) {
     logLevel: c.LOG_LEVEL,
     build: c.BUILD_ID,
     integrations: { absa: c.ABSA_MODE, daraja: c.DARAJA_MODE, whatsapp: c.WHATSAPP_MODE, storage: c.STORAGE_MODE, email: c.SMTP_HOST ? 'live' : 'fake' },
+    payments: c.PAYMENTS_MODE,
     publicUrl: c.PUBLIC_URL.replace(/\/$/, ''),
     // Development gets a fixed secret; production refuses to start without its own (above).
     absa: { secret: c.ABSA_CALLBACK_SECRET || 'dev-callback-secret', paybill: c.ABSA_PAYBILL, fakeDelayMs: c.FAKE_STK_DELAY_MS },
@@ -122,7 +130,7 @@ export function parseConfig(env = process.env) {
       staffInbox: c.STAFF_INBOX,
       smtp: c.SMTP_HOST ? { host: c.SMTP_HOST, port: c.SMTP_PORT, user: c.SMTP_USER, pass: c.SMTP_PASS } : null,
     },
-    whatsapp: { outboxDir: c.WHATSAPP_OUTBOX_DIR },
+    whatsapp: { mode: c.WHATSAPP_MODE, outboxDir: c.WHATSAPP_OUTBOX_DIR },
     files: { secret: c.FILES_SECRET || 'dev-files-secret', dir: c.STORAGE_DIR },
     site: { internalUrl: c.SITE_INTERNAL_URL.replace(/\/$/, ''), revalidateSecret: c.REVALIDATE_SECRET || 'dev-revalidate-secret' },
   };

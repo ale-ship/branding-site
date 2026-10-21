@@ -152,6 +152,12 @@ they can be checked:
   (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM=info@noorcombranding.co.ke`), and
   `STAFF_INBOX` is where quote requests and messages go. Without `SMTP_HOST` the mail is only written
   to `MAIL_OUTBOX_DIR` on the box; the API refuses to start on the live site's address without it.
+- Payments by hand (owner, 21 Oct 2026), until Absa's M-Pesa prompt is connected: `api.env` keeps
+  `PAYMENTS_MODE=manual` (the default; Absa's callback secret isn't needed then) and, with no WhatsApp
+  Business account yet, `WHATSAPP_MODE=off` (customers get the email only). `web.env` leaves
+  `NEXT_PUBLIC_PAYMENTS_MODE` unset (manual). With these and SMTP set, the API starts on the live
+  site's address. When the prompt goes live: `PAYMENTS_MODE=prompt` and
+  `NEXT_PUBLIC_PAYMENTS_MODE=prompt` (a deploy), with `ABSA_CALLBACK_SECRET`.
 
 ---
 

@@ -28,6 +28,16 @@ export async function markSent(db, id, at) {
 }
 
 /**
+ * A message not sent on purpose (WHATSAPP_MODE=off).
+ * @param {Db} db
+ * @param {number} id
+ * @param {Date} at
+ */
+export async function markSkipped(db, id, at) {
+  await db.query("UPDATE notifications SET status = 'skipped', sent_at = $2 WHERE id = $1", [id, at]);
+}
+
+/**
  * Counts a failed try; after `maxAttempts` the message is given up on (status `failed`).
  * @param {Db} db
  * @param {number} id

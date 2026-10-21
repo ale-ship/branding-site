@@ -132,9 +132,9 @@ describe.skipIf(!dbUrl)('reports and customer accounts', () => {
     expect(csv.headers['content-type']).toBe('text/csv; charset=utf-8');
     expect(csv.text.charCodeAt(0)).toBe(0xfeff);
     const lines = csv.text.slice(1).trim().split('\r\n');
-    expect(lines[0]).toBe('Receipt,Date,Order,Customer,Method,M-Pesa ref,For,Amount (KES)');
+    expect(lines[0]).toBe('Receipt,Date,Order,Customer,Method,Reference,Recorded by,For,Amount (KES)');
     expect(lines[1]).toContain(`"'=HYPERLINK(""http://x.example"",""Click"")"`);
-    expect(lines.at(-1)).toBe('Total,,,,,,,500');
+    expect(lines.at(-1)).toBe('Total,,,,,,,,500');
   });
 
   it('refuses a period that runs backwards, a report that does not exist and a date that is not real', async () => {

@@ -17,6 +17,8 @@ export const STATUS = /** @type {Record<string, string>} */ ({
 });
 export const PURPOSE = /** @type {Record<string, string>} */ ({ deposit: 'Deposit', full: 'Full payment', survey_fee: 'Survey fee', balance: 'Balance' });
 export const METHOD = /** @type {Record<string, string>} */ ({ stk: 'M-Pesa prompt', paybill: 'Paybill' });
+/** Payments recorded by staff, by how they came (owner, 21 Oct 2026). */
+export const CHANNEL = /** @type {Record<string, string>} */ ({ mpesa: 'M-Pesa (recorded)', bank: 'Bank transfer', cash: 'Cash' });
 export const REASON = /** @type {Record<string, string>} */ ({
   'unknown-order': 'Order number not found',
   ambiguous: 'More than one order fits',

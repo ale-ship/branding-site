@@ -3,6 +3,7 @@ import express, { Router } from 'express';
 import { requireRole } from '../../middleware/staffAuth.js';
 import * as c from './controller.js';
 import * as x from './extras.controller.js';
+import { postPayment } from './payments.controller.js';
 
 /** The sample's photo, and a design's final files (any type: PDF, AI, ZIP…). */
 const IMAGE = express.raw({ type: ['image/png', 'image/jpeg'], limit: '10mb' });
@@ -34,6 +35,8 @@ export function backofficeRoutes(deps) {
   router.delete('/orders/:no/finals/:id', requireRole('designer'), x.deleteFinal(deps));
   router.post('/orders/:no/finals/send', requireRole('designer'), x.postSendFinals(deps));
 
+  // Payments by hand: a designer records what the customer paid (each with their own account, audited).
+  router.post('/orders/:no/payments', requireRole('designer'), postPayment(deps));
   router.get('/payments/unmatched', requireRole('designer'), c.getUnmatched(deps));
   router.post('/payments/unmatched/:id/assign', requireRole('designer'), c.postAssign(deps));
   router.post('/payments/unmatched/:id/refund', requireRole('designer'), c.postRefund(deps));

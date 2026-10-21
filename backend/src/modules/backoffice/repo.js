@@ -62,6 +62,8 @@ const COLUMNS = {
   install_date: (v) => v,
   early_deliveries: (v) => JSON.stringify(v ?? []),
   total: (v) => v,
+  // Payments recorded by hand: what the customer said they paid.
+  payment_report: (v) => (v == null ? null : JSON.stringify(v)),
 };
 
 /**

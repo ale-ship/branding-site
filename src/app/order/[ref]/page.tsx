@@ -2,6 +2,7 @@ import { Download, FileText, MessageCircle, Package, Truck } from 'lucide-react'
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DemoControls } from '@/components/order/DemoControls';
+import { ManualPayPanel } from '@/components/order/ManualPayPanel';
 import { OrderLookup } from '@/components/order/OrderLookup';
 import { PartialDeliveryForm } from '@/components/order/PartialDeliveryForm';
 import { PaymentPanel } from '@/components/order/PaymentPanel';
@@ -17,11 +18,13 @@ import { addWorkingDays, formatDay } from '@/lib/calendar';
 import { formatKes } from '@/lib/format';
 import { describeBrief } from '@/lib/order';
 import { CLOSED, localPhone, PAYMENT_STATUS_LABEL, PURPOSE_LABEL, STATUS_LABEL, TRACKS, orderTrackIndex } from '@/lib/order-status';
-import { DELIVERY_ZONES } from '@/lib/pricing';
+import { CHANNEL_LABEL } from '@/lib/manual-payment';
+import { orderWhatsAppText } from '@/lib/order-message';
+import { DELIVERY_ZONES, UNPAID_EXPIRY_DAYS } from '@/lib/pricing';
 import { deliverablePieces, productionEta, SAMPLE_THRESHOLD } from '@/lib/production';
 import { formatBytes, nairobiToday } from '@/lib/quote';
 import { earliestInstall } from '@/lib/site-quote';
-import { invoiceIssuer, site } from '@/lib/site';
+import { invoiceIssuer, paymentsMode, site } from '@/lib/site';
 import { loadOrder, tokenFrom, withToken } from '../load';
 
 export const metadata: Metadata = { title: 'Your order', robots: { index: false, follow: false } };
@@ -36,6 +39,7 @@ function nextStep(order: Order): string {
   switch (order.status) {
     case 'awaiting_payment':
       if (order.mechanism === 'B') return order.duePurpose === 'deposit' ? 'Pay the deposit and the design starts.' : 'Pay the survey fee to book your site survey.';
+      if (paymentsMode === 'manual') return order.paymentReport ? 'We’re checking your payment: we start as soon as it’s confirmed.' : 'Pay by M-Pesa Paybill below: we start as soon as we confirm it.';
       return 'Pay to start: we begin as soon as M-Pesa confirms.';
     case 'in_design':
       if (order.mechanism === 'B') {
@@ -63,7 +67,7 @@ function nextStep(order: Order): string {
     case 'completed':
       return 'Done. Thank you for ordering with us.';
     case 'expired':
-      return `This order wasn’t paid within 48 hours, so it has closed.`;
+      return `This order wasn’t paid within ${UNPAID_EXPIRY_DAYS} days, so it has closed.`;
     case 'on_hold':
       return 'On hold while we wait for your reply.';
     case 'cancelled':
@@ -138,7 +142,21 @@ export default async function OrderPage({ params, searchParams }: Props) {
 
       <Container className="grid grid-cols-1 gap-12 pb-20 sm:pb-28 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:gap-16">
         <div className="flex flex-col gap-10">
-          {canPay && (
+          {canPay && paymentsMode === 'manual' && (
+            <ManualPayPanel
+              orderRef={order.ref}
+              token={token}
+              amount={order.dueNow}
+              label={order.duePurpose ? PURPOSE_LABEL[order.duePurpose] : 'Payment'}
+              paybill={{ number: invoiceIssuer.paybill, account: invoiceIssuer.paybillAccount(order.ref) }}
+              whatsappHref={`${site.whatsappHref}?text=${encodeURIComponent(
+                orderWhatsAppText(order, { briefRows, handover: handoverText(order), link: `${site.url}${withToken(`/order/${order.ref}`, token)}` }),
+              )}`}
+              phone={{ label: localPhone(site.phone.replace(/\s/g, '')), href: site.phoneHref }}
+              report={order.paymentReport}
+            />
+          )}
+          {canPay && paymentsMode === 'prompt' && (
             <PaymentPanel
               orderRef={order.ref}
               token={token}
@@ -445,7 +463,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
                       <th scope="col" className="py-2 pr-4 font-semibold">For</th>
                       <th scope="col" className="py-2 pr-4 font-semibold">How</th>
                       <th scope="col" className="py-2 pr-4 font-semibold">Status</th>
-                      <th scope="col" className="py-2 pr-4 font-semibold">M-Pesa ref.</th>
+                      <th scope="col" className="py-2 pr-4 font-semibold">Reference</th>
                       <th scope="col" className="py-2 pr-4 text-right font-semibold">Amount</th>
                       <th scope="col" className="py-2 font-semibold">Receipt</th>
                     </tr>
@@ -454,7 +472,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
                     {order.payments.map((pay) => (
                       <tr key={pay.id} className="border-b border-border">
                         <td className="py-3 pr-4 text-heading">{PURPOSE_LABEL[pay.purpose]}</td>
-                        <td className="py-3 pr-4 text-body">{pay.method === 'stk' ? 'M-Pesa prompt' : 'Paybill'}</td>
+                        <td className="py-3 pr-4 text-body">{pay.method === 'stk' ? 'M-Pesa prompt' : pay.method === 'manual' ? CHANNEL_LABEL[pay.channel ?? 'mpesa'] : 'Paybill'}</td>
                         <td className="py-3 pr-4 text-body">{PAYMENT_STATUS_LABEL[pay.status]}</td>
                         <td className="py-3 pr-4 font-mono text-body">{pay.mpesaReceipt ?? '—'}</td>
                         <td className="py-3 pr-4 text-right text-heading tabular-nums">{formatKes(pay.amount)}</td>

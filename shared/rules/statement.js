@@ -37,7 +37,7 @@ export function buildStatement(orders) {
     }
     for (const p of o.payments) {
       if (p.status !== 'confirmed' || !p.settledAt) continue;
-      entries.push({ date: p.settledAt, ref: o.ref, document: p.receiptNo ?? '', description: `${p.method === 'stk' ? 'M-Pesa' : 'Paybill'} ${p.mpesaReceipt ?? ''}`.trim(), debit: 0, credit: p.amount });
+      entries.push({ date: p.settledAt, ref: o.ref, document: p.receiptNo ?? '', description: `${p.method === 'stk' ? 'M-Pesa' : p.channel === 'bank' ? 'Bank transfer' : p.channel === 'cash' ? 'Cash' : 'Paybill'} ${p.channel === 'cash' ? '' : (p.mpesaReceipt ?? '')}`.trim(), debit: 0, credit: p.amount });
     }
   }
   // Oldest first; on the same moment the invoice comes before its payment.

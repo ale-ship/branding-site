@@ -116,7 +116,7 @@ const ROUTES = [
       (document.querySelector('a[href*="/receipt/"]')
         ? (document.querySelector('a[href*="/receipt/"]').click(), false)
         : ((b) => (b && !window.__paid && ((window.__paid = true), b.click()), false))(
-            [...document.querySelectorAll('section[aria-labelledby=demo-title] button')].find((x) => x.textContent.includes('Paybill payment of')),
+            [...document.querySelectorAll('section[aria-labelledby=demo-title] button')].find((x) => /Paybill payment of|record the payment/.test(x.textContent)),
           ))`,
   },
   {
@@ -126,7 +126,7 @@ const ROUTES = [
     // Pay, then have the demo staff upload a proof; done when the proof review is up.
     waitFor: `!!document.querySelector('#proof-title') ||
       ((buttons) => {
-        const pay = buttons.find((x) => x.textContent.includes('Paybill payment of'));
+        const pay = buttons.find((x) => /Paybill payment of|record the payment/.test(x.textContent));
         const proof = buttons.find((x) => x.textContent.includes('upload a proof'));
         if (pay && !window.__paid) { window.__paid = true; pay.click(); }
         else if (proof && !window.__proof) { window.__proof = true; proof.click(); }

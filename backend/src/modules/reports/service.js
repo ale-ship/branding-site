@@ -1,7 +1,7 @@
 // @ts-check
 import { nairobiToday } from '@noorcom-branding/shared/rules/calendar.js';
 import { AppError } from '../../lib/errors.js';
-import { METHOD, PURPOSE, REASON, STATUS, dayLabel, kes, number, periodLabel } from './labels.js';
+import { CHANNEL, METHOD, PURPOSE, REASON, STATUS, dayLabel, kes, number, periodLabel } from './labels.js';
 import * as repo from './repo.js';
 
 /**
@@ -90,12 +90,14 @@ const BUILD = {
       date: r.day,
       order: r.order_no,
       customer: r.customer_name,
-      method: METHOD[r.method] ?? r.method,
-      mpesa: r.mpesa_receipt,
+      method: r.method === 'manual' ? (CHANNEL[r.channel] ?? r.channel) : (METHOD[r.method] ?? r.method),
+      mpesa: r.channel === 'cash' ? '' : r.mpesa_receipt,
+      recordedBy: r.recorded_by ?? '',
       purpose: PURPOSE[r.purpose] ?? r.purpose,
       amount: r.amount,
     }));
     const by = (/** @type {string} */ m) => sum(rows.filter((r) => r.method === METHOD[m]), 'amount');
+    const recorded = sum(rows.filter((r) => r.recordedBy), 'amount');
     return {
       title: 'Payments received',
       summary: [
@@ -103,6 +105,7 @@ const BUILD = {
         { label: 'Payments', value: number.format(rows.length) },
         { label: 'By M-Pesa prompt', value: kes(by('stk')) },
         { label: 'By Paybill', value: kes(by('paybill')) },
+        { label: 'Recorded by staff', value: kes(recorded) },
       ],
       columns: [
         { key: 'receipt', label: 'Receipt', weight: 1.1 },
@@ -110,13 +113,14 @@ const BUILD = {
         { key: 'order', label: 'Order', weight: 1.1 },
         { key: 'customer', label: 'Customer', weight: 1.8 },
         { key: 'method', label: 'Method', weight: 1.2 },
-        { key: 'mpesa', label: 'M-Pesa ref', weight: 1.3 },
+        { key: 'mpesa', label: 'Reference', weight: 1.3 },
+        { key: 'recordedBy', label: 'Recorded by', weight: 1.1 },
         { key: 'purpose', label: 'For', weight: 1 },
         { key: 'amount', label: 'Amount (KES)', money: true, weight: 1.1 },
       ],
       rows,
       totals: { receipt: 'Total', amount: sum(rows, 'amount') },
-      note: 'Every confirmed M-Pesa payment, with Noorcom’s receipt number (RCT). Paybill payments nobody could match are in the suspense report until they are assigned to an order.',
+      note: 'Every confirmed payment, with Noorcom’s receipt number (RCT); payments staff recorded by hand show how they came and who recorded them. Paybill payments nobody could match are in the suspense report until they are assigned to an order.',
     };
   },
 
@@ -160,7 +164,7 @@ const BUILD = {
       ],
       rows,
       totals: { order: 'Totals', invoiced: sum(rows, 'invoiced'), paid: sum(rows, 'paid'), balance: sum(rows, 'balance') },
-      note: 'Open orders that still owe money, such as a balance due on proof approval or before handover; “Days” counts from the day the order was placed. Orders waiting for their first payment are left out: they expire unpaid after 48 hours.',
+      note: 'Open orders that still owe money, such as a balance due on proof approval or before handover; “Days” counts from the day the order was placed. Orders waiting for their first payment are left out: they expire unpaid after 7 days.',
     };
   },
 

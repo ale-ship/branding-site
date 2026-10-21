@@ -144,3 +144,20 @@ export async function auditOf(db, orderId) {
   );
   return rows;
 }
+
+/**
+ * Everyone's actions, newest first, for the admin's Activity page: who, what, on which order, when.
+ * @param {Db} db
+ * @param {{ staffId?: number; before?: number; limit: number }} f `before`: an audit id, for the next page.
+ * @returns {Promise<Row[]>}
+ */
+export async function activity(db, { staffId, before, limit }) {
+  const { rows } = await db.query(
+    `SELECT a.id, a.action, a.detail, a.at, u.name AS staff, u.role, o.order_no
+     FROM audit_log a LEFT JOIN staff_users u ON u.id = a.staff_id LEFT JOIN orders o ON o.id = a.order_id
+     WHERE ($1::integer IS NULL OR a.staff_id = $1) AND ($2::integer IS NULL OR a.id < $2)
+     ORDER BY a.id DESC LIMIT $3`,
+    [staffId ?? null, before ?? null, limit],
+  );
+  return rows;
+}

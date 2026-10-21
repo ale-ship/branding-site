@@ -46,8 +46,12 @@ export const DELIVERY_ZONES = [
 /** Orders under this are paid in full; above it, a deposit. */
 export const FULL_PAYMENT_BELOW = 5000;
 export const DEPOSIT_RATE = 0.5;
-/** Unpaid orders expire after this. */
-export const UNPAID_EXPIRY_HOURS = 48;
+/**
+ * Unpaid orders expire after this. Seven days while customers pay by hand and staff record it
+ * (owner, 21 Oct 2026); it was 48 hours with the M-Pesa prompt.
+ */
+export const UNPAID_EXPIRY_DAYS = 7;
+export const UNPAID_EXPIRY_HOURS = UNPAID_EXPIRY_DAYS * 24;
 
 /**
  * @param {PriceTier[]} tiers

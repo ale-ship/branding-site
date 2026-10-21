@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { rateLimit } from '../../middleware/rateLimit.js';
 import { requireRole } from '../../middleware/staffAuth.js';
-import { getMe, getUsers, patchUser, postSignIn, postSignOut, postUser } from './controller.js';
+import { getActivity, getMe, getUsers, patchUser, postSignIn, postSignOut, postUser } from './controller.js';
 
 /**
  * /api/staff/auth and /api/staff/users. Sign-in is limited to 10 tries per 10 minutes per address and
@@ -26,5 +26,6 @@ export function staffRoutes(deps) {
   router.get('/users', requireRole('admin'), getUsers(deps));
   router.post('/users', requireRole('admin'), postUser(deps));
   router.patch('/users/:id', requireRole('admin'), patchUser(deps));
+  router.get('/activity', requireRole('admin'), getActivity(deps));
   return router;
 }
