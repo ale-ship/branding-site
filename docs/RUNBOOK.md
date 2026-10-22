@@ -137,8 +137,12 @@ next. Update it at the end of every task.
   migration 015), five of them featured on the home page; the samples stay behind them, tagged, for
   the services without real work yet. The clients strip shows the ten real clients. Only what the
   pictures show is written: staff add the idea, result, numbers and colours, and check the years
-  (set to 2026 where unknown), in the back office. Left out under the no-people rule: the two Karibu
-  banners, the flag banner by the road, and the vocational centres' roll-ups.
+  (set to 2026 where unknown), in the back office.
+- **22 Oct 2026, the rest of the mock-ups** (owner: these four go on although they show people, an
+  exception to the no-people rule for the client's own printed work): the Karibu wall banner, the
+  #KaribuNAI roll-ups and the feather flag join the trade-fair stand (dated 2022 by its banner), and
+  the Jericho and Kangemi roll-up banners are a project of their own, featured on the home page in
+  place of Isiolo's seal and flag (migration 016).
 - **Next (owner, 7 Oct 2026: the VPS waits):** the job card with its QR code, mockups on proofs and
   customers' file uploads (R2), or B3b once Absa's documentation arrives. The VPS deploy still ships
   only the website: the API, worker, migrations, `/admin/` and `/api/` come with the VPS work.

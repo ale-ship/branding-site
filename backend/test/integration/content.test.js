@@ -86,7 +86,7 @@ describe.skipIf(!dbUrl)('the website editor', () => {
   it('gives the site everything, in order, with shop prices from the order form', async () => {
     const c = await site();
     expect(c.services).toHaveLength(7);
-    expect(c.projects.map((p) => p.slug)[0]).toBe('nairobi-city-county-trade-fair');
+    expect(c.projects.map((p) => p.slug)[0]).toBe('zuri-restaurant-uniforms');
     expect(c.clients).toHaveLength(10);
     expect(c.pages.home.workshop.facts[1]).toEqual({ value: 'From 10', label: 'Pieces on most branded items' });
     // The shop shows the order catalogue's price and minimum.

@@ -19,6 +19,31 @@ chat, a ticket or this repository.
 
 ---
 
+## 0. The new box (22 Oct 2026): Phase 0, the inventory
+
+The owner has a VPS for branding: **164.68.107.101**. It is **not** the shared box this document
+was written for (144.91.76.57, section 1), so "do not redo" no longer holds as written: what the
+shared box's runbook set up may or may not be on this one. Seen from outside on 22 Oct 2026: Ubuntu
+(OpenSSH 9.6p1, Ubuntu 24.04), root logs in with a password only, nginx answers on port 80 with
+another project's app (**PROLL · Payroll**), and port 443 does not answer. So the box is shared
+with that app, which must keep working.
+
+Phase 0 changes nothing. `[VPS]` Copy `deploy/scripts/inventory-branding.sh` to the box (for
+example `nano /root/inventory-branding.sh` and paste it), then:
+
+```bash
+bash /root/inventory-branding.sh 2>&1 | tee /root/inventory-branding.txt
+```
+
+It prints the machine, memory and disk, the firewall and SSH settings, listening ports, installed
+software (Node, Postgres, Redis, nginx, certbot), running services, nginx sites (names, listens and
+proxy targets only), certificates, Postgres databases and roles, Redis users, and whether any of
+branding's names, ports and folders are taken. It prints no secrets. Paste the output back; from it
+the rest of this document is rewritten for this box (what to install, which ports are free, how
+the payroll app's nginx site and ours sit side by side) before anything is installed.
+
+---
+
 ## 1. Names
 
 | Resource | Value |
