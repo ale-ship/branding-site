@@ -18,7 +18,15 @@ done
 expect /no-such-page 404
 # The old Lovable addresses.
 expect /checkout 308
-expect /admin 307
+# The back office (static, from nginx) and the API.
+expect /admin 301
+expect /admin/ 200
+expect /api/health 200
+if curl -s --max-time 20 "$BASE/api/health" | grep -q '"status":"ok"'; then
+  echo "ok   API healthy (database and Redis up)"
+else
+  echo "FAIL /api/health is not ok: check journalctl -u noorcom-branding-api"; fail=1
+fi
 
 # The live address must be in the sitemap, not localhost.
 if curl -s --max-time 20 "$BASE/sitemap.xml" | grep -q "<loc>$BASE/</loc>"; then

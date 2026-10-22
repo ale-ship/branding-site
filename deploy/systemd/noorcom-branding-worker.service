@@ -1,0 +1,23 @@
+# Noorcom Branding job worker (BullMQ, prefix nb:bull): messages, expiry, reminders.
+# docs/BACKEND_RUNBOOK.md, section 10.
+[Unit]
+Description=Noorcom Branding job worker
+After=network.target postgresql.service redis-server.service
+
+[Service]
+User=noorcom-branding
+Group=noorcom-branding
+WorkingDirectory=/var/www/noorcom-branding/current/api/backend
+EnvironmentFile=/etc/noorcom-branding/api.env
+EnvironmentFile=-/var/www/noorcom-branding/current/api/build.env
+ExecStart=/usr/bin/node src/worker.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/noorcom-branding
+
+[Install]
+WantedBy=multi-user.target

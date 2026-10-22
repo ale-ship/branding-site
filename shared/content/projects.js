@@ -113,7 +113,7 @@ export const projects = [
     applications: [],
     behindTheScenes: [],
     beforeAfter: null,
-    featured: true,
+    featured: false,
     sample: false,
   },
   {
@@ -247,7 +247,7 @@ export const projects = [
     applications: [],
     behindTheScenes: [],
     beforeAfter: null,
-    featured: false,
+    featured: true,
     sample: false,
   },
   {

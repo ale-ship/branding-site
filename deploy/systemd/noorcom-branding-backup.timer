@@ -1,0 +1,11 @@
+# Every night at 02:45, after the other projects' backups.
+[Unit]
+Description=Noorcom Branding nightly backup
+
+[Timer]
+OnCalendar=*-*-* 02:45:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

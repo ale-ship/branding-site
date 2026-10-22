@@ -1,0 +1,24 @@
+# Noorcom Branding API on 127.0.0.1:4300 (nginx sends /api/ here). docs/BACKEND_RUNBOOK.md, section 10.
+[Unit]
+Description=Noorcom Branding API
+After=network.target postgresql.service redis-server.service
+
+[Service]
+User=noorcom-branding
+Group=noorcom-branding
+WorkingDirectory=/var/www/noorcom-branding/current/api/backend
+EnvironmentFile=/etc/noorcom-branding/api.env
+# BUILD_ID, written by deploy-branding.sh: /api/health reports it, and the deploy checks it.
+EnvironmentFile=-/var/www/noorcom-branding/current/api/build.env
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# The fake storage, the mail outbox and the WhatsApp outbox (api.env) live here until R2.
+ReadWritePaths=/var/lib/noorcom-branding
+
+[Install]
+WantedBy=multi-user.target

@@ -1,13 +1,13 @@
 # Noorcom Branding website: the Next.js standalone server on 127.0.0.1:4301 (nginx in front).
-# docs/VPS_BRANDING.md. Port 4301 keeps clear of Noorcom Computers (4200, 4201).
+# docs/VPS_BRANDING.md. Each release holds web/, api/ and admin/; `current` points at the live one.
 [Unit]
 Description=Noorcom Branding website
-After=network.target
+After=network.target noorcom-branding-api.service
 
 [Service]
 User=noorcom-branding
 Group=noorcom-branding
-WorkingDirectory=/var/www/noorcom-branding/current
+WorkingDirectory=/var/www/noorcom-branding/current/web
 EnvironmentFile=/etc/noorcom-branding/web.env
 ExecStart=/usr/bin/node server.js
 Restart=always
@@ -17,7 +17,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 # next/image keeps its optimised copies under .next/cache.
-ReadWritePaths=-/var/www/noorcom-branding/current/.next/cache
+ReadWritePaths=-/var/www/noorcom-branding/current/web/.next/cache
 
 [Install]
 WantedBy=multi-user.target

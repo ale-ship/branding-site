@@ -38,7 +38,7 @@ Public website for Noorcom Branding, Nairobi. Next.js App Router, TypeScript (st
 - Don't pass `hidden` to a component whose base classes set `display` (ButtonLink is `inline-flex`): wrap it instead.
 - Responsive: mobile first; check 320, 360, 390, 768, 1024, 1440 and 1920 px with no horizontal overflow; 44 px touch targets; visible focus; alt text on every content image.
 - Before handing over: `lint`, `typecheck`, `test`, `build`, then `a11y`, `devices` and `menu` against a production server (`BASE=http://localhost:3100`). All must pass.
-- Deploy files are in `deploy/` (the shared Contabo VPS, port 4301); see `docs/VPS_BRANDING.md`. Never commit real env files.
+- Deploy files are in `deploy/` (branding's VPS, 164.68.107.101, shared with other projects; the site on 4301, the API on 4300, the back office at `/admin/`); one `deploy-branding.sh` ships the site, API, worker, migrations and back office. See `docs/VPS_BRANDING.md`. Never commit real env files.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

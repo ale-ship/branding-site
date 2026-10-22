@@ -142,7 +142,13 @@ next. Update it at the end of every task.
   exception to the no-people rule for the client's own printed work): the Karibu wall banner, the
   #KaribuNAI roll-ups and the feather flag join the trade-fair stand (dated 2022 by its banner), and
   the Jericho and Kangemi roll-up banners are a project of their own, featured on the home page in
-  place of Isiolo's seal and flag (migration 016).
+  place of Isiolo's seal and flag (migration 016). The Bahati gate sign left the home page too, for
+  the SATU Beauty logo (migration 017). Both stay in Our work.
+- **22 Oct 2026, ready for production:** branding's VPS is 164.68.107.101 (shared with other
+  projects; Phase 0, a read-only inventory, comes first). One deploy now ships everything: the site
+  on the API, the API and its worker, the migrations and seeds (after a database backup), and the
+  back office at `/admin/`, with health checks, rollback and nightly backups
+  (`docs/VPS_BRANDING.md`).
 - **Next (owner, 7 Oct 2026: the VPS waits):** the job card with its QR code, mockups on proofs and
   customers' file uploads (R2), or B3b once Absa's documentation arrives. The VPS deploy still ships
   only the website: the API, worker, migrations, `/admin/` and `/api/` come with the VPS work.

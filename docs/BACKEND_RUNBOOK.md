@@ -304,6 +304,7 @@ the VPS work.
 | 014 ✓ | payments by hand | `payments.method` gains `manual`, with `channel` (mpesa, bank, cash) and `recorded_by` (the staff member; both set exactly when the method is manual); `orders.payment_report` (the customer's "I've paid" code); notifications gain the status `skipped` (WhatsApp off) |
 | 015 ✓ | real work | Data only: the owner's mock-ups of eleven real jobs (21 Oct 2026, `public/images/work`) added to "Our work" ahead of the samples, which stop being featured (only while still samples); the ten clients behind them replace the "Client 01" placeholders (only those without a logo). A project's idea and result may now be empty until staff write them |
 | 016 ✓ | more work | Data only (owner, 22 Oct 2026): three more photos on the trade-fair stand, dated 2022 (only while it still has 015's one photo and year); the Jericho and Kangemi roll-ups as a featured project after the Bahati sign (when the slug is free); Isiolo's seal and flag no longer featured |
+| 017 ✓ | home work | Data only (owner, 22 Oct 2026): the Bahati gate sign no longer featured; the SATU Beauty logo featured in its place |
 | 011 ✓ | home photos | Data only, the same way: the owner's mock-ups on the home page (the workshop band, three "behind the scenes" photos), the seven services' photos and three featured sample projects' covers |
 
 Planned (from the original design; they take the next free numbers when built):
@@ -506,9 +507,11 @@ adds from B1.
 Check memory first (`free -h`): the box already runs hosting and electronics; we add an API, a
 worker, a Next.js server and Chromium for PDFs. Plan on at least 2 GB free for branding.
 
-The deploy script gains: install `backend/`, run migrations, restart the API and worker, check
-`GET /api/health` (database, Redis, every integration mode, build id), roll back on failure, as it
-does for the site today. The VPS is in France; Noorcom Computers measured about 0.5 s per request
+The deploy script does it (22 Oct 2026, `deploy/scripts/deploy-branding.sh`; `docs/VPS_BRANDING.md`
+section 7): the API with production packages, a database backup, migrations and seeds, the new API
+on a spare port while the site builds against it, then the switch, `GET /api/health` (database,
+Redis, every integration mode, build id) and a rollback on failure. Units in `deploy/systemd/`, the
+env examples in `deploy/env/`, nightly backups by `noorcom-branding-backup.timer`. The VPS is in France; Noorcom Computers measured about 0.5 s per request
 from Nairobi, so put Cloudflare in front at the DNS cutover (an African edge) for both sites.
 
 ## 11. Environment (`/etc/noorcom-branding/api.env`)

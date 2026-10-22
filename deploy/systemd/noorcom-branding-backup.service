@@ -1,0 +1,8 @@
+# Nightly backup of the branding database and stored files (deploy/scripts/backup-branding.sh).
+[Unit]
+Description=Noorcom Branding backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /var/www/noorcom-branding/current/api/backup-branding.sh
